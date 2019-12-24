@@ -1,0 +1,15 @@
+version: '3'
+services:
+  solr:
+    image: aips-solr
+    expose:
+      - "8983"
+    ports:
+      - "8983:8983"
+    environment:
+      SERVER_HOST: "0.0.0.0"
+    volumes:
+      - aips-solr-data:/usr/share/solr/data
+volumes:
+  aips-solr-data:
+    driver: local

@@ -1,0 +1,42 @@
+version: '3' 
+services:
+  notebooks:
+    build: 
+      context: jupyter/.
+      dockerfile: Dockerfile
+    container_name: aips-notebook
+    ports:
+      - 8888:8888 
+    depends_on:
+      - solr
+    networks:
+      - solr-notebooks
+
+  solr:
+    build:
+      context: solr/.
+      dockerfile: Dockerfile
+    container_name: aips-solr
+    hostname: aips-solr
+    ports:
+      - 8983:8983 
+    environment:
+      - ZK_HOST=aips-zk:2181
+    networks:
+      - zk-solr
+    depends_on:
+      - zookeeper
+
+  zookeeper:
+    image: zookeeper:3.5.5
+    container_name: aips-zk
+    hostname: aips-zk
+    ports: 
+      - 2181
+    networks:
+      - zk-solr
+      - solr-notebooks
+
+networks:
+  zk-solr:  
+  solr-notebooks:
