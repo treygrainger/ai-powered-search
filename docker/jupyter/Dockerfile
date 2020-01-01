@@ -18,4 +18,5 @@ WORKDIR /home/aips/notebooks
 
 USER aips
 
-CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' 
+#todo: require password for security. Turning off in first release to avoid initial complexity for readers.
+CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' c.NotebookApp.password = ''
