@@ -24,6 +24,7 @@ services:
       - ZK_HOST=aips-zk:2181
     networks:
       - zk-solr
+      - solr-notebooks
     depends_on:
       - zookeeper
 
@@ -35,7 +36,6 @@ services:
       - 2181
     networks:
       - zk-solr
-      - solr-notebooks
 
 networks:
   zk-solr:  
