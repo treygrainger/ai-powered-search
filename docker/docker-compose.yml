@@ -2,15 +2,24 @@ version: '3'
 services:
   notebooks:
     build: 
-      context: jupyter/.
+      context: data-science/.
       dockerfile: Dockerfile
-    container_name: aips-notebook
+    container_name: aips-data-science
     ports:
-      - 8888:8888 
+      - "7077:7077" #Spark Master
+      - "8080:8080" #Spark Master UI
+      - "8081:8081" #Spark Worker UI
+      - 8888:8888 # Jupyter Notebook UI 
     depends_on:
       - solr
     networks:
-      - solr-notebooks
+      - solr-data-science
+    #environment:
+      #NB_USER: 'aips'
+      #NB_UID: 1010
+      #NB_GID: 1020
+      #CHOWN_HOME: 'yes'
+      #CHOWN_HOME_OPTS: -R    
 
   solr:
     build:
@@ -24,7 +33,7 @@ services:
       - ZK_HOST=aips-zk:2181
     networks:
       - zk-solr
-      - solr-notebooks
+      - solr-data-science
     depends_on:
       - zookeeper
 
@@ -33,10 +42,14 @@ services:
     container_name: aips-zk
     hostname: aips-zk
     ports: 
-      - 2181
+      - 2181:2128
+    # - 2181
     networks:
       - zk-solr
+      - solr-data-science
+
+  
 
 networks:
   zk-solr:  
-  solr-notebooks:
+  solr-data-science:
