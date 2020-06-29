@@ -1,5 +1,6 @@
 import requests
 import os
+import re
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_NOTEBOOK_HOST="aips-notebook"
@@ -40,7 +41,6 @@ def create_collection(collection_name):
 
   print("Wiping '" + collection_name + "' collection")
   response = requests.post(solr_collections_api, data=wipe_collection_params).json()
-  print_status(response)
 
   #Create collection
   create_collection_params = [ 
@@ -49,7 +49,7 @@ def create_collection(collection_name):
       ('numShards', 1),
       ('replicationFactor', 1) ]
 
-  print("\nCreating " + collection_name + "' collection")
+  print("Creating " + collection_name + "' collection")
   response = requests.post(solr_collections_api, data=create_collection_params).json()
   print_status(response)
 
@@ -58,8 +58,8 @@ def upsert_text_field(collection_name, field_name):
     delete_field = {"delete-field":{ "name":field_name }}
     response = requests.post(solr_url + collection_name + "/schema", json=delete_field).json()
 
-    print("\nAdding '" + field_name + "' field to collection")
-    add_field = {"add-field":{ "name":field_name, "type":"text_general", "stored":"true", "indexed":"true" }}
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"text_general", "stored":"true", "indexed":"true", "multiValued":"false" }}
     response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
     print_status(response)  
 
@@ -71,6 +71,37 @@ def vec2str(vector):
 
 def tokenize(text):
   return text.replace(".","").replace(",","").lower().split()
+
+def render_search_results(query, results):
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
+    with open(search_results_template_file) as file:
+        file_content = file.read()
+        
+        template_syntax = "<!-- BEGIN_TEMPLATE[^>]*-->(.*)<!-- END_TEMPLATE[^>]*-->"
+        header_template = re.sub(template_syntax, "", file_content, flags=re.S)
+        
+        results_template_syntax = "<!-- BEGIN_TEMPLATE: SEARCH_RESULTS -->(.*)<!-- END_TEMPLATE: SEARCH_RESULTS[^>]*-->"
+        x = re.search(results_template_syntax, file_content, flags=re.S)
+        results_template = x.group(1)      
+
+        separator_template_syntax = "<!-- BEGIN_TEMPLATE: SEPARATOR -->(.*)<!-- END_TEMPLATE: SEPARATOR[^>]*-->"
+        x = re.search(separator_template_syntax, file_content, flags=re.S)
+        separator_template = x.group(1)      
+
+        rendered = header_template.replace("${QUERY}", query)
+        for result in results:
+            rendered += results_template.replace("${NAME}", result['name'] if 'name' in result else "UNKNOWN") \
+                .replace("${MANUFACTURER}", result['manufacturer'] if 'manufacturer' in result else "UNKNOWN") \
+                .replace("${DESCRIPTION}", result['shortDescription'] if 'shortDescription' in result else "") \
+                .replace("${IMAGE_URL}", "../data/retrotech/images/" + \
+                         (result['upc'] if \
+                          ('upc' in result and os.path.exists(file_path + "/data/retrotech/images/" + result['upc'] + ".jpg") \
+                         ) else "unavailable") + ".jpg")
+
+            rendered += separator_template
+
+        return rendered
 
 """
 class environment:

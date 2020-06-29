@@ -1,0 +1,26 @@
+<div id="demo">
+        <input style="width:50%" readonly type="text" name="q" value="${QUERY}">
+        <input readonly type="submit" value="Search">
+
+    <div class="results">
+    	<!-- BEGIN_TEMPLATE: SEARCH_RESULTS -->
+    	<div style="position: relative; width: 100%; height:auto; overflow: auto;">
+	    	<div style="position: relative; float:left; width: 120px; margin-top:25px">
+	    		<img style="width:100px; height: auto" src="${IMAGE_URL}">
+	    	</div>
+	    	<div style="position:relative; float:left; clear:none; width: 80%; height:auto">
+	    		<p><strong>Name:</strong> ${NAME} | <strong>Manufacturer:</strong> ${MANUFACTURER}</p>
+	    		<p>${DESCRIPTION} 
+	    		</p>
+	    	</div>
+    	</div>
+    	<!-- END_TEMPLATE: SEARCH_RESULTS -->
+
+    	<!-- BEGIN_TEMPLATE: SEPARATOR -->
+		<div style="position:relative; clear:both; content: ' '; display: block; height: 1px; margin-top: 10px; margin-bottom:20px">
+			<hr style="color: gray; width: 95%;" />
+		</div>
+		<!-- END_TEMPLATE: SEPARATOR -->
+
+    </div>
+</div>
