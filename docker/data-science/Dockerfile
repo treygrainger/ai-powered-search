@@ -3,7 +3,7 @@ FROM jupyter/scipy-notebook
 USER root
 
 # Spark dependencies
-ENV APACHE_SPARK_VERSION=2.4.5 \
+ENV APACHE_SPARK_VERSION=2.4.6 \
     HADOOP_VERSION=2.7 \
     SPARK_SOLR_VERSION=3.7.3
 
