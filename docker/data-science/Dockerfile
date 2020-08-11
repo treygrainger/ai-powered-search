@@ -1,4 +1,6 @@
-FROM jupyter/scipy-notebook
+# THis tag uses python 3.7, pyspark does not work with python 3.8 except on
+# Spark 3.0 (see https://github.com/apache/spark/pull/26194)
+FROM jupyter/scipy-notebook:619e9cc2fc07
 
 USER root
 
