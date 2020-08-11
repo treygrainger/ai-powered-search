@@ -1,4 +1,4 @@
-version: '3' 
+version: '3.8' 
 services:
   notebooks:
     build: 
@@ -21,7 +21,10 @@ services:
       #NB_GID: 1020
       #CHOWN_HOME: 'yes'
       #CHOWN_HOME_OPTS: -R    
-
+    volumes:
+      - type: bind
+        source: "./data-science/notebooks/"
+        target: "/tmp/notebooks/"
   solr:
     build:
       context: solr/.
