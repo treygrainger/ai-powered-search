@@ -3,7 +3,7 @@ FROM jupyter/scipy-notebook
 USER root
 
 # Spark dependencies
-ENV APACHE_SPARK_VERSION=2.4.5 \
+ENV APACHE_SPARK_VERSION=2.4.6 \
     HADOOP_VERSION=2.7 \
     SPARK_SOLR_VERSION=3.7.3
 
@@ -15,7 +15,6 @@ RUN apt-get -y update && \
 RUN cd /tmp && \
     wget -q $(wget -qO- https://www.apache.org/dyn/closer.lua/spark/spark-${APACHE_SPARK_VERSION}/spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz\?as_json | \
     python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
-    echo "2426a20c548bdfc07df288cd1d18d1da6b3189d0b78dee76fa034c52a4e02895f0ad460720c526f163ba63a17efae4764c46a1cd8f9b04c60f9937a554db85d2 *spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" | sha512sum -c - && \
     tar xzf spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C /usr/local --owner root --group root --no-same-owner && \
     rm spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 RUN cd /usr/local && ln -s spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} spark
@@ -42,8 +41,6 @@ Run chmod a+rwx /usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
 # python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
 #    echo "f42d79f96aad12c880d47cc772043ae84e73d5595093206b6b7ae5818faadc1bcda21c57c09c9dd3436d68ebf61d791199cfc1bb8969367fc04e8309933df7b3 *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
 
-
-COPY notebooks notebooks
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 
 USER $NB_UID
@@ -76,7 +73,7 @@ RUN pip install -r requirements.txt
 #RUN fix-permissions /home/$NB_USER
 #RUN fix-permissions notebooks
 
-WORKDIR notebooks
+WORKDIR /tmp/notebooks
 
 #todo: require password for security. Turning off in first release to avoid initial complexity for readers.
 CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' --NotebookApp.password=''

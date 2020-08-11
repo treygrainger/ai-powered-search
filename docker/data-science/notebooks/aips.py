@@ -13,11 +13,11 @@ AIPS_NOTEBOOK_PORT="8888"
 AIPS_ZK_PORT="2181"
 
 solr_url = 'http://' + AIPS_SOLR_HOST + ':' + AIPS_SOLR_PORT + '/solr/'
-solr_collections_api = solr_url + 'admin/collections'  
+solr_collections_api = solr_url + 'admin/collections'
 
 def healthcheck():
-  import requests    
-    
+  import requests
+
   status_url = solr_url + 'admin/zookeeper/status'
 
   try:
@@ -30,12 +30,12 @@ def healthcheck():
       print ("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
 
 def print_status(solr_response):
-  print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )    
+  print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
 def create_collection(collection_name):
     #Wipe previous collection
   wipe_collection_params = [
-      ('action', "delete"), 
+      ('action', "delete"),
       ('name', collection_name)
   ]
 
@@ -43,7 +43,7 @@ def create_collection(collection_name):
   response = requests.post(solr_collections_api, data=wipe_collection_params).json()
 
   #Create collection
-  create_collection_params = [ 
+  create_collection_params = [
       ('action', "CREATE"),
       ('name', collection_name),
       ('numShards', 1),
@@ -61,7 +61,17 @@ def upsert_text_field(collection_name, field_name):
     print("Adding '" + field_name + "' field to collection")
     add_field = {"add-field":{ "name":field_name, "type":"text_general", "stored":"true", "indexed":"true", "multiValued":"false" }}
     response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
-    print_status(response)  
+    print_status(response)
+
+def upsert_double_field(collection_name, field_name):
+    #clear out old field to ensure this function is idempotent
+    delete_field = {"delete-field":{ "name":field_name }}
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_field).json()
+
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"pdouble", "stored":"true", "indexed":"true", "multiValued":"false" }}
+    response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
+    print_status(response)
 
 def num2str(number):
   return str(round(number,4)) #round to 4 decimal places for readibility
@@ -77,17 +87,17 @@ def render_search_results(query, results):
     search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
     with open(search_results_template_file) as file:
         file_content = file.read()
-        
+
         template_syntax = "<!-- BEGIN_TEMPLATE[^>]*-->(.*)<!-- END_TEMPLATE[^>]*-->"
         header_template = re.sub(template_syntax, "", file_content, flags=re.S)
-        
+
         results_template_syntax = "<!-- BEGIN_TEMPLATE: SEARCH_RESULTS -->(.*)<!-- END_TEMPLATE: SEARCH_RESULTS[^>]*-->"
         x = re.search(results_template_syntax, file_content, flags=re.S)
-        results_template = x.group(1)      
+        results_template = x.group(1)
 
         separator_template_syntax = "<!-- BEGIN_TEMPLATE: SEPARATOR -->(.*)<!-- END_TEMPLATE: SEPARATOR[^>]*-->"
         x = re.search(separator_template_syntax, file_content, flags=re.S)
-        separator_template = x.group(1)      
+        separator_template = x.group(1)
 
         rendered = header_template.replace("${QUERY}", query)
         for result in results:
@@ -105,7 +115,7 @@ def render_search_results(query, results):
 
 """
 class environment:
-  
+
   self._AIPS_SOLR_HOST = "aips-solr"
   self._AIPS_NOTEBOOK_HOST="aips-notebook"
   self._AIPS_ZK_HOST="aips-zk"
@@ -115,31 +125,31 @@ class environment:
   self._AIPS_SOLR_URL=''
   self._AIPS_SOLR_COLLECTIONS_API=''
 
-  if "AIPS_HOST" in os.environ: 
+  if "AIPS_HOST" in os.environ:
     self._AIPS_SOLR_HOST=os.environ['AIPS_HOST']
-    self._AIPS_NOTEBOOK_HOST=os.environ['AIPS_HOST']  
+    self._AIPS_NOTEBOOK_HOST=os.environ['AIPS_HOST']
     self._AIPS_ZK_HOST=os.environ['AIPS_HOST']
 
-  if "AIPS_SOLR_HOST" in os.environ: 
+  if "AIPS_SOLR_HOST" in os.environ:
     self._AIPS_SOLR_HOST=os.environ['AIPS_SOLR_HOST']
 
-  if "AIPS_NOTEBOOK_HOST" in os.environ:   
+  if "AIPS_NOTEBOOK_HOST" in os.environ:
     self._AIPS_NOTEBOOK_HOST=os.environ['AIPS_NOTEBOOK_HOST']
 
-  if "AIPS_ZK_HOST" in os.environ:    
+  if "AIPS_ZK_HOST" in os.environ:
     self._AIPS_ZK_HOST=os.environ['AIPS_ZK_HOST']
 
-  if "AIPS_SOLR_PORT" in os.environ: 
+  if "AIPS_SOLR_PORT" in os.environ:
     self._AIPS_SOLR_PORT=os.environ['AIPS_SOLR_PORT']
-  
-  if "AIPS_NOTEBOOK_HOST" in os.environ: 
+
+  if "AIPS_NOTEBOOK_HOST" in os.environ:
     self._AIPS_NOTEBOOK_PORT=os.environ['AIPS_NOTEBOOK_PORT']
 
-  if "AIPS_ZK_HOST" in os.environ: 
-    self._AIPS_ZK_PORT=os.environ['AIPS_ZK_PORT']  
+  if "AIPS_ZK_HOST" in os.environ:
+    self._AIPS_ZK_PORT=os.environ['AIPS_ZK_PORT']
 
   self._AIPS_SOLR_URL = 'http://' + AIPS_SOLR_HOST + ':' + AIPS_SOLR_PORT + '/solr/'
-  self._AIPS_SOLR_COLLECTIONS_API = AIPS_SOLR_URL + 'admin/collections'  
+  self._AIPS_SOLR_COLLECTIONS_API = AIPS_SOLR_URL + 'admin/collections'
 
   @property
   def SOLR_HOST(self):
