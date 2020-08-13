@@ -49,9 +49,43 @@ def create_collection(collection_name):
       ('numShards', 1),
       ('replicationFactor', 1) ]
 
+  print(create_collection_params)
+
   print("Creating " + collection_name + "' collection")
   response = requests.post(solr_collections_api, data=create_collection_params).json()
   print_status(response)
+
+def add_ltr_components(collection_name):
+
+
+    collection_config_url = solr_url + collection_name + "/config"
+
+    del_ltr_query_parser = { "delete-queryparser": "ltr" }
+    add_ltr_q_parser = {
+     "add-queryparser": {
+        "name": "ltr",
+            "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
+        }
+    }
+
+    print("Del/Adding LTR QParser for " + collection_name + "' collection")
+    response = requests.post(collection_config_url, json=del_ltr_query_parser).json()
+    response = requests.post(collection_config_url, json=add_ltr_q_parser).json()
+    print_status(response)
+
+    del_ltr_transformer = { "delete-transformer": "features" }
+    add_transformer =  {
+      "add-transformer": {
+        "name": "features",
+        "class": "org.apache.solr.ltr.response.transform.LTRFeatureLoggerTransformerFactory",
+        "fvCacheName": "QUERY_DOC_FV"
+    }}
+
+    print("Adding LTR Doc Transformer for " + collection_name + "' collection")
+    response = requests.post(collection_config_url, json=del_ltr_transformer).json()
+    response = requests.post(collection_config_url, json=add_transformer).json()
+    print_status(response)
+
 
 def upsert_text_field(collection_name, field_name):
     #clear out old field to ensure this function is idempotent
