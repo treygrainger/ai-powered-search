@@ -55,8 +55,7 @@ def create_collection(collection_name):
   response = requests.post(solr_collections_api, data=create_collection_params).json()
   print_status(response)
 
-def add_ltr_components(collection_name):
-
+def enable_ltr(collection_name):
 
     collection_config_url = solr_url + collection_name + "/config"
 
