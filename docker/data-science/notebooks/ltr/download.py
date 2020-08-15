@@ -25,6 +25,12 @@ def download_one(uri, dest='data/', force=False):
             if chunk:
                 out.write(chunk)
 
+def extract_tgz(fname, dest='data/'):
+    import tarfile
+    with tarfile.open(fname, 'r:gz') as tar:
+        tar.extractall(path=dest)
+
+
 def download(uris, dest='data/', force=False):
     for uri in uris:
         download_one(uri=uri, dest=dest, force=force)
