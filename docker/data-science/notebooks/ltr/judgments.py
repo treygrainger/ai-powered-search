@@ -155,9 +155,9 @@ def _judgmentsFromBody(lines):
         <judgment> qid:<queryid> # doc_id <rest of comment ignored...)"""
     # Regex can be debugged here:
     # http://www.regexpal.com/?fam=96565
-    regex = re.compile('^(\d+)\s+qid:(\d+)\s+#\s+(\w+).*')
-    trainRegex = re.compile('^(\d+)\s+qid:(\d+)\s+1:\d+.+#\s+(\w+).*')
-    ftrRegex = re.compile('(\d+):([.\d]+)\s')
+    regex = re.compile('^(\d+)\s+qid:(\d+)\s+#\s+(\w+).*') # w/o features
+    trainRegex = re.compile("^(\d+)\s+qid:(\d+)\s+1:[+\-]?\d+.+#\s+(\w+).*") # w/ features
+    ftrRegex = re.compile('(\d+):(.*?)\s')
     for line in lines:
         m = re.match(regex, line)
         if m:
@@ -186,12 +186,12 @@ def _judgmentsFromBody(lines):
 
                 for featureVal in featuresList:
                     if featureVal is None:
-                        raise ValueError("Missing Features Detected When Parsing Training Set")
+                        judg_id = ("%s qid:%s # (doc_id:%s)" % (grade, qid, doc_id))
+                        raise ValueError("Missing Features Detected When Parsing Training Set for " + judg_id)
 
                 yield grade, qid, doc_id, featuresList
-
-            pass
-            #print("Not Recognized as Judgment %s" % line)
+            else:
+                raise ValueError("Not Recognized as Judgment %s" % line)
 
 
 def _judgment_rows(f, qidToKeywords):
