@@ -45,6 +45,7 @@ Run chmod a+rwx /usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
 # python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
 #    echo "f42d79f96aad12c880d47cc772043ae84e73d5595093206b6b7ae5818faadc1bcda21c57c09c9dd3436d68ebf61d791199cfc1bb8969367fc04e8309933df7b3 *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
 
+COPY notebooks notebooks
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 
 USER $NB_UID
@@ -77,7 +78,12 @@ RUN pip install -r requirements.txt
 #RUN fix-permissions /home/$NB_USER
 #RUN fix-permissions notebooks
 
-WORKDIR /tmp/notebooks
+WORKDIR notebooks
+# If you want to edit the notebooks and have
+# your changes persist, uncomment the line below
+# and restart with `docker-compose up --build`
+# WORKDIR /tmp/notebooks
+
 
 #todo: require password for security. Turning off in first release to avoid initial complexity for readers.
 CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' --NotebookApp.password=''
