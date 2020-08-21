@@ -37,14 +37,13 @@ Run mkdir /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
     wget -q https://repo1.maven.org/maven2/com/lucidworks/spark/spark-solr/${SPARK_SOLR_VERSION}/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar && \
     echo "3bd0614d50ce6ef2769eb0d654e58fd68cf3e1f63c567dca8b12432a7e6ac907753b289f6d3cca5a80a67454d6ff841e438f53472cba37530293548751edaa8f *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
     export EXTRA_CLASSPATH=/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar && \
-    $SPARK_HOME/bin/spark-shell --jars spark-solr-${SPARK_SOLR_VERSION}-shaded.jar 
+    $SPARK_HOME/bin/spark-shell --jars spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
     #&& \ rm spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
 
 Run chmod a+rwx /usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
 
 # python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
 #    echo "f42d79f96aad12c880d47cc772043ae84e73d5595093206b6b7ae5818faadc1bcda21c57c09c9dd3436d68ebf61d791199cfc1bb8969367fc04e8309933df7b3 *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
-
 
 COPY notebooks notebooks
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
@@ -80,6 +79,11 @@ RUN pip install -r requirements.txt
 #RUN fix-permissions notebooks
 
 WORKDIR notebooks
+# If you want to edit the notebooks and have
+# your changes persist, uncomment the line below
+# and restart with `docker-compose up --build`
+# WORKDIR /tmp/notebooks
+
 
 #todo: require password for security. Turning off in first release to avoid initial complexity for readers.
 CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' --NotebookApp.password=''
