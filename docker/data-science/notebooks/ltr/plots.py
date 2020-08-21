@@ -93,6 +93,6 @@ def plot_pairwise_data(features, predictors, title,
     pl.title(title)
     pl.xlabel(xlabel=xlabel)
     pl.ylabel(ylabel=ylabel)
-    pl.legend(legend_paths, ["Irrelevant", "Relevant"], loc='lower center',
-              bbox_to_anchor=[1,1])
-    pl.savefig('all_relevances.png', dpi=600)
+    pl.legend(legend_paths, ["Irrelevant minus Relevant", "Relevant minus Irrelevant"], loc='lower center',
+              bbox_to_anchor=[0.5,-0.5])
+    pl.savefig('all_relevances.png', bbox_inches='tight', dpi=600)
