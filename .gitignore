@@ -130,3 +130,6 @@ dmypy.json
 
 #Mac
 *.DS_Store
+
+#no-commit folders
+*no-commit/
