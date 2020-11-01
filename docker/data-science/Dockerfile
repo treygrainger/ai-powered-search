@@ -52,10 +52,10 @@ RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 USER $NB_UID
 
 # Install pyarrow
-RUN conda install --quiet -y 'pyarrow' && \
-    conda clean --all -f -y && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
+#RUN conda install --quiet -y 'pyarrow' && \
+#    conda clean --all -f -y && \
+#    fix-permissions $CONDA_DIR && \
+#    fix-permissions /home/$NB_USER
 
 # Install tensorflow
 #RUN pip install 'tensorflow==2.1.0' && \
@@ -69,7 +69,14 @@ WORKDIR /home/$NB_USER
 
 # Pull Requirements, Install Notebooks
 COPY requirements.txt ./
-RUN pip install -r requirements.txt
+RUN python -m pip install --upgrade pip && \
+  pip install -r requirements.txt \
+  --use-feature=2020-resolver
+
+RUN python -m spacy download en_core_web_sm
+
+#must be installed after other requirements for now due to spacy/neuralcoref compatability issues
+RUN pip install git+https://github.com/huggingface/neuralcoref.git@654d90659e34f78b98681ccde7bdda4558aa21c2 --no-binary neuralcoref
 
 #RUN git clone https://github.com/ai-powered-search/retrotech.git $WORKDIR/retrotech
 
