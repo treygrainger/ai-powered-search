@@ -5,7 +5,7 @@ FROM jupyter/scipy-notebook:619e9cc2fc07
 USER root
 
 # Spark dependencies
-ENV APACHE_SPARK_VERSION=2.4.6 \
+ENV APACHE_SPARK_VERSION=2.4.7 \
     HADOOP_VERSION=2.7 \
     SPARK_SOLR_VERSION=3.8.0
 
@@ -14,14 +14,18 @@ RUN apt-get -y update && \
     rm -rf /var/lib/apt/lists/*
 
 # Using the preferred mirror to download the file
-RUN cd /tmp && \
-    wget -q $(wget -qO- https://www.apache.org/dyn/closer.lua/spark/spark-${APACHE_SPARK_VERSION}/spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz\?as_json | \
-    python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
-    echo "3a9f401eda9b5749cdafd246b1d14219229c26387017791c345a23a65782fb8b25a302bf4ac1ed7c16a1fe83108e94e55dad9639a51c751d81c8c0534a4a9641 *spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" | sha512sum -c - && \
+#RUN cd /tmp && \
+#    wget -q $(wget -qO- https://www.apache.org/dyn/closer.lua/spark/spark-${APACHE_SPARK_VERSION}/spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz\?as_json | \
+#    python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
+#    echo "3a9f401eda9b5749cdafd246b1d14219229c26387017791c345a23a65782fb8b25a302bf4ac1ed7c16a1fe83108e94e55dad9639a51c751d81c8c0534a4a9641 *spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" | sha512sum -c - && \
+
+#Pull from aips build-dependencies repo because mirrors expire old versions and apache archive is too slow
+COPY pull_aips_dependency.py pull_aips_dependency.py
+
+RUN python pull_aips_dependency.py spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
     tar xzf spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C /usr/local --owner root --group root --no-same-owner && \
     rm spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 RUN cd /usr/local && ln -s spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} spark
-
 
 # Spark Config
 ENV SPARK_HOME=/usr/local/spark
