@@ -109,6 +109,17 @@ class SessionGenerator:
         self.curr_sess_id = 1
         self.random_rankings = {}
 
+    def _do_swap(self, top_n, max_rank_to_swap, pairs_to_swap):
+        to_swap = list(range(0,max_rank_to_swap))
+        random.shuffle(to_swap)
+        to_swap = to_swap[:(pairs_to_swap*2)]
+        for a, b in zip(to_swap, to_swap[1:]):
+            b_val = top_n.iloc[b]
+            a_val = top_n.iloc[a].copy()
+            top_n.iloc[a] = b_val
+            top_n.iloc[b] = a_val
+        return top_n
+
     def _random_ranking(self, max_rank, query):
         """ from ground truth -> random ranking that will seed all session
             generation (with slight swaps each session) """
@@ -116,7 +127,10 @@ class SessionGenerator:
             shuffled = self.canonical_rankings[self.canonical_rankings['query'] == query]
             shuffled = shuffled[['posn_ctr_mean', 'posn_ctr_std', 'rank', 'posn_ctr_mad', 'posn_ctr_median']]\
                         .rename(columns={'rank': 'dest_rank'})
-            shuffled = shuffled[shuffled['dest_rank'] < max_rank].sample(frac=1)
+            shuffled = self._do_swap(top_n=shuffled[shuffled['dest_rank'] < max_rank],
+                                     max_rank_to_swap=max_rank//2, pairs_to_swap=4)
+            shuffled = self._do_swap(top_n=shuffled[shuffled['dest_rank'] < max_rank],
+                                     max_rank_to_swap=max_rank, pairs_to_swap=2)
             self.random_rankings[query] = shuffled
         return self.random_rankings[query]
 
@@ -125,22 +139,17 @@ class SessionGenerator:
             <pairs_to_swap> docs in the ranking and return this as
             the listing for this session """
         top_n = self._random_ranking(max_rank, query).copy()
+        top_n = self._do_swap(top_n=top_n, max_rank_to_swap=max_rank, pairs_to_swap=pairs_to_swap)
         # Swap a few posns
-        to_swap = list(range(0,20))
-        random.shuffle(to_swap)
-        to_swap = to_swap[:(pairs_to_swap*2)]
-        for a, b in zip(to_swap, to_swap[1:]):
-            b_val = top_n.iloc[b]
-            a_val = top_n.iloc[a].copy()
-            top_n.iloc[a] = b_val
-            top_n.iloc[b] = a_val
 
         return top_n
 
 
-    def __call__(self, query, num_docs=30):
+    def __call__(self, query, num_docs=30, use_median=False, dampen=1.0):
         """ Build a single session for query given sess_id"""
         canonical = self.canonical_rankings[self.canonical_rankings['query'] == query][self.canonical_rankings['rank'] < num_docs]
+        if len(canonical) == 0:
+            raise KeyError(f"Query: {query} not present in signal data")
 
         top_n = self._shuffled_ranking(num_docs, query)
 
@@ -150,10 +159,19 @@ class SessionGenerator:
                              'posn_ctr_median': 'dest_ctr_median'})
         shuffled = shuffled.reset_index(drop=True).reset_index().rename(columns={'index': 'rank'})
         shuffled = shuffled.merge(canonical, on='rank', how='left')
-        shuffled['dest_ctr_median_based'] = (shuffled['ctr_mod_z_score'] * shuffled['dest_ctr_mad']) + (shuffled['dest_ctr_median'])
-        shuffled['dest_ctr_mean_based'] = (shuffled['ctr_std_z_score'] * shuffled['dest_ctr_std']) + (shuffled['dest_ctr_mean'])
+        shuffled['dest_ctr_median_based'] = (
+                (shuffled['ctr_mod_z_score'] * dampen * shuffled['dest_ctr_mad'])
+                + (shuffled['dest_ctr_median'])
+        )
+        shuffled['dest_ctr_mean_based'] = (
+                (shuffled['ctr_std_z_score'] * dampen * shuffled['dest_ctr_std'])
+                + (shuffled['dest_ctr_mean'])
+        )
         shuffled['draw'] = np.random.rand(len(shuffled))
-        shuffled['clicked'] = shuffled['draw'] < shuffled['dest_ctr_mean_based']
+        if not use_median:
+            shuffled['clicked'] = shuffled['draw'] < shuffled['dest_ctr_median_based']
+        else:
+            shuffled['clicked'] = shuffled['draw'] < shuffled['dest_ctr_mean_based']
         shuffled['sess_id'] = self.curr_sess_id
 
         self.curr_sess_id += 1

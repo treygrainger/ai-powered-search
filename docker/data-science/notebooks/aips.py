@@ -115,6 +115,13 @@ def vec2str(vector):
 def tokenize(text):
   return text.replace(".","").replace(",","").lower().split()
 
+def img_path_for_upc(upc):
+    # file_path = os.path.dirname(os.path.abspath(__file__))
+    expected_jpg_path = f"../data/retrotech/images/{upc}.jpg"
+    unavailable_jpg_path = "../data/retrotech/images/unavailable.jpg"
+    return expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
+
+
 def render_search_results(query, results):
     file_path = os.path.dirname(os.path.abspath(__file__))
     search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
