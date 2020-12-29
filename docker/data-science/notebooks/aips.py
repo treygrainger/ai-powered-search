@@ -12,13 +12,13 @@ AIPS_SOLR_PORT = "8983"
 AIPS_NOTEBOOK_PORT="8888"
 AIPS_ZK_PORT="2181"
 
-solr_url = 'http://' + AIPS_SOLR_HOST + ':' + AIPS_SOLR_PORT + '/solr/'
-solr_collections_api = solr_url + 'admin/collections'
+solr_url = f'http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr/'
+solr_collections_api = f'{solr_url}admin/collections'
 
 def healthcheck():
   import requests
 
-  status_url = solr_url + 'admin/zookeeper/status'
+  status_url = f'{solr_url}admin/zookeeper/status'
 
   try:
     response = requests.get(status_url).json()
@@ -39,7 +39,7 @@ def create_collection(collection_name):
       ('name', collection_name)
   ]
 
-  print("Wiping '" + collection_name + "' collection")
+  print(f"Wiping '{collection_name}' collection")
   response = requests.post(solr_collections_api, data=wipe_collection_params).json()
 
   #Create collection
@@ -51,13 +51,13 @@ def create_collection(collection_name):
 
   print(create_collection_params)
 
-  print("Creating " + collection_name + "' collection")
+  print(f"Creating '{collection_name}' collection")
   response = requests.post(solr_collections_api, data=create_collection_params).json()
   print_status(response)
 
 def enable_ltr(collection_name):
 
-    collection_config_url = solr_url + collection_name + "/config"
+    collection_config_url = f"{solr_url}{collection_name}/config"
 
     del_ltr_query_parser = { "delete-queryparser": "ltr" }
     add_ltr_q_parser = {
@@ -67,7 +67,7 @@ def enable_ltr(collection_name):
         }
     }
 
-    print("Del/Adding LTR QParser for " + collection_name + " collection")
+    print(f"Del/Adding LTR QParser for '{collection_name}' collection")
     response = requests.post(collection_config_url, json=del_ltr_query_parser).json()
     print_status(response)
     response = requests.post(collection_config_url, json=add_ltr_q_parser).json()
@@ -81,7 +81,7 @@ def enable_ltr(collection_name):
         "fvCacheName": "QUERY_DOC_FV"
     }}
 
-    print("Adding LTR Doc Transformer for " + collection_name + " collection")
+    print(f"Adding LTR Doc Transformer for '{collection_name}' collection")
     response = requests.post(collection_config_url, json=del_ltr_transformer).json()
     print_status(response)
     response = requests.post(collection_config_url, json=add_transformer).json()
@@ -95,21 +95,21 @@ def delete_field(collection_name, field_name):
 def upsert_text_field(collection_name, field_name):
     #clear out old field to ensure this function is idempotent
     delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(solr_url + collection_name + "/schema", json=delete_field).json()
+    response = requests.post(f"{solr_url}{collection_name}/schema", json=delete_field).json()
 
-    print("Adding '" + field_name + "' field to collection")
+    print(f"Adding '{field_name}' field to collection")
     add_field = {"add-field":{ "name":field_name, "type":"text_general", "stored":"true", "indexed":"true", "multiValued":"false" }}
-    response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
+    response = requests.post(f"{solr_url}{collection_name}/schema", json=add_field).json()
     print_status(response)
 
 def upsert_double_field(collection_name, field_name):
     #clear out old field to ensure this function is idempotent
     delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(solr_url + collection_name + "/schema", json=delete_field).json()
+    response = requests.post(f"{solr_url}{collection_name}/schema", json=delete_field).json()
 
-    print("Adding '" + field_name + "' field to collection")
+    print(f"Adding '{field_name}' field to collection")
     add_field = {"add-field":{ "name":field_name, "type":"pdouble", "stored":"true", "indexed":"true", "multiValued":"false" }}
-    response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
+    response = requests.post(f"{solr_url}{collection_name}/schema", json=add_field).json()
     print_status(response)
     
 def upsert_integer_field(collection_name, field_name):
