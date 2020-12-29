@@ -1,25 +1,28 @@
 import os
 import requests
+import re
 
 from .base_client import BaseClient
 from ltr.helpers.convert import convert
 from ltr.helpers.handle_resp import resp_msg
 
 class SolrClient(BaseClient):
-    def __init__(self, host=None):
+    def __init__(self, solr_base=None):
         self.solr = requests.Session()
-        if host:
-            self.solr_base_ep=host
-            self.host = 'localhost'
+        if solr_base:
+            self.solr_base_ep=solr_base
+            if solr_base.endswith('/'):
+                self.solr_base_ep=solr_base[:len(solr_base)-1]
+            self.host = re.sub(r"https?://([^/:]+)((:[0-9]+)?/.*)?$", "\\1", solr_base)
         else:
             self.docker = os.environ.get('LTR_DOCKER') != None
 
             if self.docker:
                 self.host = 'solr'
-                self.solr_base_ep = 'http://solr:8983/solr'
             else:
                 self.host = 'localhost'
-                self.solr_base_ep = 'http://localhost:8983/solr'
+
+            self.solr_base_ep = f'http://{self.host}:8983/solr'
 
     def get_host(self):
         return self.host
@@ -36,8 +39,8 @@ class SolrClient(BaseClient):
             'deleteInstanceDir': 'true'
         }
 
-        resp = requests.get('{}/admin/cores?'.format(self.solr_base_ep), params=params)
-        resp_msg(msg="Deleted index {}".format(index), resp=resp, throw=False)
+        resp = requests.get(f'{self.solr_base_ep}/admin/cores?', params=params)
+        resp_msg(msg=f"Deleted index {index}", resp=resp, throw=False)
 
     def create_index(self, index):
         # Presumes there is a link between the docker container and the 'index'
@@ -48,20 +51,19 @@ class SolrClient(BaseClient):
             'name': index,
             'configSet': index,
         }
-        resp = requests.get('{}/admin/cores?'.format(self.solr_base_ep), params=params)
-        resp_msg(msg="Created index {}".format(index), resp=resp)
+        resp = requests.get(f'{self.solr_base_ep}/admin/cores?', params=params)
+        resp_msg(msg=f"Created index {index}", resp=resp)
 
     def index_documents(self, index, doc_src, batch_size=350, workers=4):
         import concurrent
 
         def commit():
-            resp = self.solr.get('{}/{}/update?commit=true'.format(self.solr_base_ep, index))
-            resp_msg(msg="Committed index {}".format(index), resp=resp)
+            resp = self.solr.get(f'{self.solr_base_ep}/{index}/update?commit=true')
+            resp_msg(msg=f"Committed index {index}", resp=resp)
 
         def flush(docs):
-            resp = self.solr.post('{}/{}/update'.format(
-                self.solr_base_ep, index), json=docs)
-            resp_msg(msg="{} Docs Sent".format(len(docs)), resp=resp)
+            resp = self.solr.post(f'{self.solr_base_ep}/{index}/update', json=docs)
+            resp_msg(msg=f"{len(docs)} Docs Sent", resp=resp)
 
         docs = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
@@ -81,31 +83,30 @@ class SolrClient(BaseClient):
     def reset_ltr(self, index):
         models = self.get_models(index)
         for model in models:
-            resp = requests.delete('{}/{}/schema/model-store/{}'.format(self.solr_base_ep, index, model))
-            resp_msg(msg='Deleted {} model'.format(model), resp=resp)
+            resp = requests.delete(f'{self.solr_base_ep}/{index}/schema/model-store/{model}')
+            resp_msg(msg=f'Deleted {model} model', resp=resp)
 
         stores = self.get_feature_stores(index)
         for store in stores:
-            resp = requests.delete('{}/{}/schema/feature-store/{}'.format(self.solr_base_ep, index, store))
-            resp_msg(msg='Deleted {} Featurestore'.format(store), resp=resp)
+            resp = requests.delete(f'{self.solr_base_ep}/{index}/schema/feature-store/{store}')
+            resp_msg(msg=f'Deleted {store} Featurestore', resp=resp)
 
 
     def validate_featureset(self, name, config):
         for feature in config:
             if 'store' not in feature or feature['store'] != name:
-                raise ValueError("Feature {} needs to be created with \"store\": \"{}\" ".format(feature['name'], name))
+                raise ValueError(f"Feature {feature['name']} needs to be created with \"store\": \"{name}\" ")
 
     def create_featureset(self, index, name, ftr_config):
         self.validate_featureset(name, ftr_config)
-        resp = requests.put('{}/{}/schema/feature-store'.format(
-            self.solr_base_ep, index, name), json=ftr_config)
-        resp_msg(msg='Created {} feature store under {}:'.format(name, index), resp=resp)
+        resp = requests.put(f'{self.solr_base_ep}/{index}/schema/feature-store/{name}', json=ftr_config)
+        resp_msg(msg=f'Created {name} feature store under {index}:', resp=resp)
 
 
     def log_query(self, index, featureset, ids, options={}, id_field='id'):
         efi_options = []
         for key, val in options.items():
-            efi_options.append('efi.{}="{}"'.format(key, val))
+            efi_options.append(f'efi.{key}="{val}"')
 
         efi_str = ' '.join(efi_options)
 
@@ -116,13 +117,13 @@ class SolrClient(BaseClient):
             print(query)
 
         params = {
-            'fl': '{},[features store={} {}]'.format(id_field, featureset, efi_str),
+            'fl': f'id,[features store={featureset} {efi_str}]',
             'q': query,
             'rows': 1000,
             'wt': 'json'
         }
-        resp = requests.post('{}/{}/select'.format(self.solr_base_ep, index), data=params)
-        resp_msg(msg='Searching {}'.format(index), resp=resp)
+        resp = requests.post(f'{self.solr_base_ep}/{index}/select', data=params)
+        resp_msg(msg=f'Searching {index}', resp=resp)
         resp = resp.json()
 
         def parseFeatures(features):
@@ -143,17 +144,17 @@ class SolrClient(BaseClient):
         return resp['response']['docs']
 
     def submit_model(self, featureset, index, model_name, solr_model):
-        url = '{}/{}/schema/model-store'.format(self.solr_base_ep, index)
-        resp = requests.delete('{}/{}'.format(url, model_name))
-        resp_msg(msg='Deleted Model {}'.format(model_name), resp=resp)
+        url = f'{self.solr_base_ep}/{index}/schema/model-store'
+        resp = requests.delete(f'{url}/{model_name}')
+        resp_msg(msg=f'Deleted Model {model_name}', resp=resp)
 
         resp = requests.put(url, json=solr_model)
-        resp_msg(msg='Created Model {}'.format(model_name), resp=resp)
+        resp_msg(msg=f'Created Model {model_name}', resp=resp)
 
     def submit_ranklib_model(self, featureset, index, model_name, model_payload):
         """ Submits a Ranklib model, converting it to Solr representation """
-        resp = requests.get('{}/{}/schema/feature-store/{}'.format(self.solr_base_ep, index, featureset))
-        resp_msg(msg='Submit Model {} Ftr Set {}'.format(model_name, featureset), resp=resp)
+        resp = requests.get(f'{self.solr_base_ep}/{index}/schema/feature-store/{featureset}')
+        resp_msg(msg=f'Submit Model {model_name} Ftr Set {featureset}', resp=resp)
         metadata = resp.json()
         features = metadata['features']
 
@@ -167,7 +168,7 @@ class SolrClient(BaseClient):
         self.submit_model(featureset, index, model_name, solr_model)
 
     def model_query(self, index, model, model_params, query):
-        url = '{}/{}/select?'.format(self.solr_base_ep, index)
+        url = f'{self.solr_base_ep}/{index}/select?'
         params = {
             'q': query,
             'rq': '{{!ltr model={}}}'.format(model),
@@ -175,11 +176,11 @@ class SolrClient(BaseClient):
         }
 
         resp = requests.post(url, data=params)
-        resp_msg(msg='Search keywords - {}'.format(query), resp=resp)
+        resp_msg(msg=f'Search keywords - {query}', resp=resp)
         return resp.json()['response']['docs']
 
     def query(self, index, query):
-        url = '{}/{}/select?'.format(self.solr_base_ep, index)
+        url = f'{self.solr_base_ep}/{index}/select?'
 
         resp = requests.post(url, data=query)
         #resp_msg(msg='Query {}...'.format(str(query)[:20]), resp=resp)
@@ -194,7 +195,7 @@ class SolrClient(BaseClient):
 
     def analyze(self, index, fieldtype, text):
         # http://localhost:8983/solr/msmarco/analysis/field
-        url = '{}/{}/analysis/field?'.format(self.solr_base_ep, index)
+        url = f'{self.solr_base_ep}/{index}/analysis/field?'
 
         query={
             "analysis.fieldtype": fieldtype,
@@ -209,7 +210,7 @@ class SolrClient(BaseClient):
         return tok_stream_result
 
     def term_vectors_skip_to(self, index, q='*:*', skip=0):
-        url = '{}/{}/tvrh/'.format(self.solr_base_ep, index)
+        url = f'{self.solr_base_ep}/{index}/tvrh/'
         query={
             'q': q,
             'cursorMark': '*',
@@ -224,7 +225,7 @@ class SolrClient(BaseClient):
         """ Extract all term vectors for a field
         """
         # http://localhost:8983/solr/msmarco/tvrh?q=*:*&start=0&rows=10&fl=id,body&tvComponent=true&tv.positions=true
-        url = '{}/{}/tvrh/'.format(self.solr_base_ep, index)
+        url = f'{self.solr_base_ep}/{index}/tvrh/'
 
         def get_posns(weird_posns):
             positions = []
@@ -269,23 +270,19 @@ class SolrClient(BaseClient):
 
 
     def get_feature_stores(self, index):
-        resp = requests.get('{}/{}/schema/feature-store'.format(self.solr_base_ep,
-                                                                index))
+        resp = requests.get(f'{self.solr_base_ep}/{index}/schema/feature-store')
         response = resp.json()
         return response['featureStores']
 
     def get_models(self, index):
-        resp = requests.get('{}/{}/schema/model-store'.format(self.solr_base_ep,
-                                                              index))
+        resp = requests.get(f'{self.solr_base_ep}/{index}/schema/model-store')
         response = resp.json()
         return [model['name'] for model in response['models']]
 
 
     def feature_set(self, index, name):
-        resp = requests.get('{}/{}/schema/feature-store/{}'.format(self.solr_base_ep,
-                                                                   index,
-                                                                   name))
-        resp_msg(msg='Feature Set {}...'.format(name), resp=resp)
+        resp = requests.get(f'{self.solr_base_ep}/{index}/schema/feature-store/{name}')
+        resp_msg(msg=f'Feature Set {name}...', resp=resp)
 
         response = resp.json()
 
@@ -306,7 +303,7 @@ class SolrClient(BaseClient):
             'fl': ','.join(fields)
         }
 
-        resp = requests.post('{}/{}/select'.format(self.solr_base_ep, index), data=params).json()
+        resp = requests.post(f'{self.solr_base_ep}/{index}/select', data=params).json()
         return resp['response']['docs'][0]
 
 
