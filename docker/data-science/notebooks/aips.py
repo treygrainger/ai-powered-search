@@ -153,6 +153,34 @@ def render_search_results(query, results):
 
         return rendered
 
+import pandas as pd
+from IPython.core.display import HTML
+
+def fetch_products(doc_ids):
+    import requests
+    doc_ids = ["%s" % doc_id for doc_id in doc_ids]
+    query = "upc:( " + " OR ".join(doc_ids) + " )"
+    params = {'q':  query, 'wt': 'json', 'rows': len(doc_ids)}
+    resp = requests.get('http://aips-solr:8983/solr/products/select', params=params)
+    df = pd.DataFrame(resp.json()['response']['docs'])
+    df['upc'] = df['upc'].astype('int64')
+
+    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_upc(row['upc']) + "\">", axis=1))
+
+    return df
+
+def render_judged(products, judged, grade_col='ctr', label=""):
+    """ Render the computed judgments alongside the productns and description data"""
+    w_prods = judged.merge(products, left_on='doc_id', right_on='upc', how='left')
+
+    w_prods = w_prods[[grade_col, 'image', 'upc', 'name', 'shortDescription']]
+
+    return HTML(f"<h1>{label}</h1>" + w_prods.to_html(escape=False))
+
+
+
+
+
 """
 class environment:
 
