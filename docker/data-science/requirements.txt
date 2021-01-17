@@ -51,7 +51,7 @@ requests==2.22.0
 retrying==1.3.3
 Send2Trash==1.5.0
 six==1.12.0
-spacy==2.3.0
+spacy-nightly --pre
 #tensorflow==2.2.0
 #terminado==0.8.2
 testpath==0.4.2
