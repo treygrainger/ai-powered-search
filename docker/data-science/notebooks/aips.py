@@ -2,12 +2,12 @@ import requests
 import os
 import re
 
-AIPS_SOLR_HOST = "aips-solr"
-AIPS_NOTEBOOK_HOST="aips-notebook"
-AIPS_ZK_HOST="aips-zk"
-#AIPS_SOLR_HOST = "localhost"
-#AIPS_NOTEBOOK_HOST="localhost"
-#AIPS_ZK_HOST="localhost"
+#AIPS_SOLR_HOST = "aips-solr"
+#AIPS_NOTEBOOK_HOST="aips-notebook"
+#AIPS_ZK_HOST="aips-zk"
+AIPS_SOLR_HOST = "localhost"
+AIPS_NOTEBOOK_HOST="localhost"
+AIPS_ZK_HOST="localhost"
 AIPS_SOLR_PORT = "8983"
 AIPS_NOTEBOOK_PORT="8888"
 AIPS_ZK_PORT="2181"
@@ -84,7 +84,11 @@ def enable_ltr(collection_name):
     response = requests.post(collection_config_url, json=del_ltr_transformer).json()
     response = requests.post(collection_config_url, json=add_transformer).json()
     print_status(response)
-
+    
+def delete_field(collection_name, field_name):
+    #clear out old field to ensure this function is idempotent
+    delete_field = {"delete-field":{ "name":field_name }}
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_field).json()
 
 def upsert_text_field(collection_name, field_name):
     #clear out old field to ensure this function is idempotent
@@ -105,7 +109,27 @@ def upsert_double_field(collection_name, field_name):
     add_field = {"add-field":{ "name":field_name, "type":"pdouble", "stored":"true", "indexed":"true", "multiValued":"false" }}
     response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
     print_status(response)
+    
+def upsert_integer_field(collection_name, field_name):
+    #clear out old field to ensure this function is idempotent
+    delete_field = {"delete-field":{ "name":field_name }}
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_field).json()
 
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"pint", "stored":"true", "indexed":"true", "multiValued":"false" }}
+    response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
+    print_status(response)
+
+def upsert_keyword_field(collection_name, field_name):
+    #clear out old field to ensure this function is idempotent
+    delete_field = {"delete-field":{ "name":field_name }}
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_field).json()
+
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"string", "stored":"true", "indexed":"true", "multiValued":"true", "docValues":"true" }}
+    response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
+    print_status(response)
+    
 def num2str(number):
   return str(round(number,4)) #round to 4 decimal places for readibility
 
