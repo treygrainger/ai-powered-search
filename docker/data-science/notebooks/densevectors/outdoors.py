@@ -34,6 +34,7 @@ def cleanDataset(filename):
     df["title"] = df["title"].astype(str).apply(stripHTML)
     df["body"] = df["body"].astype(str).apply(stripHTML)
     df["tags"] = df["tags"].astype(str).apply(splitTags)
+    df["owner_user_id"] = pandas.to_numeric(df["owner_user_id"], errors='coerce').astype(int)
     return df
     
 def transformDataFrame(df):
@@ -42,6 +43,7 @@ def transformDataFrame(df):
     for idx,row in df.iterrows():
         data.append({
             "id": row["id"],
+            "url": "https://outdoors.stackexchange.com/questions/" + str(row["id"]),
             "post_type_id" : (row["post_type_id"] if row["post_type_id"] else nullval),
             "accepted_answer_id" : (row["accepted_answer_id"] if row["accepted_answer_id"] else nullval),
             "parent_id" : (row["parent_id"] if row["parent_id"] else nullval),

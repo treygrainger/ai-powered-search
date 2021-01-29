@@ -130,6 +130,16 @@ def upsert_keyword_field(collection_name, field_name):
     response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
     print_status(response)
     
+def upsert_string_field(collection_name, field_name):
+    #clear out old field to ensure this function is idempotent
+    delete_field = {"delete-field":{ "name":field_name }}
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_field).json()
+
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"string", "stored":"true", "indexed":"false", "multiValued":"false", "docValues":"true" }}
+    response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
+    print_status(response)
+    
 def num2str(number):
   return str(round(number,4)) #round to 4 decimal places for readibility
 
