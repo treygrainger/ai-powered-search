@@ -106,6 +106,41 @@ def upsert_double_field(collection_name, field_name):
     response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
     print_status(response)
 
+    
+def upsert_boosts_field_type(collection_name, field_type_name):
+    delete_field_type = {"delete-field-type":{ "name":field_type_name }}
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_field_type).json()
+
+    print("Adding '" + field_type_name + "' field type to collection")
+    add_field_type = { 
+        "add-field-type" : {
+            "name": field_type_name,
+            "class":"solr.TextField",
+            "positionIncrementGap":"100",
+            "analyzer" : {
+                "tokenizer": {
+                    "class":"solr.PatternTokenizerFactory",
+                    "pattern": "," },
+                 "filters":[
+                    { "class":"solr.LowerCaseFilterFactory" },
+                    { "class":"solr.DelimitedPayloadFilterFactory", "delimiter": "|", "encoder": "float" }]}}}
+
+    response = requests.post(solr_url + collection_name + "/schema", json=add_field_type).json()
+    print_status(response)
+
+def upsert_boosts_field(collection_name, field_name, field_type_name="boosts"):
+    
+    #clear out old field to ensure this function is idempotent
+    delete_field = {"delete-field":{ "name":field_name }}
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_field).json()
+
+    upsert_boosts_field_type(collection_name, field_type_name);
+    
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"boosts", "stored":"true", "indexed":"true", "multiValued":"true" }}
+    response = requests.post(solr_url + collection_name + "/schema", json=add_field).json()
+    print_status(response)
+    
 def num2str(number):
   return str(round(number,4)) #round to 4 decimal places for readibility
 
