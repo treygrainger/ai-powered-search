@@ -67,8 +67,9 @@ def enable_ltr(collection_name):
         }
     }
 
-    print("Del/Adding LTR QParser for " + collection_name + "' collection")
+    print("Del/Adding LTR QParser for " + collection_name + " collection")
     response = requests.post(collection_config_url, json=del_ltr_query_parser).json()
+    print_status(response)
     response = requests.post(collection_config_url, json=add_ltr_q_parser).json()
     print_status(response)
 
@@ -80,8 +81,9 @@ def enable_ltr(collection_name):
         "fvCacheName": "QUERY_DOC_FV"
     }}
 
-    print("Adding LTR Doc Transformer for " + collection_name + "' collection")
+    print("Adding LTR Doc Transformer for " + collection_name + " collection")
     response = requests.post(collection_config_url, json=del_ltr_transformer).json()
+    print_status(response)
     response = requests.post(collection_config_url, json=add_transformer).json()
     print_status(response)
 
