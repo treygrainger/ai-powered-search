@@ -92,7 +92,7 @@ WORKDIR notebooks
 # If you want to edit the notebooks and have
 # your changes persist, uncomment the line below
 # and restart with `docker-compose up --build`
-WORKDIR /tmp/notebooks
+#WORKDIR /tmp/notebooks
 
 
 #todo: require password for security. Turning off in first release to avoid initial complexity for readers.
