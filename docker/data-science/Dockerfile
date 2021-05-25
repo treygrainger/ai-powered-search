@@ -73,8 +73,7 @@ WORKDIR /home/$NB_USER
 # Pull Requirements, Install Notebooks
 COPY requirements.txt ./
 RUN python -m pip install --upgrade pip && \
-  pip install -r requirements.txt \
-  --use-feature=2020-resolver
+  pip install -r requirements.txt
 
 RUN python -m spacy download en_core_web_sm
 
