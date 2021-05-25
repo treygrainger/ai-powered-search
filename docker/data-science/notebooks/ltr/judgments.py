@@ -87,7 +87,7 @@ class Judgment:
         else: #Convenience, we assign a qid
             self.qid = Judgment.qid_for_keywords(keywords)
         self.keywords = keywords
-        self.doc_id = doc_id
+        self.doc_id = str(doc_id)
         self.features = features # 0th feature is ranklib feature 1
         self.weight = weight
 
@@ -204,7 +204,7 @@ def _judgment_rows(f, qidToKeywords):
         yield Judgment(grade=grade, qid=qid,
                        keywords=qidToKeywords[qid][0],
                        weight=qidToKeywords[qid][1],
-                       doc_id=doc_id,
+                       doc_id=str(doc_id),
                        features=features)
         lastQid = qid
 
