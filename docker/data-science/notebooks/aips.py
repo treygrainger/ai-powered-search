@@ -67,8 +67,9 @@ def enable_ltr(collection_name):
         }
     }
 
-    print("Del/Adding LTR QParser for " + collection_name + "' collection")
+    print("Del/Adding LTR QParser for " + collection_name + " collection")
     response = requests.post(collection_config_url, json=del_ltr_query_parser).json()
+    print_status(response)
     response = requests.post(collection_config_url, json=add_ltr_q_parser).json()
     print_status(response)
 
@@ -80,8 +81,9 @@ def enable_ltr(collection_name):
         "fvCacheName": "QUERY_DOC_FV"
     }}
 
-    print("Adding LTR Doc Transformer for " + collection_name + "' collection")
+    print("Adding LTR Doc Transformer for " + collection_name + " collection")
     response = requests.post(collection_config_url, json=del_ltr_transformer).json()
+    print_status(response)
     response = requests.post(collection_config_url, json=add_transformer).json()
     print_status(response)
 
@@ -150,6 +152,13 @@ def vec2str(vector):
 def tokenize(text):
   return text.replace(".","").replace(",","").lower().split()
 
+def img_path_for_upc(upc):
+    # file_path = os.path.dirname(os.path.abspath(__file__))
+    expected_jpg_path = f"../data/retrotech/images/{upc}.jpg"
+    unavailable_jpg_path = "../data/retrotech/images/unavailable.jpg"
+    return expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
+
+
 def render_search_results(query, results):
     file_path = os.path.dirname(os.path.abspath(__file__))
     search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
@@ -180,6 +189,34 @@ def render_search_results(query, results):
             rendered += separator_template
 
         return rendered
+
+import pandas as pd
+from IPython.core.display import HTML
+
+def fetch_products(doc_ids):
+    import requests
+    doc_ids = ["%s" % doc_id for doc_id in doc_ids]
+    query = "upc:( " + " OR ".join(doc_ids) + " )"
+    params = {'q':  query, 'wt': 'json', 'rows': len(doc_ids)}
+    resp = requests.get('http://aips-solr:8983/solr/products/select', params=params)
+    df = pd.DataFrame(resp.json()['response']['docs'])
+    df['upc'] = df['upc'].astype('int64')
+
+    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_upc(row['upc']) + "\">", axis=1))
+
+    return df
+
+def render_judged(products, judged, grade_col='ctr', label=""):
+    """ Render the computed judgments alongside the productns and description data"""
+    w_prods = judged.merge(products, left_on='doc_id', right_on='upc', how='left')
+
+    w_prods = w_prods[[grade_col, 'image', 'upc', 'name', 'shortDescription']]
+
+    return HTML(f"<h1>{label}</h1>" + w_prods.to_html(escape=False))
+
+
+
+
 
 """
 class environment:

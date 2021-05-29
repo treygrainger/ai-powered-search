@@ -6,11 +6,12 @@ class FeatureLogger:
         ...Building up a training set...
     """
 
-    def __init__(self, client, index, feature_set, drop_missing=True):
+    def __init__(self, client, index, feature_set, drop_missing=True, id_field='id'):
         self.client=client
         self.index=index
         self.feature_set=feature_set
         self.drop_missing=drop_missing
+        self.id_field=id_field
         self.logged=[]
 
     def clear(self):
@@ -57,11 +58,13 @@ class FeatureLogger:
                 "fuzzy_keywords": ' '.join([x + '~' for x in fixed_keywords.split(' ')])
             }
 
-            res = self.client.log_query(self.index, self.feature_set, ids, params)
+            ids = [str(doc_id) for doc_id in ids]
+            res = self.client.log_query(index=self.index, featureset=self.feature_set, ids=ids,
+                                        options=params, id_field=self.id_field)
 
             # Add feature back to each judgment
             for doc in res:
-                doc_id = str(doc['id'])
+                doc_id = str(doc[self.id_field])
                 features = doc['ltr_features']
                 featuresPerDoc[doc_id] = features
             numLeft -= BATCH_SIZE
