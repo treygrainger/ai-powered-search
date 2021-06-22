@@ -2,12 +2,12 @@ import requests
 import os
 import re
 
-#AIPS_SOLR_HOST = "aips-solr"
-#AIPS_NOTEBOOK_HOST="aips-notebook"
-#AIPS_ZK_HOST="aips-zk"
-AIPS_SOLR_HOST = "localhost"
-AIPS_NOTEBOOK_HOST="localhost"
-AIPS_ZK_HOST="localhost"
+AIPS_SOLR_HOST = "aips-solr"
+AIPS_NOTEBOOK_HOST="aips-notebook"
+AIPS_ZK_HOST="aips-zk"
+#AIPS_SOLR_HOST = "localhost"
+#AIPS_NOTEBOOK_HOST="localhost"
+#AIPS_ZK_HOST="localhost"
 AIPS_SOLR_PORT = "8983"
 AIPS_NOTEBOOK_PORT="8888"
 AIPS_ZK_PORT="2181"
