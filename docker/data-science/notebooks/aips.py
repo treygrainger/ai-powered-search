@@ -51,7 +51,7 @@ def create_collection(collection_name):
 
   print(create_collection_params)
 
-  print("Creating " + collection_name + "' collection")
+  print("Creating '" + collection_name + "' collection")
   response = requests.post(solr_collections_api, data=create_collection_params).json()
   print_status(response)
 

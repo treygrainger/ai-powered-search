@@ -92,8 +92,9 @@ WORKDIR notebooks
 # If you want to edit the notebooks and have
 # your changes persist, uncomment the line below
 # and restart with `docker-compose up --build`
-#WORKDIR /tmp/notebooks
+# WORKDIR /tmp/notebooks
 
+EXPOSE 2345
 
 #todo: require password for security. Turning off in first release to avoid initial complexity for readers.
 CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' --NotebookApp.password=''
