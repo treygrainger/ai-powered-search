@@ -76,6 +76,7 @@ RUN python -m pip install --upgrade pip && \
   pip install -r requirements.txt
 
 RUN python -m spacy download en_core_web_sm
+#RUN python -m spacy download en_core_web_lg
 
 #must be installed after other requirements for now due to spacy/neuralcoref compatability issues
 RUN pip install git+https://github.com/huggingface/neuralcoref.git@654d90659e34f78b98681ccde7bdda4558aa21c2 --no-binary neuralcoref
