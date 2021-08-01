@@ -95,6 +95,6 @@ class FeatureLogger:
                     discarded.append(judgment)
             else:
                 training_set.append(judgment)
-        print("Discarded %s Keep %s" % (len(discarded), len(training_set)))
+        # print("Discarded %s Keep %s" % (len(discarded), len(training_set)))
         self.logged.extend(training_set)
         return training_set, discarded
