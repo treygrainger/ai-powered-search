@@ -55,7 +55,8 @@ class FeatureLogger:
 
             params = {
                 "keywords": fixed_keywords,
-                "fuzzy_keywords": ' '.join([x + '~' for x in fixed_keywords.split(' ')])
+                "fuzzy_keywords": ' '.join([x + '~' for x in fixed_keywords.split(' ')]),
+                "squeezed_keywords": ''.join(fixed_keywords.split(' '))
             }
 
             ids = [str(doc_id) for doc_id in ids]

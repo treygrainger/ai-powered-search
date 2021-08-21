@@ -68,8 +68,9 @@ def enable_ltr(collection_name):
     }
 
     print("Del/Adding LTR QParser for " + collection_name + " collection")
-    response = requests.post(collection_config_url, json=del_ltr_query_parser).json()
-    print_status(response)
+    response = requests.post(collection_config_url, json=del_ltr_query_parser)
+    print(response)
+    print_status(response.json())
     response = requests.post(collection_config_url, json=add_ltr_q_parser).json()
     print_status(response)
 
@@ -85,6 +86,83 @@ def enable_ltr(collection_name):
     response = requests.post(collection_config_url, json=del_ltr_transformer).json()
     print_status(response)
     response = requests.post(collection_config_url, json=add_transformer).json()
+    print_status(response)
+
+
+def clear_copy_fields(collection_name):
+    copy_fields = requests.get(solr_url + collection_name + "/schema/copyfields?wt=json").json()
+    print("Deleting all copy fields")
+    for field in copy_fields['copyFields']:
+        source = field['source']
+        dest = field['dest']
+        rule = {"source": source, "dest": dest}
+        delete_copy_field = {"delete-copy-field": rule}
+        response = requests.post(solr_url + collection_name + "/schema", json=delete_copy_field).json()
+        print_status(response)
+
+
+def add_text_field_type(collection_name, analyzer, name,
+                        omitTermFreqAndPositions=False,
+                        omitNorms=False):
+    """Create a field type and a corresponding dynamic field."""
+    field_type_name = "text_" + name
+    dynamic_field_name = "*_" + name
+    print(f"Creating Field Type {field_type_name}")
+    print(f" with Dynamic Field {dynamic_field_name}")
+
+    delete_dynamic_field = {
+        "delete-dynamic-field": {
+            "name": dynamic_field_name
+        }
+    }
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_dynamic_field)
+    print("Delete dynamic field")
+    print_status(response.json())
+
+    delete_field_type = {
+        "delete-field-type": {
+            "name": field_type_name
+        }
+    }
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_field_type)
+    print("Delete field type")
+    print_status(response.json())
+
+    add_field_type = {
+        "add-field-type": {
+            "name": field_type_name,
+            "class":"solr.TextField",
+            "positionIncrementGap":"100",
+            "analyzer": analyzer,
+            "omitTermFreqAndPositions": omitTermFreqAndPositions,
+            "omitNorms": omitNorms
+        }
+    }
+    response = requests.post(solr_url + collection_name + "/schema", json=add_field_type)
+    print("Create field type")
+    print_status(response.json())
+
+    add_dynamic_field = {
+        "add-dynamic-field": {
+            "name": dynamic_field_name,
+            "type": field_type_name,
+            "stored": True
+        }
+    }
+    response = requests.post(solr_url + collection_name + "/schema", json=delete_dynamic_field)
+    print_status(response.json())
+
+    response = requests.post(solr_url + collection_name + "/schema", json=add_dynamic_field)
+    print("Create dynamic field")
+    print_status(response.json())
+
+
+def add_copy_field(collection_name, src_field, dest_fields):
+    rule = {"source": src_field, "dest": dest_fields}
+    add_copy_field = {"add-copy-field": rule}
+
+    print(f"Adding Copy Field {src_field} -> {dest_fields}'")
+    response = requests.post(solr_url + collection_name + "/schema", json=add_copy_field).json()
     print_status(response)
 
 
