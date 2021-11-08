@@ -1,8 +1,14 @@
 # THis tag uses python 3.7, pyspark does not work with python 3.8 except on
 # Spark 3.0 (see https://github.com/apache/spark/pull/26194)
-FROM jupyter/scipy-notebook:619e9cc2fc07
-
+FROM jupyter/scipy-notebook:2021-11-04
 USER root
+
+#RUN apk update && apk add gcc make git libc-dev binutils-gold
+#RUN sudo add-apt-repository ppa:jonathonf/gcc-8.0  
+#ENV DEBIAN_FRONTEND noninteractive
+#RUN sudo apt-get update && apt-get install -y  gcc-8  g++-8 mono-mcs
+
+RUN sudo apt-get update && apt-get install -y --reinstall  build-essential 
 
 # Spark dependencies
 ENV APACHE_SPARK_VERSION=2.4.7 \
@@ -53,6 +59,7 @@ COPY notebooks notebooks
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 
 USER $NB_UID
+RUN conda install python=3.7.12
 
 # Install pyarrow
 #RUN conda install --quiet -y 'pyarrow' && \
@@ -72,6 +79,7 @@ WORKDIR /home/$NB_USER
 
 # Pull Requirements, Install Notebooks
 COPY requirements.txt ./
+ENV BLIS_ARCH="generic" 
 RUN python -m pip install --upgrade pip && \
   pip install -r requirements.txt
 
