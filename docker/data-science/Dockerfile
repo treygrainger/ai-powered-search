@@ -73,10 +73,10 @@ WORKDIR /home/$NB_USER
 # Pull Requirements, Install Notebooks
 COPY requirements.txt ./
 RUN python -m pip install --upgrade pip && \
-  pip install -r requirements.txt \
-  --use-feature=2020-resolver
+  pip install -r requirements.txt
 
 RUN python -m spacy download en_core_web_sm
+#RUN python -m spacy download en_core_web_lg
 
 #must be installed after other requirements for now due to spacy/neuralcoref compatability issues
 RUN pip install git+https://github.com/huggingface/neuralcoref.git@654d90659e34f78b98681ccde7bdda4558aa21c2 --no-binary neuralcoref
@@ -93,8 +93,8 @@ WORKDIR notebooks
 # If you want to edit the notebooks and have
 # your changes persist, uncomment the line below
 # and restart with `docker-compose up --build`
-WORKDIR /tmp/notebooks
 
+#WORKDIR /tmp/notebooks
 
 #todo: require password for security. Turning off in first release to avoid initial complexity for readers.
 CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' --NotebookApp.password=''
