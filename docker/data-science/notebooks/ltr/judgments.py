@@ -141,7 +141,6 @@ def _queriesFromHeader(lines):
                 rVal[int(m.group(1))] = (keyword, weight)
         except ValueError as e:
             print(e)
-    print("Recognizing %s queries..." % len(rVal))
 
     return rVal
 
