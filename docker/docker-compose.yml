@@ -17,7 +17,7 @@ services:
       - solr
     networks:
       - solr-data-science
-    # environment:
+    environment:
       #PYSPARK_SUBMIT_ARGS: '--jars /usr/local/spark/lib/spark-solr-4.0.0-shaded.jar pyspark-shell'
       #NB_USER: 'aips'
       #NB_UID: 1010
