@@ -7,9 +7,10 @@ services:
     container_name: aips-data-science
     ports:
       - "7077:7077" #Spark Master
-      - "8080:8080" #Spark Master UI
+      - "8082:8080" #Spark Master UI - 8082 less likely to conflict
       - "8081:8081" #Spark Worker UI
-      - 8888:8888 # Jupyter Notebook UI 
+      - 8888:8888 # Jupyter Notebook UI
+      - 2345:2345 # Search Webserver 
     depends_on:
       - solr
     networks:
@@ -21,6 +22,7 @@ services:
       #NB_GID: 1020
       #CHOWN_HOME: 'yes'
       #CHOWN_HOME_OPTS: -R    
+      SOLR_HOST: 'aips-solr'
     volumes:
       - type: bind
         source: "./data-science/notebooks/"

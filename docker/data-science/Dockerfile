@@ -59,6 +59,7 @@ COPY notebooks notebooks
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 
 USER $NB_UID
+RUN conda install python=3.7.12
 
 # Install pyarrow
 #RUN conda install --quiet -y 'pyarrow' && \
@@ -78,6 +79,7 @@ WORKDIR /home/$NB_USER
 
 # Pull Requirements, Install Notebooks
 COPY requirements.txt ./
+ENV BLIS_ARCH="generic" 
 RUN python -m pip install --upgrade pip && \
   pip install -r requirements.txt
 
