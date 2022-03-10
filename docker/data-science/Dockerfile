@@ -1,14 +1,11 @@
 # THis tag uses python 3.7, pyspark does not work with python 3.8 except on
 # Spark 3.0 (see https://github.com/apache/spark/pull/26194)
 FROM jupyter/scipy-notebook:2021-11-04
+
 USER root
 
-#RUN apk update && apk add gcc make git libc-dev binutils-gold
-#RUN sudo add-apt-repository ppa:jonathonf/gcc-8.0  
-#ENV DEBIAN_FRONTEND noninteractive
-#RUN sudo apt-get update && apt-get install -y  gcc-8  g++-8 mono-mcs
-
-RUN sudo apt-get update && apt-get install -y --reinstall  build-essential 
+#install gcc, c++, and related dependencies needed to for pip to build some python dependencies
+RUN sudo apt-get update && apt-get install -y --reinstall  build-essential
 
 # Spark dependencies
 ENV APACHE_SPARK_VERSION=2.4.7 \
@@ -24,6 +21,9 @@ RUN apt-get -y update && \
 #    wget -q $(wget -qO- https://www.apache.org/dyn/closer.lua/spark/spark-${APACHE_SPARK_VERSION}/spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz\?as_json | \
 #    python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
 #    echo "3a9f401eda9b5749cdafd246b1d14219229c26387017791c345a23a65782fb8b25a302bf4ac1ed7c16a1fe83108e94e55dad9639a51c751d81c8c0534a4a9641 *spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" | sha512sum -c - && \
+
+#Downgrade to python 3.7. Python 3.9 is temporarily incompatible with nbformat (jupyter) and 3.8 is incompatible with pyspark until we upgrade to spark 3.0
+RUN conda install python=3.7.12
 
 #Pull from aips build-dependencies repo because mirrors expire old versions and apache archive is too slow
 COPY pull_aips_dependency.py pull_aips_dependency.py
@@ -84,6 +84,7 @@ RUN python -m pip install --upgrade pip && \
   pip install -r requirements.txt
 
 RUN python -m spacy download en_core_web_sm
+#RUN python -m spacy download en_core_web_lg
 
 #must be installed after other requirements for now due to spacy/neuralcoref compatability issues
 RUN pip install git+https://github.com/huggingface/neuralcoref.git@654d90659e34f78b98681ccde7bdda4558aa21c2 --no-binary neuralcoref
@@ -100,9 +101,8 @@ WORKDIR notebooks
 # If you want to edit the notebooks and have
 # your changes persist, uncomment the line below
 # and restart with `docker-compose up --build`
-# WORKDIR /tmp/notebooks
 
-EXPOSE 2345
+#WORKDIR /tmp/notebooks
 
 #todo: require password for security. Turning off in first release to avoid initial complexity for readers.
 CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' --NotebookApp.password=''

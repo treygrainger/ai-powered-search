@@ -55,7 +55,8 @@ class FeatureLogger:
 
             params = {
                 "keywords": fixed_keywords,
-                "fuzzy_keywords": ' '.join([x + '~' for x in fixed_keywords.split(' ')])
+                "fuzzy_keywords": ' '.join([x + '~' for x in fixed_keywords.split(' ')]),
+                "squeezed_keywords": ''.join(fixed_keywords.split(' '))
             }
 
             ids = [str(doc_id) for doc_id in ids]
@@ -95,6 +96,6 @@ class FeatureLogger:
                     discarded.append(judgment)
             else:
                 training_set.append(judgment)
-        print("Discarded %s Keep %s" % (len(discarded), len(training_set)))
+        # print("Discarded %s Keep %s" % (len(discarded), len(training_set)))
         self.logged.extend(training_set)
         return training_set, discarded
