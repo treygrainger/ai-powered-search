@@ -69,12 +69,14 @@ RUN pip --no-cache-dir install git+https://github.com/huggingface/neuralcoref.gi
 #RUN fix-permissions /home/$NB_USER
 #RUN fix-permissions notebooks
 
+COPY log4j.properties /usr/local/spark/conf/
+
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 USER $NB_UID
 
 # Spark Config
-ENV SPARK_OPTS="$SPARK_OPTS --spark.driver.extraLibraryPath=$SHADED_SOLR_JAR_PATH --spark.executor.extraLibraryPath=$SHADED_SOLR_JAR_PATH" \
-    PYSPARK_SUBMIT_ARGS="--jars $SHADED_SOLR_JAR_PATH pyspark-shell" \
+ENV SPARK_OPTS="$SPARK_OPTS --driver-java-options=\"-DXlint:none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer -Dlog4j.logger.org.apache.spark.repl.Main=ERROR\" --spark.ui.showConsoleProgress=False --spark.driver.extraLibraryPath=$SHADED_SOLR_JAR_PATH --spark.executor.extraLibraryPath=$SHADED_SOLR_JAR_PATH" \
+    PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH pyspark-shell" \
     PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9-src.zip
 
 WORKDIR notebooks
