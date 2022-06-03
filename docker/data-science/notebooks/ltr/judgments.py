@@ -101,7 +101,7 @@ class Judgment:
         return "grade:%s qid:%s (%s) docid:%s" % (self.grade, self.qid, self.keywords, self.doc_id)
 
     def __repr__(self):
-        return "Judgment(grade={grade},qid={qid},keywords={keywords},doc_id={doc_id},features={features},weight={weight}".format(**vars(self))
+        return "Judgment(grade={grade},qid={qid},keywords={keywords},doc_id={doc_id},features={features},weight={weight})".format(**vars(self))
 
     def toRanklibFormat(self):
         featuresAsStrs = ["%s:%s" % (idx+1, feature) for idx, feature in enumerate(self.features)]
