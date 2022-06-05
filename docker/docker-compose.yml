@@ -6,21 +6,25 @@ services:
       dockerfile: Dockerfile
     container_name: aips-data-science
     ports:
-      - "7077:7077" #Spark Master
-      - "8080:8080" #Spark Master UI
-      - "8081:8081" #Spark Worker UI
+      - "7077:7077" # Spark Master
+      - "8082:8080" # Spark Master UI - 8082 less likely to conflict
+      - "8081:8081" # Spark Worker UI
+      - "4040:4040" # Spark UI
+      - "4041:4041" # Spark UI
       - 8888:8888 # Jupyter Notebook UI 
+      - 2345:2345 # Search Webserver 
     depends_on:
       - solr
     networks:
       - solr-data-science
     environment:
-      PYSPARK_SUBMIT_ARGS: '--jars /usr/local/spark/lib/spark-solr-3.8.0-shaded.jar pyspark-shell'
+      #PYSPARK_SUBMIT_ARGS: '--jars /usr/local/spark/lib/spark-solr-4.0.0-shaded.jar pyspark-shell'
       #NB_USER: 'aips'
       #NB_UID: 1010
       #NB_GID: 1020
       #CHOWN_HOME: 'yes'
       #CHOWN_HOME_OPTS: -R    
+      SOLR_HOST: 'aips-solr'
     volumes:
       - type: bind
         source: "./data-science/notebooks/"
