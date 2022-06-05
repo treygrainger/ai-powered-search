@@ -117,7 +117,7 @@ class SolrClient(BaseClient):
             print(query)
 
         params = {
-            'fl': f'id,[features store={featureset} {efi_str}]',
+            'fl': f"{id_field},[features store={featureset} {efi_str}]",
             'q': query,
             'rows': 1000,
             'wt': 'json'
