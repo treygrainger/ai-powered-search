@@ -6,6 +6,7 @@ bs4==0.0.1
 certifi==2019.6.16
 chardet==3.0.4
 cython==0.29.20
+datasets==2.3.2
 decorator==4.4.0
 defusedxml==0.6.0
 entrypoints==0.3
