@@ -1,3 +1,6 @@
+import sys
+sys.path.append('..')
+from aips import *
 import threading
 import webbrowser
 import http.server
@@ -7,22 +10,17 @@ import urllib
 from staticmap import StaticMap, CircleMarker
 from urllib.parse import urlparse, parse_qs
 import os
-import sys
-sys.path.append('..')
 
 
 FILE = 'semantic-search'
-HOST = os.getenv('HOST') or 'localhost'
-PORT = os.getenv('PORT') or 5432
-SOLR_HOST = os.getenv('SOLR_HOST') or 'localhost'
-SOLR_PORT = os.getenv('SOLR_PORT') or 8983
-
-#PORT = 2345
-HOST_URL = "http://" + HOST + ":" + str(PORT)
-SOLR_HOST_URL = "http://" + SOLR_HOST + ":" + str(SOLR_PORT) + "/solr"
+#HOST = os.getenv('HOST') or 'localhost'
+#WEBSERVER_PORT = os.getenv('WEBSERVER_PORT') or 2345
+#SOLR_HOST = os.getenv('SOLR_HOST') or 'aips-solr'
+#SOLR_PORT = os.getenv('SOLR_PORT') or 8983
+#SOLR_HOST_URL = "http://" + SOLR_HOST + ":" + str(SOLR_PORT) + "/solr"
 
 def query_solr(collection,query):   
-    response = requests.post(SOLR_HOST_URL + collection + '/select',
+    response = requests.post(SOLR_URL + '/' + collection + '/select',
           {
             "type": 'POST',
             "data": json.puts(query),
@@ -33,11 +31,11 @@ def query_solr(collection,query):
     return response
 
 def tag_query(post_body):
-    return requests.post(SOLR_HOST_URL + '/entities/tag?json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,command_function', post_body).text
+    return requests.post(SOLR_URL + '/entities/tag?json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,command_function', post_body).text
 
 def tag_places(post_body):
     x = json.dumps(post_body)
-    return requests.post(SOLR_HOST_URL + '/reviews/select', json=post_body).text
+    return requests.post(SOLR_URL + '/reviews/select', json=post_body).text
 
 
 def queryTreeToResolvedString(query_tree):
@@ -52,7 +50,7 @@ def queryTreeToResolvedString(query_tree):
 
 
 def run_search(query_bytes):
-     text = query_bytes.decode('UTF-8')
+    text = query_bytes.decode('UTF-8')
      
      #http://localhost:8983/solr/places/select?q=%2B{!edismax%20v=%22bbq^0.9191%20ribs^0.6186%20pork^0.5991%22}%20%2B{!geofilt%20d=50%20sfield=location_p%20pt=%2234.9362399,-80.8379247%22}&fl=name_s,location_p,city_s,doc_type_s,state_s&debug=true&qf=text_t
      #url = "http://localhost:8983/solr/places/select?q=%2B{!edismax%20v=%22bbq^0.9191%20ribs^0.6186%20pork^0.5991%22}%20%2B{!geofilt%20d=50%20sfield=location_p%20pt=34.9362399,-80.8379247}&qf=text_t&defType=lucene"
@@ -61,13 +59,13 @@ def run_search(query_bytes):
      #solrQuery = {"query": "%2B{!edismax v=\'bbq^0.9191 ribs^0.6186 pork^0.5991'} %2B{!geofilt d=50 sfield=location_p pt=34.9362399,-80.8379247}", "params":{ "defType": "lucene", "qf": "name_t^100 text_t city_t^0.1 categories_t^0.01", "debug": "true"}}
      #return requests.post('http://localhost:8983/solr/places/select', json=json.dumps(solrQuery)).text
      #q = "%2B{!edismax%20v=%22bbq^0.9191%20ribs^0.6186%20pork^0.5991%22}%20%2B{!geofilt%20d=50%20sfield=location_p%20pt=34.9362399,-80.8379247}"
-     q = urllib.parse.quote(text)
-     print(q)
-     #q=text.replace("+", "%2B") #so it doesn't get interpreted as space
-     qf="text_t"
-     defType="lucene"
+    q = urllib.parse.quote(text)
+    print(q)
+    #q=text.replace("+", "%2B") #so it doesn't get interpreted as space
+    qf="text_t"
+    defType="lucene"
      
-     return requests.get(SOLR_HOST_URL + "/reviews/select?q=" + q + "&qf=" + qf + "&defType=" + defType).text
+    return requests.get(SOLR_URL + "/reviews/select?q=" + q + "&qf=" + qf + "&defType=" + defType).text
     
 
 def process_basic_query(query_bytes):
@@ -427,7 +425,7 @@ def render_search_results(results):
             rendered += results_template.replace("${NAME}", result['name_t'] if 'name_t' in result else "UNKNOWN") \
                 .replace("${CITY}", result['city_t'] + ", " + result['state_t'] if 'city_t' in result and 'state_t' in result else "UNKNOWN") \
                 .replace("${DESCRIPTION}", result['text_t'] if 'text_t' in result else "") \
-                .replace("${IMAGE_URL}", HOST_URL + "/map?lat=" + str(result['latitude_d']) + "&lon=" + str(result['longitude_d'])) \
+                .replace("${IMAGE_URL}", "/map?lat=" + str(result['latitude_d']) + "&lon=" + str(result['longitude_d'])) \
                 .replace("${STARS}", "★" * int(result['stars_i']) if 'stars_i' in result else "")
 
 
@@ -511,14 +509,14 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
 def open_browser():
     """Start a browser after waiting for half a second."""
     def _open_browser():
-        if HOST == "localhost":
-            webbrowser.open(HOST_URL + '/%s' % FILE)
+        if AIPS_WEBSERVER_HOST == "localhost":
+            webbrowser.open(WEBSERVER_URL + '/%s' % FILE)
     thread = threading.Timer(0.5, _open_browser)
     thread.start()
 
 def start_server():
     """Start the server."""
-    server_address = ("0.0.0.0", PORT)
+    server_address = ("0.0.0.0", int(AIPS_WEBSERVER_PORT))
     server = http.server.HTTPServer(server_address, SemanticSearchHandler)
     server.serve_forever()
 
