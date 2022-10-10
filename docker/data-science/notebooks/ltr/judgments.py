@@ -87,7 +87,7 @@ class Judgment:
         else: #Convenience, we assign a qid
             self.qid = Judgment.qid_for_keywords(keywords)
         self.keywords = keywords
-        self.doc_id = doc_id
+        self.doc_id = str(doc_id)
         self.features = features # 0th feature is ranklib feature 1
         self.weight = weight
 
@@ -101,7 +101,7 @@ class Judgment:
         return "grade:%s qid:%s (%s) docid:%s" % (self.grade, self.qid, self.keywords, self.doc_id)
 
     def __repr__(self):
-        return "Judgment(grade={grade},qid={qid},keywords={keywords},doc_id={doc_id},features={features},weight={weight}".format(**vars(self))
+        return "Judgment(grade={grade},qid={qid},keywords={keywords},doc_id={doc_id},features={features},weight={weight})".format(**vars(self))
 
     def toRanklibFormat(self):
         featuresAsStrs = ["%s:%s" % (idx+1, feature) for idx, feature in enumerate(self.features)]
@@ -141,7 +141,6 @@ def _queriesFromHeader(lines):
                 rVal[int(m.group(1))] = (keyword, weight)
         except ValueError as e:
             print(e)
-    print("Recognizing %s queries..." % len(rVal))
 
     return rVal
 
@@ -204,7 +203,7 @@ def _judgment_rows(f, qidToKeywords):
         yield Judgment(grade=grade, qid=qid,
                        keywords=qidToKeywords[qid][0],
                        weight=qidToKeywords[qid][1],
-                       doc_id=doc_id,
+                       doc_id=str(doc_id),
                        features=features)
         lastQid = qid
 
