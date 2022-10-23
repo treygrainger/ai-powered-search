@@ -6,11 +6,11 @@ services:
       dockerfile: Dockerfile
     container_name: aips-data-science
     ports:
-      - "7077:7077" # Spark Master
-      - "8082:8080" # Spark Master UI - 8082 less likely to conflict
-      - "8081:8081" # Spark Worker UI
-      - "4040:4040" # Spark UI
-      - "4041:4041" # Spark UI
+      - 7077:7077 # Spark Master
+      - 8082:8080 # Spark Master UI - 8082 less likely to conflict
+      - 8081:8081 # Spark Worker UI
+      - 4040:4040 # Spark UI
+      - 4041:4041 # Spark UI
       - 8888:8888 # Jupyter Notebook UI 
       - 2345:2345 # Search Webserver 
     depends_on:
@@ -52,12 +52,9 @@ services:
     hostname: aips-zk
     ports: 
       - 2181:2128
-    # - 2181
     networks:
       - zk-solr
       - solr-data-science
-
-  
 
 networks:
   zk-solr:  

@@ -1,8 +1,11 @@
 appnope==0.1.0
+bs4==0.0.1
+datasets==2.3.2
 findspark==1.3.0
 ipython-genutils==0.2.0
 jupyter-console==6.4.0
 lxml==4.6.5
+matplotlib==3.5.2
 mergedeep==1.3.4
 mistune==0.8.4
 nltk==3.6.6
@@ -15,6 +18,8 @@ qtconsole==5.1.1
 retrying==1.3.3
 sentence-transformers==1.1.0
 spacy==2.3.7
+transformers==4.5.1
+sentence-transformers==1.1.0
 #tensorflow==2.2.0
 #terminado==0.8.2
 transformers==4.5.1
