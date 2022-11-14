@@ -376,21 +376,21 @@ def get_category_and_term_vector_solr_response(keyword):
     
 def parse_category_and_term_vector_from_solr_response(solrResponse):
     parsed = {}
-    if ('term_needing_vector' in solrResponse['facets'] 
-        and 'doc_type' in solrResponse['facets']['term_needing_vector'] 
-        and 'buckets' in solrResponse['facets']['term_needing_vector']['doc_type'] 
-        and len(solrResponse['facets']['term_needing_vector']['doc_type']['buckets']) > 0 ):
-
-        parsed['category'] = solrResponse['facets']['term_needing_vector']['doc_type']['buckets'][0]['val'] #just top one for now
-    
     relatedTermNodes = {}
 
-    if ('term_needing_vector' in solrResponse['facets'] 
-        and 'related_terms' in solrResponse['facets']['term_needing_vector'] 
-        and 'buckets' in solrResponse['facets']['term_needing_vector']['related_terms'] 
-        and len(solrResponse['facets']['term_needing_vector']['related_terms']['buckets']) > 0 ): #at least one entry
+    if ('facets' in solrResponse and 'term_needing_vector' in solrResponse['facets']):
     
-        relatedTermNodes = solrResponse['facets']['term_needing_vector']['related_terms']['buckets']
+        if ('doc_type' in solrResponse['facets']['term_needing_vector'] 
+          and 'buckets' in solrResponse['facets']['term_needing_vector']['doc_type'] 
+          and len(solrResponse['facets']['term_needing_vector']['doc_type']['buckets']) > 0 ):
+
+            parsed['category'] = solrResponse['facets']['term_needing_vector']['doc_type']['buckets'][0]['val'] #just top one for now
+    
+        if ('related_terms' in solrResponse['facets']['term_needing_vector'] 
+          and 'buckets' in solrResponse['facets']['term_needing_vector']['related_terms'] 
+          and len(solrResponse['facets']['term_needing_vector']['related_terms']['buckets']) > 0 ): #at least one entry
+    
+            relatedTermNodes = solrResponse['facets']['term_needing_vector']['related_terms']['buckets']
     
     termVector = ""
     for relatedTermNode in relatedTermNodes:
@@ -430,6 +430,9 @@ def render_search_results(results):
 
 
             rendered += separator_template
+
+        if rendered == "":
+            rendered = "No Results for this query."
 
         return rendered
 
@@ -483,7 +486,7 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
                 lat = float(qsVars["lat"][0])
                 lon = float(qsVars["lon"][0])
                 zoom = int(qsVars['zoom'][0]) if 'zoom' in qsVars else 10
-                m = StaticMap(200, 200, url_template='http://a.tile.osm.org/{z}/{x}/{y}.png')
+                m = StaticMap(200, 200)
                 marker_outline = CircleMarker((lon, lat), 'white', 18)
                 marker = CircleMarker((lon, lat), '#0036FF', 12)
                 m.add_marker(marker_outline)

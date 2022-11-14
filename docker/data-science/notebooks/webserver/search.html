@@ -121,6 +121,7 @@
                     UI.updateTaggedQuery(processed_query.tagged_query);
                     UI.updateTransformedQuery(processed_query.transformed_query);    
                     UI.updateResolvedQuery(processed_query.resolved_query);
+                    UI.showDebug();
                   }
                 }
                 else{
@@ -130,6 +131,7 @@
                 if (submitSearch) {
                   submitSearch = false;
                   let searchResults = await runSearch(processed_query.resolved_query);
+                  UI.hideDebug();
                   UI.updateSearchResults(searchResults);
                 }
               }
@@ -203,6 +205,12 @@
 
           */   
           $("#searchResults").html(search_results);
+        },
+        hideDebug: function(){
+            $('#results').css("visibility", "hidden");
+        },
+        showDebug: function(){
+          $('#results').css("visibility", "visible");
         }
 
       }
