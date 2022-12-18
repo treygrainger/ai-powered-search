@@ -14,10 +14,11 @@ import os
 
 FILE = 'semantic-search'
 #HOST = os.getenv('HOST') or 'localhost'
-#WEBSERVER_PORT = os.getenv('WEBSERVER_PORT') or 2345
+AIPS_WEBSERVER_PORT = os.getenv('WEBSERVER_PORT') or 2345
 #SOLR_HOST = os.getenv('SOLR_HOST') or 'aips-solr'
 #SOLR_PORT = os.getenv('SOLR_PORT') or 8983
 #SOLR_HOST_URL = "http://" + SOLR_HOST + ":" + str(SOLR_PORT) + "/solr"
+SOLR_URL = "http://localhost:8983/solr"
 
 def query_solr(collection,query):   
     response = requests.post(SOLR_URL + '/' + collection + '/select',
@@ -37,6 +38,9 @@ def tag_places(post_body):
     x = json.dumps(post_body)
     return requests.post(SOLR_URL + '/reviews/select', json=post_body).text
 
+def post_search(post_body):
+    x = json.dumps(post_body)
+    return requests.post(SOLR_URL + '/reviews/select', json=post_body).text
 
 def queryTreeToResolvedString(query_tree):
     resolved_query = ""
@@ -49,9 +53,7 @@ def queryTreeToResolvedString(query_tree):
     return resolved_query
 
 
-def run_search(query_bytes):
-    text = query_bytes.decode('UTF-8')
-     
+def run_search(text):     
      #http://localhost:8983/solr/places/select?q=%2B{!edismax%20v=%22bbq^0.9191%20ribs^0.6186%20pork^0.5991%22}%20%2B{!geofilt%20d=50%20sfield=location_p%20pt=%2234.9362399,-80.8379247%22}&fl=name_s,location_p,city_s,doc_type_s,state_s&debug=true&qf=text_t
      #url = "http://localhost:8983/solr/places/select?q=%2B{!edismax%20v=%22bbq^0.9191%20ribs^0.6186%20pork^0.5991%22}%20%2B{!geofilt%20d=50%20sfield=location_p%20pt=34.9362399,-80.8379247}&qf=text_t&defType=lucene"
      #solrQuery = {"query": text, "params":{ "defType": "lucene", "qf": "name_t^100 text_t city_t^0.1 categories_t^0.01", "debug": "true"}}
@@ -260,7 +262,6 @@ def processCommands(query_tree):
 
 def cmd_popularity(query, position):
     if (len(query['query_tree']) -1 > position):
-        nextEntity = query['query_tree'][position + 1]
         query['query_tree'][position] = {"type":"solr", "query": '+{!func v="mul(if(stars_i,stars_i,0),20)"}'}
         return True
     else:
@@ -370,7 +371,7 @@ def get_category_and_term_vector_solr_response(keyword):
         } 
     }
     
-    response = tag_places(query)
+    response = post_search(query)
     #response.asyncRequestID = asyncRequestID; //used to guarantee order of processing
     return json.loads(response)
     
@@ -403,7 +404,7 @@ def parse_category_and_term_vector_from_solr_response(solrResponse):
 
 import os, re
 import io
-def render_search_results(results):
+def render_search_results(results, keywords_to_highlight):
     file_path = os.path.dirname(os.path.abspath(__file__))
     search_results_template_file = os.path.join(file_path, "search-results-template.html")
     with open(search_results_template_file) as file:
@@ -422,6 +423,7 @@ def render_search_results(results):
 
         rendered = ""
         for result in results['response']['docs']:
+            #todo: add highlighting
             rendered += results_template.replace("${NAME}", result['name_t'] if 'name_t' in result else "UNKNOWN") \
                 .replace("${CITY}", result['city_t'] + ", " + result['state_t'] if 'city_t' in result and 'state_t' in result else "UNKNOWN") \
                 .replace("${DESCRIPTION}", result['text_t'] if 'text_t' in result else "") \
@@ -470,9 +472,10 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith("/process_basic_query"):
             self.sendResponse(process_basic_query(post_body))
         elif self.path.startswith("/run_search"):
-            results = json.loads(run_search(post_body))
-            query = post_body.decode('UTF-8')
-            rendered_results = render_search_results(results)
+            text = post_body.decode('UTF-8')
+            results = json.loads(run_search(text))
+            highlight_terms = post_body.decode('UTF-8').split(' ')
+            rendered_results = render_search_results(results, highlight_terms)
             self.sendResponse(rendered_results)
     
     def do_GET(self):
