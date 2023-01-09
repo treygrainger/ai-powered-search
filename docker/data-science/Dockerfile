@@ -1,58 +1,37 @@
-# THis tag uses python 3.7, pyspark does not work with python 3.8 except on
-# Spark 3.0 (see https://github.com/apache/spark/pull/26194)
-FROM jupyter/scipy-notebook:619e9cc2fc07
+FROM jupyter/pyspark-notebook:spark-3.1.2
 
 USER root
 
+#install gcc, c++, and related dependencies needed to for pip to build some python dependencies
+RUN sudo apt-get update && apt-get install -y --reinstall  build-essential
+
 # Spark dependencies
-ENV APACHE_SPARK_VERSION=2.4.7 \
-    HADOOP_VERSION=2.7 \
-    SPARK_SOLR_VERSION=3.8.0
-
-RUN apt-get -y update && \
-    apt-get install --no-install-recommends -y openjdk-8-jre-headless ca-certificates-java && \
-    rm -rf /var/lib/apt/lists/*
-
-# Using the preferred mirror to download the file
-#RUN cd /tmp && \
-#    wget -q $(wget -qO- https://www.apache.org/dyn/closer.lua/spark/spark-${APACHE_SPARK_VERSION}/spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz\?as_json | \
-#    python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
-#    echo "3a9f401eda9b5749cdafd246b1d14219229c26387017791c345a23a65782fb8b25a302bf4ac1ed7c16a1fe83108e94e55dad9639a51c751d81c8c0534a4a9641 *spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" | sha512sum -c - && \
-
-#Pull from aips build-dependencies repo because mirrors expire old versions and apache archive is too slow
-COPY pull_aips_dependency.py pull_aips_dependency.py
-
-RUN python pull_aips_dependency.py spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
-    tar xzf spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C /usr/local --owner root --group root --no-same-owner && \
-    rm spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
-RUN cd /usr/local && ln -s spark-${APACHE_SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} spark
-
-# Spark Config
-ENV SPARK_HOME=/usr/local/spark
-ENV PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.7-src.zip \
-    SPARK_OPTS="--driver-java-options=-Xms1024M --driver-java-options=-Xmx4096M --spark.driver.extraLibraryPath=/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar --spark.executor.extraLibraryPath=/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar --driver-java-options=-Dlog4j.logLevel=info" \
-    PATH=$PATH:$SPARK_HOME/bin
-ENV SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
-ENV PYSPARK_SUBMIT_ARGS="--jars /usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar"
+ENV SPARK_SOLR_VERSION=4.0.2
+ENV SHADED_SOLR_JAR_PATH=/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
 
 # Install Spark-Solr
-Run echo $SPARK_HOME
-Run mkdir /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
-    wget -q https://repo1.maven.org/maven2/com/lucidworks/spark/spark-solr/${SPARK_SOLR_VERSION}/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar && \
-    echo "3bd0614d50ce6ef2769eb0d654e58fd68cf3e1f63c567dca8b12432a7e6ac907753b289f6d3cca5a80a67454d6ff841e438f53472cba37530293548751edaa8f *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
-    export EXTRA_CLASSPATH=/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar && \
-    $SPARK_HOME/bin/spark-shell --jars spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
-    #&& \ rm spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
+RUN mkdir -p /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
+    wget -q https://repo1.maven.org/maven2/com/lucidworks/spark/spark-solr/${SPARK_SOLR_VERSION}/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar -O $SHADED_SOLR_JAR_PATH && \
+    echo "c5293f10257603bcf650780afcb91ed1bb118f09feb731502c2dc7ac14ba950e586a033cb2f50e5c122c5ec442dc0d2b55f76c4f6522b555e67f4981a38bca26 *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
+    chmod a+rwx $SHADED_SOLR_JAR_PATH
 
-Run chmod a+rwx /usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar
+# Pull Requirements, Install Notebooks
+COPY requirements.txt ./
+RUN python -m pip --no-cache-dir install --upgrade pip && \
+  pip --no-cache-dir install -r requirements.txt
 
-# python -c "import sys, json; content=json.load(sys.stdin); print(content['preferred']+content['path_info'])") && \
-#    echo "f42d79f96aad12c880d47cc772043ae84e73d5595093206b6b7ae5818faadc1bcda21c57c09c9dd3436d68ebf61d791199cfc1bb8969367fc04e8309933df7b3 *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
+#must be installed after other requirements for now due to spacy/neuralcoref compatability issues
+RUN apt-get -y update && \
+    apt-get install --no-install-recommends -y build-essential && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip --no-cache-dir install git+https://github.com/huggingface/neuralcoref.git --no-binary neuralcoref && \
+    apt-get purge -y build-essential && apt-get auto-remove -y && apt-get auto-clean -y
+
+RUN python -m spacy download en_core_web_sm
+#RUN python -m spacy download en_core_web_lg
 
 COPY notebooks notebooks
-RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
-
-USER $NB_UID
+#RUN conda install python=3.7.12
 
 # Install pyarrow
 #RUN conda install --quiet -y 'pyarrow' && \
@@ -72,14 +51,15 @@ WORKDIR /home/$NB_USER
 
 # Pull Requirements, Install Notebooks
 COPY requirements.txt ./
-RUN python -m pip install --upgrade pip && \
-  pip install -r requirements.txt
+ENV BLIS_ARCH="generic" 
+RUN python -m pip --no-cache-dir install --upgrade pip && \
+  pip --no-cache-dir install -r requirements.txt
 
 RUN python -m spacy download en_core_web_sm
 #RUN python -m spacy download en_core_web_lg
 
 #must be installed after other requirements for now due to spacy/neuralcoref compatability issues
-RUN pip install git+https://github.com/huggingface/neuralcoref.git@654d90659e34f78b98681ccde7bdda4558aa21c2 --no-binary neuralcoref
+RUN pip --no-cache-dir install git+https://github.com/huggingface/neuralcoref.git@654d90659e34f78b98681ccde7bdda4558aa21c2 --no-binary neuralcoref
 
 #RUN git clone https://github.com/ai-powered-search/retrotech.git $WORKDIR/retrotech
 
@@ -89,12 +69,22 @@ RUN pip install git+https://github.com/huggingface/neuralcoref.git@654d90659e34f
 #RUN fix-permissions /home/$NB_USER
 #RUN fix-permissions notebooks
 
+COPY log4j.properties /usr/local/spark/conf/
+
+RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
+USER $NB_UID
+
+# Spark Config
+ENV SPARK_OPTS="$SPARK_OPTS --driver-java-options=\"-DXlint:none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer -Dlog4j.logger.org.apache.spark.repl.Main=ERROR\" --spark.ui.showConsoleProgress=False --spark.driver.extraLibraryPath=$SHADED_SOLR_JAR_PATH --spark.executor.extraLibraryPath=$SHADED_SOLR_JAR_PATH" \
+    PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH pyspark-shell" \
+    PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9-src.zip
+
 WORKDIR notebooks
 # If you want to edit the notebooks and have
 # your changes persist, uncomment the line below
 # and restart with `docker-compose up --build`
-# WORKDIR /tmp/notebooks
 
+#WORKDIR /tmp/notebooks
 
 #todo: require password for security. Turning off in first release to avoid initial complexity for readers.
 CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' --NotebookApp.password=''

@@ -1,0 +1,620 @@
+<html>
+ <head>
+   <title>Semantic Search Demo</title>
+   <script
+   src="https://code.jquery.com/jquery-1.12.4.min.js"
+   integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
+   crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+  <style type="text/css">
+    .city {background-color: yellow;}
+    .movie_theater {background-color: lightblue;}
+    .brand {background-color: pink;}
+    .event {background-color: green;}
+    .action {background-color: black; color:white; size:larger;}    
+
+    @import url(https://fonts.googleapis.com/css?family=Open+Sans);
+
+    body{
+      background: #f2f2f2;
+      font-family: 'Open Sans', sans-serif;
+    }
+
+    .search {
+      width: 100%;
+      position: relative;
+      display: flex;
+    }
+
+    .searchTerm {
+      width: 100%;
+      border: 3px solid #00B4CC;
+      border-right: none;
+      padding: 5px;
+      height: 60px;
+      border-radius: 5px 0 0 5px;
+      outline: none;
+      color: #9DBFAF;
+      font-size:40px;
+    }
+
+    .searchTerm:focus{
+      color: #00B4CC;
+    }
+
+    .searchButton {
+      width: 40px;
+      height: 60px;
+      border: 1px solid #00B4CC;
+      background: #00B4CC;
+      text-align: center;
+      color: #fff;
+      border-radius: 0 5px 5px 0;
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    /*Resize the wrap to see the search bar change!*/
+    .wrap{
+      width: 70%;
+      position: absolute;
+      top: 350px;
+      left: 15%;
+      transform: translate(0%, 0%);
+    }
+    
+    p.note
+    {
+       -moz-border-radius: 6px;
+       -webkit-border-radius: 6px;
+       background-color: #f0f7fb;
+       background-image: url(https://madcapblogstore.blob.core.windows.net/blogcontainer/2017/08/css-box-icon-1.png);
+       background-position: 9px 0px;
+       background-repeat: no-repeat;
+       border: solid 1px #3498db;
+       border-radius: 6px;
+       line-height: 18px;
+       overflow: hidden;
+       padding: 15px 60px;
+    }
+
+    #tagged:before {
+      content: "TAGGED: ";
+    }
+
+    #transformed:before {
+      content: "PARSED: ";
+    }
+
+    #resolved:before {
+      content: "TO SOLR: ";
+    }
+    
+  </style>
+   
+   
+  
+  <script type="text/javascript">
+
+
+    let urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('q')){
+      queryToSubmit = urlParams.get('q');
+    };
+
+      var latestAsyncRequestID; //optimistic concurrency for in-order results
+
+      /* UI Stuff */
+      var UI = function(){
+
+        async function process_user_query(userQuery, submitSearch ){
+                latestAsyncRequestID = Math.random();
+                UI.updateSearchResults(""); //Blank out last search
+                
+                let processed_query;
+                if (window.location.pathname.includes("semantic-search")) {
+                
+                  processed_query = await processSemanticQuery(userQuery, latestAsyncRequestID);
+
+                  if (processed_query && processed_query.asyncRequestID === latestAsyncRequestID) {
+                    UI.updateTaggerResponse(processed_query.tagger_data);
+                    UI.updateTaggedQuery(processed_query.tagged_query);
+                    UI.updateTransformedQuery(processed_query.transformed_query);    
+                    UI.updateResolvedQuery(processed_query.resolved_query);
+                    UI.showDebug();
+                  }
+                }
+                else{
+                  $("#queryExplain").css("display", "none");
+                  processed_query = await processBasicQuery(userQuery, latestAsyncRequestID);
+                }
+                if (submitSearch) {
+                  submitSearch = false;
+                  let searchResults = await runSearch(processed_query.resolved_query);
+                  UI.hideDebug();
+                  UI.updateSearchResults(searchResults);
+                }
+              }
+
+        $(function() {
+          $('#text').focus();
+      
+          var keyupTimeout;
+      
+          $('#text').keyup(
+            async function(event) {
+              if ( event.which == 13 ) {
+                var submitSearch = true;
+              }
+              else{
+                clearTimeout(keyupTimeout); //don't send while user still typing
+              }
+              
+
+                let userQuery = $('#text').val();
+                
+                keyupTimeout = setTimeout(
+                  function(){ process_user_query(userQuery, submitSearch) },
+                  1000
+                ); //wait two seconds after last keystroke to start interpreting query
+            
+            }
+          );  
+        });
+
+      return {
+        updateTaggerResponse: function(data){
+                $('#results').text(JSON.stringify(data, null, '  '));  
+        },
+
+        updateTaggedQuery: function(tagged_query){
+          if (tagged_query.length > 0){
+            $('#tagged').html(tagged_query);
+            $('#tagged').css("visibility", "visible")
+          } else {
+            $('#tagged').css("visibility", "hidden");
+          }
+        },
+
+        updateTransformedQuery: function(transformed_query){
+          if (transformed_query.length > 0){
+            $('#transformed').html(transformed_query);
+            $('#transformed').css("visibility", "visible")
+          }else{
+            $('#transformed').css("visibility", "hidden");
+          }     
+        },
+
+        updateResolvedQuery: function(resolved_query){
+          if (resolved_query.length > 0){
+            $('#resolved').html(resolved_query);
+            $('#resolved').css("visibility", "visible")
+          }else{
+            $('#resolved').css("visibility", "hidden");
+          }     
+        },
+
+        updateSearchResults: function(search_results){
+          /**
+          if (resolved_query.length > 0){
+            $('#resolved').html(resolved_query);
+            $('#resolved').css("visibility", "visible")
+          }else{
+            $('#resolved').css("visibility", "hidden");
+          }  
+
+          */   
+          $("#searchResults").html(search_results);
+        },
+        hideDebug: function(){
+            $('#results').css("visibility", "hidden");
+        },
+        showDebug: function(){
+          $('#results').css("visibility", "visible");
+        }
+
+      }
+    }();
+
+
+
+    //var latestAsyncRequestID;  
+    var doc_map = {};  
+    
+    async function query_solr(collection,query){   
+      
+      try{
+        let response = await $.ajax(location.origin + '/tag_places' + collection + '/select',
+          {
+            type: 'POST',
+            data: JSON.stringify(query),
+            dataType: 'json',
+            contentType: 'application/json'          
+          });   
+
+        return response;
+      }
+      catch(ex){
+        alert("An Error Has Occurred: " + ex);
+        return null;
+      }
+    }
+    
+    async function find_location_coordinates(keyword){      
+      query =  {
+         "params": {
+           "qf": "name_t",
+           "keywords": keyword
+         },
+         "query": "{!graph from=name_s to=venue_s returnOnlyLeaf=true}{!edismax v=$keywords}"
+       };        
+      
+      return await query_solr("places",query);
+
+    }
+    
+    async function get_category_and_term_vector_solr_response(keyword,asyncRequestID){
+      var query = {
+        params: {
+          fore: keyword,
+          back: "*:*",  
+          qf: "text_t",
+          defType: "edismax",
+          echoParams: "none"
+        },
+        query: "*:*",
+        limit: 0,
+        facet: {
+          term_needing_vector: {
+              type: "query",
+              query: keyword,
+              facet: {
+                  related_terms : {
+                    type : "terms",
+                    field : "text_t",
+                    limit: 3,
+                    sort: { "r1": "desc" },
+                    facet : {
+                      r1 : "relatedness($fore,$back)" 
+                    }
+                  },
+                  doc_type : {
+                    type : "terms",
+                    field : "type_s",
+                    limit: 1,
+                    sort: { "r2": "desc" },
+                    facet : {
+                      r2 : "relatedness($fore,$back)" 
+                    }
+                  }
+              }
+          }
+        } 
+      };
+      let response = await query_solr("places", query);
+      response.asyncRequestID = asyncRequestID; //used to guarantee order of processing
+      return response;
+    
+    }
+    
+    function parse_category_and_term_vector_from_solr_response(solrResponse){
+      var parsed = {};
+      if (solrResponse.facets.term_needing_vector 
+          && solrResponse.facets.term_needing_vector.doc_type 
+          && solrResponse.facets.term_needing_vector.doc_type.buckets 
+          && solrResponse.facets.term_needing_vector.doc_type.buckets[0] ){
+        parsed.category = solrResponse.facets.term_needing_vector.doc_type.buckets[0].val; //just top one for now
+      }
+      var relatedTermNodes = {};
+      if (solrResponse.facets.term_needing_vector 
+          && solrResponse.facets.term_needing_vector.related_terms 
+          && solrResponse.facets.term_needing_vector.related_terms.buckets 
+          && solrResponse.facets.term_needing_vector.related_terms.buckets[0] ){ 
+      
+        relatedTermNodes = solrResponse.facets.term_needing_vector.related_terms.buckets;
+      }
+      var termVector = "";
+      for (relatedTermNodeIndex in relatedTermNodes){
+        var relatedTermNode = relatedTermNodes[relatedTermNodeIndex];
+        if (termVector.length > 0) { termVector += " "; }
+        termVector += relatedTermNode.val + "^" + relatedTermNode.r1.relatedness;
+      }
+      parsed.term_vector = termVector;
+      parsed.asyncRequestID = solrResponse.asyncRequestID; //used to guarantee order of processing
+      return parsed;
+    }
+  
+  
+    async function tagQuery(text) {    
+      //var location_filter = '';
+    //http://localhost:2345/solr/entities/tag?json.nl=map&sort=popularity desc&matchText=true&echoParams=all&' 
+    //+'fl=id,type,canonical_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,command_function
+
+      var response =  await $.ajax(location.origin + '/tag_query' 
+      , {
+        type: 'POST',
+        data: text,
+        dataType: 'text',
+        contentType: 'text/plain'
+      });
+      return response;    
+    }
+    
+    
+    function queryTreeToResolvedString(query){
+      var resolved_query = "";
+      for (i=0; i<query.query_tree.length; i++){
+        if (resolved_query.length > 0){
+          resolved_query += " ";
+        }
+        resolved_query += query.query_tree[i].query;
+      }
+      return resolved_query;
+    }
+
+
+    async function runSearch(processed_query, asyncRequestID) {  
+      try{
+        let response = await $.ajax(location.origin + '/run_search',
+          {
+            type: 'POST',
+            data: processed_query,
+            dataType: 'text',
+            contentType: 'plain'          
+          });   
+
+        let searchResults = JSON.parse(response);
+        searchResults.asyncRequestID = asyncRequestID; 
+        return searchResults;
+      }
+      catch(ex){
+        alert("An Error Has Occurred: " + ex.message);
+        return null;
+      }
+    }
+
+    async function processBasicQuery(text, asyncRequestID) {  
+      //let data = await tagQuery(text);
+
+      try{
+        let response = await $.ajax(location.origin + '/process_basic_query',
+          {
+            type: 'POST',
+            data: text,
+            dataType: 'text',
+            contentType: 'plain'          
+          });   
+
+        let processedQuery = JSON.parse(response);
+        processedQuery.asyncRequestID = asyncRequestID; 
+        return processedQuery;
+      }
+      catch(ex){
+        alert("An Error Has Occurred: " + ex.message);
+        return null;
+      }
+    }
+
+    async function processSemanticQuery(text, asyncRequestID) {  
+      //let data = await tagQuery(text);
+
+      try{
+        let response = await $.ajax(location.origin + '/process_semantic_query',
+          {
+            type: 'POST',
+            data: text,
+            dataType: 'text',
+            contentType: 'plain'          
+          });   
+
+        let processedQuery = JSON.parse(response);
+        processedQuery.asyncRequestID = asyncRequestID; 
+        return processedQuery;
+      }
+      catch(ex){
+        alert("An Error Has Occurred: " + ex.message);
+        return null;
+      }
+    }
+    
+
+
+    
+    async function cmd_location_distance(query,position){
+      
+     //TODO: Notes. Need a "multi-location-hopping" resolver in here. For example,
+    //hotels near bbq near haystack. This is a search for doctype=hotels, join with (doctype=restaurant AND bbq OR barbecue OR ...) filtered on distance. The first "near" requires pushing the second to a sub-query (join/graph) and then takes over as the actual location distance command.
+      
+      if (query.query_tree.length -1 > position){
+        var nextEntity = query.query_tree[position + 1];
+        if (nextEntity.type == "city"){
+        
+            query.query_tree.splice(position + 1,1); //remove command
+            query.query_tree[position] = {type:"solr", query: create_geo_filter(nextEntity.location_p,
+                                                     "location_p", 50) };
+            return true;
+         }
+         else if (nextEntity.coordinates_pt != null){
+            query.query_tree.splice(position + 1,1); //remove command
+            query.query_tree[position] = {type:"solr", query: create_geo_filter(nextEntity.coordinates_pt,
+                                                     "coordinates_pt", 50) };
+            return true;
+         }else if (nextEntity.type == "event"){ 
+           //nextEntity doesn't have coordinates on it, so try traversing to find coordinates on a parent node (i.e. a venue)
+           query.query_tree.splice(position + 1,1); //remove command
+           
+           var quickHack;
+
+           if (nextEntity.canonical_form == "activate conference"){
+             quickHack = "activate";
+           }
+           if (nextEntity.canonical_form == "haystack conference"){
+             quickHack = "haystack";
+           }
+           
+           let attemptedGraphLookup = await find_location_coordinates(quickHack);
+
+           if (attemptedGraphLookup.response 
+               && attemptedGraphLookup.response.docs
+               && attemptedGraphLookup.response.docs.length > 0){
+                query.query_tree[position] = {type:"solr", query: create_geo_filter(
+                  attemptedGraphLookup.response.docs[0].coordinates_s, "coordinates_pt", 50
+                )};
+                return true;
+               }
+           
+         }
+      }
+      return false;
+    }
+
+  function create_geo_filter(coordinates,field,distanceInKM){
+      return "{!geofilt d=" + distanceInKM + " sfield=\"" + field 
+               + "\" pt=\"" + coordinates + "\"}";
+    }
+    
+   function cmd_text_distance(query_tree,position){
+      if (query_tree.length -1 > position){
+        var lastEntity = query_tree[position - 1];
+        var nextEntity = query_tree[position + 1];        
+        query.query_tree.splice(position + 1, 1); //remove next entity
+        query.query_tree[position] = "\"" + lastEntity + " " + nextEntity + "\"~10";
+        query.query_tree.splice(position - 1, 1); //remove last entity
+        return true;
+      }
+      return false;
+    }
+    
+    async function cmd_text_within_one_edit_distance(query_tree,position){
+      if (query_tree.length -1 > position){
+        var nextEntity = query_tree[position + 1];
+        if (nextEntity.hasLocation){
+          if (nextEntity.location_p == null){
+            alert("do graph lookup cwd");
+            return true; 
+          }
+        }
+      }
+      return false;
+    }
+    
+
+    async function cmd_popularity(query,position){
+      if (query.query_tree.length -1 > position){
+        var nextEntity = query.query_tree[position + 1];
+        query.query_tree[position] = {type:"solr", query: '{!func}mul(min(popularity,1),100)'};
+        return true;
+      }
+      return false;
+    }    
+    
+
+    async function processCommands(query){
+      for (let position=0;position<query.query_tree.length;position++){
+         let item = query.query_tree[position];        
+         //process commands. For now, going left to right and then sorting by priority when ambiguous commands occur; consider other weighting options later.
+         if (item.type == "command"){
+           let commandIsResolved = false;
+        
+           if (item.command_function){
+             commandIsResolved = await eval(item.command_function); //Careful... there is code in the docs that is being eval'd. 
+             //MUST ENSURE THESE DOCS ARE SECURE, OTHERWISE THIS WILL INTRODUCE A POTENTIAL SECURITY THREAT (CODE INJECTION)
+           }
+           else{
+             Alert ("Error: " + query.query_tree.canonical_form + " has no command function.");
+           }
+
+           if (!commandIsResolved){
+             //Bad command. Just remove for now... could alternatively keep it and run as a keyword
+             query.query_tree.splice(position,1);    
+           }
+         }
+       }
+
+    }
+    
+
+    //Called after the initial results are processed
+     async function resolveQuery(query,asyncRequestID){
+       await processCommands(query);
+          
+        //Now process everything that is not yet resolved
+        for (let position=0;position<query.query_tree.length;position++){
+         let item = query.query_tree[position];         
+         if (item.type != "solr"){ //already resolved
+            if (item.type == "keyword"){  
+              //TODO: this currently looks up ALL unknown keywords in the SKG, which isn't very smart
+              //need to switch to looking up meaningful phrases in next pass. This is mostly for testing
+              //at the moment, so putting up with the noise temporarily.
+              let categoryAndTermVector;
+              //TODO: figure out way (probably timestamp-based) to guarantee processing in order given current async nature
+              await get_category_and_term_vector_solr_response(item.surface_form,asyncRequestID).then( (data) => categoryAndTermVector = parse_category_and_term_vector_from_solr_response(data));       
+             
+             //if (latestAsyncRequestID != categoryAndTermVector.asyncRequestID){
+             //  return null;
+             //}
+
+              let queryString = "";
+              if (categoryAndTermVector.term_vector){
+                queryString = categoryAndTermVector.term_vector;
+              }
+              if (categoryAndTermVector.category){
+                if (queryString.length > 0){
+                  queryString += " ";
+                  queryString += "doc_type:\"" + categoryAndTermVector.category + "\""
+                }
+              }
+              if (queryString.length == 0){
+                queryString = item.surface_form; //just keep the input as a keyword
+              }
+             query.query_tree[position] = {type:"solr", query: queryString};              
+           }else if (item.type == "color"){
+             let solrQuery = "colors_s:\"" + item.canonical_form + "\"";
+             query.query_tree[position] = {type:"solr", query: solrQuery};
+           }else if (item.type == "known_item" || item.type == "city" || item.type == "event"){
+             let solrQuery = "name_s:\"" + item.canonical_form + "\"";
+             query.query_tree[position] = {type:"solr", query: solrQuery};
+           } else if (item.type == "brand"){
+             let solrQuery = "brand_s:\"" + item.canonical_form + "\"";
+             query.query_tree[position] = {type:"solr", query: solrQuery};
+           }
+           else {
+             query.query_tree[position] = {type:"solr", query: item.surface_form};
+           }       
+         }    
+       }
+        
+        return query;
+      }
+      
+           
+      
+  </script>
+ </head>
+ <body> 
+  <div class="wrap">
+    <div class="search">
+      <input type="text" id="text" class="searchTerm" placeholder="What are you looking for?">
+        <button type="submit" class="searchButton">
+          <i class="fa fa-search"></i>
+      </button>
+    </div>
+    <div id="queryExplain">
+      <p class="note" id="tagged" style="visibility:hidden"></p>
+      <p class="note" id="transformed" style="visibility:hidden"></p>
+      <p class="note" id="resolved" style="visibility:hidden"></p>
+      <p class="note" id="final" style="visibility:hidden"></p>
+    </div>
+    <div style="position:relative; float: left; clear: left; background-color: #eeeeee; margin: 10px;">
+      <div id="searchResults"></div>
+    </div>
+
+    </div>
+    
+    <pre id="results">
+    </pre>
+
+
+
+</body>
+</html>
