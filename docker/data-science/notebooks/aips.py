@@ -180,52 +180,92 @@ def upsert_text_field(collection_name, field_name):
 
     print("Adding '" + field_name + "' field to collection")
     add_field = {"add-field":{ "name":field_name, "type":"text_general", "stored":"true", "indexed":"true", "multiValued":"false" }}
+<<<<<<< HEAD
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
+=======
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=add_field).json()
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
     print_status(response)
 
 def upsert_double_field(collection_name, field_name):
     #clear out old field to ensure this function is idempotent
     delete_field = {"delete-field":{ "name":field_name }}
+<<<<<<< HEAD
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
 
     print("Adding '" + field_name + "' field to collection")
     add_field = {"add-field":{ "name":field_name, "type":"pdouble", "stored":"true", "indexed":"true", "multiValued":"false" }}
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
+=======
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=delete_field).json()
+
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"pdouble", "stored":"true", "indexed":"true", "multiValued":"false" }}
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=add_field).json()
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
     print_status(response)
     
 def upsert_integer_field(collection_name, field_name):
     #clear out old field to ensure this function is idempotent
     delete_field = {"delete-field":{ "name":field_name }}
+<<<<<<< HEAD
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
 
     print("Adding '" + field_name + "' field to collection")
     add_field = {"add-field":{ "name":field_name, "type":"pint", "stored":"true", "indexed":"true", "multiValued":"false" }}
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
+=======
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=delete_field).json()
+
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"pint", "stored":"true", "indexed":"true", "multiValued":"false" }}
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=add_field).json()
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
     print_status(response)
 
 def upsert_keyword_field(collection_name, field_name):
     #clear out old field to ensure this function is idempotent
     delete_field = {"delete-field":{ "name":field_name }}
+<<<<<<< HEAD
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
 
     print("Adding '" + field_name + "' field to collection")
     add_field = {"add-field":{ "name":field_name, "type":"string", "stored":"true", "indexed":"true", "multiValued":"true", "docValues":"true" }}
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
+=======
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=delete_field).json()
+
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"string", "stored":"true", "indexed":"true", "multiValued":"true", "docValues":"true" }}
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=add_field).json()
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
     print_status(response)
     
 def upsert_string_field(collection_name, field_name):
     #clear out old field to ensure this function is idempotent
     delete_field = {"delete-field":{ "name":field_name }}
+<<<<<<< HEAD
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
 
     print("Adding '" + field_name + "' field to collection")
     add_field = {"add-field":{ "name":field_name, "type":"string", "stored":"true", "indexed":"false", "multiValued":"false", "docValues":"true" }}
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
+=======
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=delete_field).json()
+
+    print("Adding '" + field_name + "' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"string", "stored":"true", "indexed":"false", "multiValued":"false", "docValues":"true" }}
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=add_field).json()
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
     print_status(response)
     
 def upsert_boosts_field_type(collection_name, field_type_name):
     delete_field_type = {"delete-field-type":{ "name":field_type_name }}
+<<<<<<< HEAD
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field_type).json()
+=======
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=delete_field_type).json()
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
 
     print(f"Adding '{field_type_name}' field type to collection")
     add_field_type = { 
@@ -241,20 +281,32 @@ def upsert_boosts_field_type(collection_name, field_type_name):
                     { "class":"solr.LowerCaseFilterFactory" },
                     { "class":"solr.DelimitedPayloadFilterFactory", "delimiter": "|", "encoder": "float" }]}}}
 
+<<<<<<< HEAD
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field_type).json()
+=======
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=add_field_type).json()
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
     print_status(response)
 
 def upsert_boosts_field(collection_name, field_name, field_type_name="boosts"):
     
     #clear out old field to ensure this function is idempotent
     delete_field = {"delete-field":{ "name":field_name }}
+<<<<<<< HEAD
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
+=======
+    response = requests.post(SOLR_URL + collection_name + "/schema", json=delete_field).json()
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
 
     upsert_boosts_field_type(collection_name, field_type_name);
     
     print(f"Adding '{field_name}' field to collection")
     add_field = {"add-field":{ "name":field_name, "type":"boosts", "stored":"true", "indexed":"true", "multiValued":"true" }}
+<<<<<<< HEAD
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
+=======
+    response = requests.post(f"{SOLR_URL}{collection_name}/schema", json=add_field).json()
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
     print_status(response)
     
 def num2str(number):
@@ -312,7 +364,11 @@ def fetch_products(doc_ids):
     doc_ids = ["%s" % doc_id for doc_id in doc_ids]
     query = "upc:( " + " OR ".join(doc_ids) + " )"
     params = {'q':  query, 'wt': 'json', 'rows': len(doc_ids)}
+<<<<<<< HEAD
     resp = requests.get(f"{SOLR_URL}/products/select", params=params)
+=======
+    resp = requests.get('http://' + SOLR_URL + '/solr/products/select', params=params)
+>>>>>>> 73b5e8e0b194bb741fcae97454abc0e46f9ae48b
     df = pd.DataFrame(resp.json()['response']['docs'])
     df['upc'] = df['upc'].astype('int64')
 
