@@ -1,59 +1,25 @@
 appnope==0.1.0
-#attrs==19.1.0 #possibly remove
-#backcall==0.1.0 #possibly remove
-#bleach==3.1.4 #possibly remove
 bs4==0.0.1
-#certifi==2019.6.16 #possibly remove
-#chardet==3.0.4 #possibly remove
-#cython==0.29.20 #possibly remove
 datasets==2.3.2
-#decorator==4.4.0 #possibly remove
-#defusedxml==0.6.0 #possibly remove
-#entrypoints==0.3 #possibly remove
 findspark==1.3.0
 ipython-genutils==0.2.0
-#ipywidgets==7.5.0 #possibly remove
-#jedi==0.14.0 #possibly remove
-#Jinja2==2.10.1 #possibly remove
-#jsonschema==3.0.1 #possibly remove
-#jupyter==1.0.0 #possibly remove
-#jupyter-client==5.2.4 #possibly remove
-jupyter-console==6.4.0 #changed from 6.0.0
-#jupyter-core==4.5.0 #possibly remove
-#jupyterlab_server==1.0.0 #possibly remove
-lxml==4.6.5 #changed from 4.6.2
-#MarkupSafe==1.1.1 #possibly remove
-mergedeep==1.3.4 #changed from 1.3.0 
+jupyter-console==6.4.0
+lxml==4.6.5
+matplotlib==3.5.2
+mergedeep==1.3.4
 mistune==0.8.4
-#nbconvert==5.5.0 #possibly remove
-#nbformat==4.4.0 #possibly remove
-#notebook==5.7.8 #possibly remove
-nltk==3.6.6 #changed from 3.5
+nltk==3.6.6
 nmslib==2.1.1
-#numpy==1.19.0 #possibly remove
-#pandocfilters==1.4.2 #possibly remove
-#parso==0.5.0 #possibly remove
-#pexpect==4.7.0 #possibly remove
-#pickleshare==0.7.5 #possibly remove
 plotly==4.14.3
-plotnine==0.7.1 #changed from 0.8.0
-prometheus-client==0.11.0 #changed from 0.7.1
-#prompt-toolkit==2.0.9 #possibly remove
-#ptyprocess==0.6.0 #possibly remove
-#py4j==0.10.7 #possibly remove
-#Pygments==2.4.2 #possibly remove
-#pyrsistent==0.15.2 #possibly remove
-pysolr==3.9.0 #changed from 3.8.1
-#python-dateutil==2.8.0 #possibly remove
-#pytz==2019.1 #possibly remove
-#pyzmq==18.0.1 #possibly remove
-qtconsole==5.1.1 #changed from 4.5.1
-#requests==2.22.0 #possibly remove
+plotnine==0.8.0
+prometheus-client==0.11.0
+pysolr==3.9.0
+qtconsole==5.1.1
 retrying==1.3.3
-sentence-transformers==1.1.0 #added from ch14-new
-#Send2Trash==1.5.0 #possibly remove
-#six==1.12.0 #possibly remove
-spacy==2.3.7 #updated from 2.3.0
+sentence-transformers==1.1.0
+spacy==2.3.7
 transformers==4.5.1
 sentence-transformers==1.1.0
+#tensorflow==2.2.0
+#terminado==0.8.2
 transformers==4.5.1
