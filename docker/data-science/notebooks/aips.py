@@ -245,6 +245,11 @@ def upsert_boosts_field_type(collection_name, field_type_name):
 
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field_type).json()
     print_status(response)
+    
+def upsert_integer_field(collection_name, field_name):
+    #clear out old field to ensure this function is idempotent
+    delete_field = {"delete-field":{ "name":field_name }}
+    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
 
 def upsert_boosts_field(collection_name, field_name, field_type_name="boosts"):
     
