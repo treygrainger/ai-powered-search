@@ -41,7 +41,7 @@ def plot_judgments(qids, xlabel, ylabel, judg_list, focus=None,
     legend_labels=[]
     for idx, qid in enumerate(qids):
         qid_idxs=np.argwhere(qid_col==qid).ravel().astype(int)
-        judgment=judg_list[np.asscalar(qid_idxs[-1])]
+        judgment=judg_list[qid_idxs[-1].item()]
         kws.append(judgment.keywords)
         x_qidA = features[qid_idxs]
         x_qidA

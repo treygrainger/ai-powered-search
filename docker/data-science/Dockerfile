@@ -1,4 +1,5 @@
-FROM jupyter/pyspark-notebook:spark-3.1.2
+#FROM jupyter/pyspark-notebook:spark-3.1.2
+FROM jupyter/pyspark-notebook:spark-3.3.1
 
 USER root
 
@@ -17,8 +18,20 @@ RUN mkdir -p /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
 
 # Pull Requirements, Install Notebooks
 COPY requirements.txt ./
+
+#Install rust, needed for building Tokenizers
+RUN apt-get -y update
+RUN apt-get install -y gcc
+#RUN apt-get install -y curl
+RUN apt-get install -y cargo
+#RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+#RUN source "$HOME/.cargo/env"
+
 RUN python -m pip --no-cache-dir install --upgrade pip && \
   pip --no-cache-dir install -r requirements.txt
+
+RUN python -m spacy download en_core_web_sm
 
 #must be installed after other requirements for now due to spacy/neuralcoref compatability issues
 RUN apt-get -y update && \
@@ -27,7 +40,7 @@ RUN apt-get -y update && \
     pip --no-cache-dir install git+https://github.com/huggingface/neuralcoref.git --no-binary neuralcoref && \
     apt-get purge -y build-essential && apt-get auto-remove -y && apt-get auto-clean -y
 
-RUN python -m spacy download en_core_web_sm
+#RUN python -m spacy download en_core_web_sm
 #RUN python -m spacy download en_core_web_lg
 
 COPY notebooks notebooks
@@ -74,10 +87,12 @@ COPY log4j.properties /usr/local/spark/conf/
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 USER $NB_UID
 
+RUN echo $(ls -1 $SPARK_HOME/python/lib/*)
+
 # Spark Config
 ENV SPARK_OPTS="$SPARK_OPTS --driver-java-options=\"-DXlint:none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer -Dlog4j.logger.org.apache.spark.repl.Main=ERROR\" --spark.ui.showConsoleProgress=False --spark.driver.extraLibraryPath=$SHADED_SOLR_JAR_PATH --spark.executor.extraLibraryPath=$SHADED_SOLR_JAR_PATH" \
     PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH pyspark-shell" \
-    PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9-src.zip
+    PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-*-src.zip:%PYTHONPATH%
 
 WORKDIR notebooks
 # If you want to edit the notebooks and have

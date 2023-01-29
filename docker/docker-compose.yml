@@ -17,6 +17,7 @@ services:
       - solr
     networks:
       - solr-data-science
+    restart: unless-stopped
     environment:
       #PYSPARK_SUBMIT_ARGS: '--jars /usr/local/spark/lib/spark-solr-4.0.0-shaded.jar pyspark-shell'
       #NB_USER: 'aips'
@@ -43,11 +44,12 @@ services:
     networks:
       - zk-solr
       - solr-data-science
+    restart: unless-stopped
     depends_on:
       - zookeeper
 
   zookeeper:
-    image: zookeeper:3.5.5
+    image: zookeeper:3.5.8
     container_name: aips-zk
     hostname: aips-zk
     ports: 
@@ -55,6 +57,7 @@ services:
     networks:
       - zk-solr
       - solr-data-science
+    restart: unless-stopped
 
 networks:
   zk-solr:  
