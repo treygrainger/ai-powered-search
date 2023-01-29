@@ -313,7 +313,7 @@ def render_search_results(query, results):
         return rendered
 
 import pandas as pd
-from IPython.core.display import HTML
+from IPython.display import HTML
 
 def fetch_products(doc_ids):
     import requests
