@@ -3,7 +3,7 @@ FROM jupyter/pyspark-notebook:spark-3.3.1
 USER root
 
 #install gcc, c++, and related dependencies needed to for pip to build some python dependencies
-RUN sudo apt-get update && apt-get install -y --reinstall  build-essential
+RUN sudo apt-get -y update && apt-get install -y --reinstall build-essential gcc cargo
 
 # Spark dependencies
 ENV SPARK_SOLR_VERSION=4.0.2
@@ -15,67 +15,19 @@ RUN mkdir -p /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
     echo "c5293f10257603bcf650780afcb91ed1bb118f09feb731502c2dc7ac14ba950e586a033cb2f50e5c122c5ec442dc0d2b55f76c4f6522b555e67f4981a38bca26 *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
     chmod a+rwx $SHADED_SOLR_JAR_PATH
 
-# Pull Requirements, Install Notebooks
-#COPY requirements.txt ./
-
-#Install rust, needed for building Tokenizers
-RUN apt-get -y update
-RUN apt-get install -y gcc
-RUN apt-get install -y cargo
-
-#RUN python -m pip --no-cache-dir install --upgrade pip && \
-#  pip --no-cache-dir install -r requirements.txt
-
-#RUN python -m spacy download en_core_web_sm
-
-#must be installed after other requirements for now due to spacy/neuralcoref compatability issues
-#RUN apt-get -y update && \
-#    apt-get install --no-install-recommends -y build-essential && \
-#    rm -rf /var/lib/apt/lists/* && \
-#    pip --no-cache-dir install git+https://github.com/huggingface/neuralcoref.git --no-binary neuralcoref && \
-#    apt-get purge -y build-essential && apt-get auto-remove -y && apt-get auto-clean -y
-
-#RUN python -m spacy download en_core_web_sm
-#RUN python -m spacy download en_core_web_lg
-
 COPY notebooks notebooks
-#RUN conda install python=3.7.12
-
-# Install pyarrow
-#RUN conda install --quiet -y 'pyarrow' && \
-#    conda clean --all -f -y && \
-#    fix-permissions $CONDA_DIR && \
-#    fix-permissions /home/$NB_USER
-
-# Install tensorflow
-#RUN pip install 'tensorflow==2.1.0' && \
-#    fix-permissions $CONDA_DIR && \
-#    fix-permissions /home/$NB_USER
-
-# Setup an AI-Powered Search user
-#RUN useradd -ms /bin/bash aips
 
 WORKDIR /home/$NB_USER
 
 # Pull Requirements, Install Notebooks
 COPY requirements.txt ./
 ENV BLIS_ARCH="generic" 
+
 RUN python -m pip --no-cache-dir install --upgrade pip && \
   pip --no-cache-dir install -r requirements.txt
 
 RUN python -m spacy download en_core_web_sm
-#RUN python -m spacy download en_core_web_lg
-
-#must be installed after other requirements for now due to spacy/neuralcoref compatability issues
-RUN pip --no-cache-dir install git+https://github.com/huggingface/neuralcoref.git@654d90659e34f78b98681ccde7bdda4558aa21c2 --no-binary neuralcoref
-
-#RUN git clone https://github.com/ai-powered-search/retrotech.git $WORKDIR/retrotech
-
-#COPY notebooks notebooks
-
-#RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
-#RUN fix-permissions /home/$NB_USER
-#RUN fix-permissions notebooks
+RUN pip --no-cache-dir install https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_coreference_web_trf-3.4.0a2-py3-none-any.whl
 
 COPY log4j.properties /usr/local/spark/conf/
 
