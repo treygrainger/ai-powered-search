@@ -4,7 +4,7 @@ datasets==2.3.2
 findspark==1.3.0
 ipython-genutils==0.2.0
 jupyter-console==6.4.0
-lxml==4.6.5
+lxml==4.9.1
 matplotlib==3.5.2
 mergedeep==1.3.4
 mistune==2.0.4
