@@ -30,6 +30,12 @@ services:
       - type: bind
         source: "./data-science/notebooks/"
         target: "/tmp/notebooks/"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
   solr:
     build:
       context: solr/.
