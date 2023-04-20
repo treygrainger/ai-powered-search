@@ -165,7 +165,8 @@ def process_semantic_query(query_bytes):
 
     #finalquery = {"query_tree": query_tree}
     #let query = {query_tree: query_tree}; //so we can pass byref        
-        
+
+### Line below was unused
     final_query = resolveQuery(query_tree)
     #if (query != null){ //short circuit if new request has been issued
     resolved_query = queryTreeToResolvedString(final_query)      
@@ -219,6 +220,9 @@ def resolveQuery(query_tree):
             elif (item["type"] == "color"):
                 solrQuery = "+colors_s:\"" + item["canonical_form"] + "\""
                 query_tree[position] = {"type":"solr", "query": solrQuery}
+                
+
+# original statement does not query the correct fields
             elif item["type"] == "city":
                 solrQuery = "+city_t:\"" + str(item["name"]) + "\"" 
                 query_tree[position] = {"type":"solr", "query": solrQuery}
