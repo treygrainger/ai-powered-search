@@ -168,7 +168,7 @@ def process_semantic_query(query_bytes):
         
     final_query = resolveQuery(query_tree)
     #if (query != null){ //short circuit if new request has been issued
-    resolved_query = queryTreeToResolvedString(query_tree)      
+    resolved_query = queryTreeToResolvedString(final_query)      
                     
             #UI.updateResolvedQuery(resolved_query)
         #}
@@ -219,7 +219,10 @@ def resolveQuery(query_tree):
             elif (item["type"] == "color"):
                 solrQuery = "+colors_s:\"" + item["canonical_form"] + "\""
                 query_tree[position] = {"type":"solr", "query": solrQuery}
-            elif (item["type"] == "known_item" or item["type"] == "city" or item["type"] == "event"):
+            elif item["type"] == "city":
+                solrQuery = "+city_t:\"" + str(item["name"]) + "\"" 
+                query_tree[position] = {"type":"solr", "query": solrQuery}
+            elif (item["type"] == "known_item" or  item["type"] == "event"):
                 solrQuery = "+name_s:\"" + item["canonical_form"] + "\""
                 query_tree[position] = {"type":"solr", "query": solrQuery}
             elif (item["type"] == "brand"):
