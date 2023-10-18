@@ -36,7 +36,7 @@ USER $NB_UID
 
 # Spark Config
 ENV SPARK_OPTS="$SPARK_OPTS --driver-java-options=\"-DXlint:none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer -Dlog4j.logger.org.apache.spark.repl.Main=ERROR\" --spark.ui.showConsoleProgress=False --spark.driver.extraLibraryPath=$SHADED_SOLR_JAR_PATH --spark.executor.extraLibraryPath=$SHADED_SOLR_JAR_PATH" \
-    PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH pyspark-shell" \
+    PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH pyspark-shell --driver-memory 10G --driver-cores 8 --executor-memory 9G --executor-cores 7  --num-executors 20 -c spark.driver.memory=10g -c spark.executor.cores=7 -c spark.dynamicAllocation.enabled=true -c spark.executor.memory=6g -c spark.dynamicAllocation.enabled=true -c spark.dynamicAllocation.executorMemoryOverhead=3g -c spark.driver.memory=3g" \
     PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-*-src.zip:%PYTHONPATH%
 
 WORKDIR notebooks

@@ -1,3 +1,4 @@
+adjusttext==23.2.1
 appnope==0.1.0
 bs4==0.0.1
 datasets==2.3.2
