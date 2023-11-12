@@ -46,4 +46,7 @@ WORKDIR notebooks
 
 #WORKDIR /tmp/notebooks
 
+# Mark all notebooks as trusted by default
+RUN find . -name \*.ipynb -print0|xargs -0 jupyter-trust -y
+
 CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' --NotebookApp.password=''
