@@ -37,7 +37,8 @@ USER $NB_UID
 # Spark Config
 ENV SPARK_OPTS="$SPARK_OPTS --driver-java-options=\"-DXlint:none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer -Dlog4j.logger.org.apache.spark.repl.Main=ERROR\" --spark.ui.showConsoleProgress=False --spark.driver.extraLibraryPath=$SHADED_SOLR_JAR_PATH --spark.executor.extraLibraryPath=$SHADED_SOLR_JAR_PATH" \
     PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH pyspark-shell" \
-    PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-*-src.zip:%PYTHONPATH%
+    PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-*-src.zip:%PYTHONPATH% \
+    DOCKER_STACKS_JUPYTER_CMD=lab
 
 WORKDIR notebooks
 # If you want to edit the notebooks and have
@@ -49,4 +50,5 @@ WORKDIR notebooks
 # Mark all notebooks as trusted by default
 RUN find . -name \*.ipynb -print0|xargs -0 jupyter-trust -y
 
-CMD jupyter notebook --ip=0.0.0.0 --no-browser --NotebookApp.token='' --NotebookApp.password=''
+CMD start-notebook.sh --ServerApp.token='' --ServerApp.password='' --ServerApp.ip=0.0.0.0 --no-browser \
+  --LabApp.default_url='/lab/tree/welcome.ipynb'
