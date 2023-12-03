@@ -47,5 +47,8 @@ WORKDIR notebooks
 
 #WORKDIR /tmp/notebooks
 
+# Mark all notebooks as trusted by default
+RUN find . -name \*.ipynb -print0|xargs -0 jupyter-trust -y
+
 CMD start-notebook.sh --ServerApp.token='' --ServerApp.password='' --ServerApp.ip=0.0.0.0 --no-browser \
   --LabApp.default_url='/lab/tree/welcome.ipynb'
