@@ -12,7 +12,6 @@ mistune==2.0.4
 nltk==3.6.6
 nmslib==2.1.1
 plotly==4.14.3
-plotnine==0.8.0
 prometheus-client==0.11.0
 py4j==0.10.9.7
 pysolr==3.9.0
