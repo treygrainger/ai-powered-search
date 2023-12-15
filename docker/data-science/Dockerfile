@@ -51,4 +51,4 @@ WORKDIR notebooks
 RUN find . -name \*.ipynb -print0|xargs -0 jupyter-trust -y
 
 CMD start-notebook.sh --ServerApp.token='' --ServerApp.password='' --ServerApp.ip=0.0.0.0 --no-browser \
-  --LabApp.default_url='/lab/tree/welcome.ipynb'
+  --LabApp.default_url='/lab/tree/welcome.ipynb' --NotebookApp.token='token'
