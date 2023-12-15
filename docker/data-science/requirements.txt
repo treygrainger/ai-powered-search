@@ -22,3 +22,5 @@ spacy==3.4.4
 sentence-transformers==2.2.2
 spacy-experimental==0.6.1
 transformers==4.26.0
+mizani==0.9.2.
+plotnine==0.10.1
