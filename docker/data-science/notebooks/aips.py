@@ -1,7 +1,9 @@
 import requests
 import os
 import re
+import pandas as pd
 from solr import SolrEngine
+from IPython.display import display,HTML
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_NOTEBOOK_HOST="aips-notebook"
@@ -284,7 +286,10 @@ def img_path_for_upc(upc):
     unavailable_jpg_path = "../data/retrotech/images/unavailable.jpg"
     return expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
 
-
+def display_search(query, documents):
+  display(HTML(f"<strong>Query</strong>: <i>{query}</i><br/><br/><strong>Results:</strong>"))
+  display(HTML(documents))
+  
 def render_search_results(query, results):
     file_path = os.path.dirname(os.path.abspath(__file__))
     search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
@@ -315,9 +320,6 @@ def render_search_results(query, results):
             rendered += separator_template
 
         return rendered
-
-import pandas as pd
-from IPython.display import HTML
 
 def fetch_products(doc_ids):
     import requests
