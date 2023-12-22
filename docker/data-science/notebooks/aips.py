@@ -36,11 +36,6 @@ def healthcheck():
 def get_engine():
   return ENGINE
 
-def change_engine(engine):
-  if engine is None:
-    raise TypeError
-  ENGINE = engine
-
 def print_status(solr_response):
   print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
