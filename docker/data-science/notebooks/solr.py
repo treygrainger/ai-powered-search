@@ -16,28 +16,20 @@ class SolrEngine:
     def print_status(self, solr_response):
         print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
-    def create_collection(self):
-        self.create_collection("")
-
     def create_collection(self, collection_name):
-        #Wipe previous collection
         wipe_collection_params = [
             ('action', "delete"),
             ('name', collection_name)
         ]
-
         print(f"Wiping '{collection_name}' collection")
         response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
+        self.print_status(response)
 
-        #Create collection
         create_collection_params = [
             ('action', "CREATE"),
             ('name', collection_name),
             ('numShards', 1),
             ('replicationFactor', 1) ]
-
-        print(create_collection_params)
-
         print(f"Creating '{collection_name}' collection")
         response = requests.post(SOLR_COLLECTIONS_URL, data=create_collection_params).json()
         
