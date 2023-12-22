@@ -1,7 +1,7 @@
 import requests
 import os
 import re
-from solr import SolrAdapter
+from solr import SolrEngine
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_NOTEBOOK_HOST="aips-notebook"
@@ -34,7 +34,7 @@ def healthcheck():
       print ("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
 
 def get_engine():
-  return SolrAdapter()
+  return SolrEngine()
 
 def print_status(solr_response):
   print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )

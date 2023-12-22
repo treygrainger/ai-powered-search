@@ -9,7 +9,7 @@ AIPS_SOLR_PORT = os.getenv('AIPS_SOLR_PORT') or '8983'
 SOLR_URL = f'http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr'
 SOLR_COLLECTIONS_URL = f'{SOLR_URL}/admin/collections'
 
-class SolrAdapter:
+class SolrEngine:
     def __init__(self):
         pass
 
