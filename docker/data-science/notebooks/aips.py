@@ -16,19 +16,17 @@ AIPS_NOTEBOOK_PORT= os.getenv('AIPS_NOTEBOOK_PORT') or '8888'
 AIPS_ZK_PORT= os.getenv('AIPS_ZK_PORT') or '2181'
 AIPS_WEBSERVER_HOST = os.getenv('AIPS_WEBSERVER_HOST') or 'localhost'
 AIPS_WEBSERVER_PORT = os.getenv('AIPS_WEBSERVER_PORT') or '2345'
+ENGINE = SolrEngine()
 
 SOLR_URL = f'http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr'
 SOLR_COLLECTIONS_URL = f'{SOLR_URL}/admin/collections'
 WEBSERVER_URL = f'http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}'
 
 def healthcheck():
-  import requests
-
   status_url = f'{SOLR_URL}/admin/zookeeper/status'
 
   try:
-    response = requests.get(status_url).json()
-    if (response["responseHeader"]["status"] == 0):
+    if (get_engine().health_check()):
       print ("Solr is up and responding.")
       print ("Zookeeper is up and responding.\n")
       print ("All Systems are ready. Happy Searching!")
@@ -36,7 +34,12 @@ def healthcheck():
       print ("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
 
 def get_engine():
-  return SolrEngine()
+  return ENGINE
+
+def change_engine(engine):
+  if engine is None:
+    raise TypeError
+  ENGINE = engine
 
 def print_status(solr_response):
   print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
