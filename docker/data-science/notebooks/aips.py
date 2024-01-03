@@ -23,44 +23,44 @@ SOLR_COLLECTIONS_URL = f'{SOLR_URL}/admin/collections'
 WEBSERVER_URL = f'http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}'
 
 def healthcheck():
-  status_url = f'{SOLR_URL}/admin/zookeeper/status'
+    status_url = f'{SOLR_URL}/admin/zookeeper/status'
 
-  try:
-    if (get_engine().health_check()):
-      print ("Solr is up and responding.")
-      print ("Zookeeper is up and responding.\n")
-      print ("All Systems are ready. Happy Searching!")
-  except:
-      print ("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
+    try:
+        if (get_engine().health_check()):
+            print ("Solr is up and responding.")
+            print ("Zookeeper is up and responding.\n")
+            print ("All Systems are ready. Happy Searching!")
+    except:
+        print ("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
 
 def get_engine():
-  return ENGINE
+    return ENGINE
 
 def print_status(solr_response):
-  print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
+      print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
 def create_collection(collection_name):
     #Wipe previous collection
-  wipe_collection_params = [
-      ('action', "delete"),
-      ('name', collection_name)
-  ]
+    wipe_collection_params = [
+        ('action', "delete"),
+        ('name', collection_name)
+    ]
 
-  print(f"Wiping '{collection_name}' collection")
-  response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
+    print(f"Wiping '{collection_name}' collection")
+    response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
 
   #Create collection
-  create_collection_params = [
-      ('action', "CREATE"),
-      ('name', collection_name),
-      ('numShards', 1),
-      ('replicationFactor', 1) ]
+    create_collection_params = [
+        ('action', "CREATE"),
+        ('name', collection_name),
+        ('numShards', 1),
+        ('replicationFactor', 1) ]
 
-  print(create_collection_params)
+    print(create_collection_params)
 
-  print(f"Creating '{collection_name}' collection")
-  response = requests.post(SOLR_COLLECTIONS_URL, data=create_collection_params).json()
-  print_status(response)
+    print(f"Creating '{collection_name}' collection")
+    response = requests.post(SOLR_COLLECTIONS_URL, data=create_collection_params).json()
+    print_status(response)
 
 def enable_ltr(collection_name):
 
@@ -270,13 +270,13 @@ def upsert_boosts_field(collection_name, field_name, field_type_name="boosts"):
     print_status(response)
     
 def num2str(number):
-  return str(round(number,4)) #round to 4 decimal places for readibility
+    return str(round(number,4)) #round to 4 decimal places for readibility
 
 def vec2str(vector):
   return "[" + ", ".join(map(num2str,vector)) + "]"
 
 def tokenize(text):
-  return text.replace(".","").replace(",","").lower().split()
+    return text.replace(".","").replace(",","").lower().split()
 
 def img_path_for_upc(upc):
     # file_path = os.path.dirname(os.path.abspath(__file__))
@@ -285,9 +285,39 @@ def img_path_for_upc(upc):
     return expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
 
 def display_search(query, documents):
-  display(HTML(f"<strong>Query</strong>: <i>{query}</i><br/><br/><strong>Results:</strong>"))
-  display(HTML(documents))
-  
+    display(HTML(f"<strong>Query</strong>: <i>{query}</i><br/><br/><strong>Results:</strong>"))
+    display(HTML(documents))
+
+def display_product_search(query, documents):
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
+    with open(search_results_template_file) as file:
+        file_content = file.read()
+
+        template_syntax = "<!-- BEGIN_TEMPLATE[^>]*-->(.*)<!-- END_TEMPLATE[^>]*-->"
+        header_template = re.sub(template_syntax, "", file_content, flags=re.S)
+
+        results_template_syntax = "<!-- BEGIN_TEMPLATE: SEARCH_RESULTS -->(.*)<!-- END_TEMPLATE: SEARCH_RESULTS[^>]*-->"
+        x = re.search(results_template_syntax, file_content, flags=re.S)
+        results_template = x.group(1)
+
+        separator_template_syntax = "<!-- BEGIN_TEMPLATE: SEPARATOR -->(.*)<!-- END_TEMPLATE: SEPARATOR[^>]*-->"
+        x = re.search(separator_template_syntax, file_content, flags=re.S)
+        separator_template = x.group(1)
+
+        rendered = header_template.replace("${QUERY}", query)
+        for result in documents:
+            rendered += results_template.replace("${NAME}", result['name'] if 'name' in result else "UNKNOWN") \
+                .replace("${MANUFACTURER}", result['manufacturer'] if 'manufacturer' in result else "UNKNOWN") \
+                .replace("${DESCRIPTION}", result['shortDescription'] if 'shortDescription' in result else "") \
+                .replace("${IMAGE_URL}", "../data/retrotech/images/" + \
+                         (result['upc'] if \
+                          ('upc' in result and os.path.exists(file_path + "/data/retrotech/images/" + result['upc'] + ".jpg") \
+                         ) else "unavailable") + ".jpg")
+
+            rendered += separator_template
+    display(HTML((rendered)))
+    
 def render_search_results(query, results):
     file_path = os.path.dirname(os.path.abspath(__file__))
     search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
@@ -339,10 +369,6 @@ def render_judged(products, judged, grade_col='ctr', label=""):
     w_prods = w_prods[[grade_col, 'image', 'upc', 'name', 'shortDescription']]
 
     return HTML(f"<h1>{label}</h1>" + w_prods.to_html(escape=False))
-
-
-
-
 
 """
 class environment:

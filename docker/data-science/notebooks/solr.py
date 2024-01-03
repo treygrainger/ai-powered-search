@@ -1,10 +1,12 @@
 import requests
 import os
+from IPython.display import display,HTML
+from pyspark.sql import SparkSession
 
-#AIPS_SOLR_HOST = "aips-solr"
-#AIPS_ZK_HOST="aips-zk"
-AIPS_SOLR_HOST = "localhost"
-AIPS_ZK_HOST = "localhost"
+AIPS_SOLR_HOST = "aips-solr"
+AIPS_ZK_HOST="aips-zk"
+#AIPS_SOLR_HOST = "localhost"
+#AIPS_ZK_HOST = "localhost"
 AIPS_SOLR_PORT = os.getenv('AIPS_SOLR_PORT') or '8983'
 AIPS_ZK_PORT= os.getenv('AIPS_ZK_PORT') or '2181'
 
@@ -50,17 +52,19 @@ class SolrEngine:
             case "products":
                 self.upsert_text_field(collection, "upc")
                 self.upsert_text_field(collection, "name")
-                self.upsert_text_field(collection, "longDescription")
                 self.upsert_text_field(collection, "manufacturer")
+                self.upsert_text_field(collection, "shortDescription")
+                self.upsert_text_field(collection, "longDescription")
             case _:
                 pass
 
-    def populate_collection_from_csv(self, spark, collection, file):
+    def populate_collection_from_csv(self, collection, file):
         print(f"Loading {collection}")
+        spark = SparkSession.builder.appName("AIPS").getOrCreate()
         csv_df = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(file)
         print(f"{collection} Schema: ")
         csv_df.printSchema()
-        options = {"zkhost": "aips-zk", "collection": collection, 
+        options = {"zkhost": AIPS_ZK_HOST, "collection": collection,
                    "gen_uniq_key": "true", "commit_within": "5000"}
         csv_df.write.format("solr").options(**options).mode("overwrite").save()
         print("Status: Success")
@@ -78,5 +82,8 @@ class SolrEngine:
     def search(self, collection, request):
         return requests.post(f"{SOLR_URL}/{collection}/select", json=request)
 
+    def docs(self, response):
+        return response.json()["response"]["docs"]
+        
     def docs_as_html(self, response):
         return str(response.json()["response"]["docs"]).replace('\\n', '').replace(", '", ",<br/>'")
