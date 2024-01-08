@@ -97,11 +97,14 @@ class SolrEngine:
         print(f"\nAdding Documents to '{collection}' collection")
         return requests.post(f"{SOLR_URL}/{collection}/update?commit=true", json=docs).json()
 
-    def search(self, collection, request):
-        return requests.post(f"{SOLR_URL}/{collection}/select", json=request)
-
     def docs(self, response):
         return response.json()["response"]["docs"]
         
     def docs_as_html(self, response):
         return str(response.json()["response"]["docs"]).replace('\\n', '').replace(", '", ",<br/>'")
+    
+    def search(self, collection, request):
+        return requests.post(f"{SOLR_URL}/{collection}/select", json=request)
+
+    def spell_check(self, collection, request):
+        return requests.post(f"{SOLR_URL}/{collection}/spell", json=request)
