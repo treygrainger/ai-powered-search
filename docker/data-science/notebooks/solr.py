@@ -2,6 +2,7 @@ import requests
 import os
 from IPython.display import display,HTML
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import lit
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_ZK_HOST="aips-zk"
@@ -55,13 +56,30 @@ class SolrEngine:
                 self.upsert_text_field(collection, "manufacturer")
                 self.upsert_text_field(collection, "shortDescription")
                 self.upsert_text_field(collection, "longDescription")
+            case "jobs":
+                self.upsert_text_field(collection, "company_country")
+                self.upsert_text_field(collection, "job_description")
+                self.upsert_text_field(collection, "company_description")
+            case "stackexchange" | "health" | "cooking" | "scifi" | "outdoors" | "travel" | "devops":
+                self.upsert_text_field(collection, "title")
+                self.upsert_text_field(collection, "body")
             case _:
                 pass
-
     def populate_collection_from_csv(self, collection, file):
+        self.populate_collection_from_csv(collection, file, False)
+        
+    def populate_collection_from_csv(self, collection, file, more_opts):
         print(f"Loading {collection}")
         spark = SparkSession.builder.appName("AIPS").getOrCreate()
-        csv_df = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(file)
+        reader = spark.read.format("csv").option("header", "true").option("inferSchema", "true")
+        if more_opts:
+            reader = reader.option("charset", "utf-8").option("quote", "\"").option("escape", "\"").option("multiLine","true").option("delimiter", ",")
+        csv_df = reader.load(file)
+        if more_opts:
+            # We can rely on automatic generation of IDs, or we can create them ourselves. 
+            # If we do it, comment out previous line
+            # .withColumn("id", concat(col("category"), lit("_") col("id")))
+            csv_df = csv_df.withColumn("category", lit(collection)).drop("id")
         print(f"{collection} Schema: ")
         csv_df.printSchema()
         options = {"zkhost": AIPS_ZK_HOST, "collection": collection,
