@@ -3,7 +3,8 @@ import os
 import re
 import pandas as pd
 from solr import SolrEngine
-from IPython.display import display,HTML
+from pyspark.sql import SparkSession
+from IPython.display import display, HTML
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_NOTEBOOK_HOST="aips-notebook"
@@ -287,7 +288,7 @@ def img_path_for_upc(upc):
 def display_search(query, documents):
     display(HTML(f"<strong>Query</strong>: <i>{query}</i><br/><br/><strong>Results:</strong>"))
     display(HTML(documents))
-
+   
 def display_product_search(query, documents):
     file_path = os.path.dirname(os.path.abspath(__file__))
     search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
@@ -349,6 +350,11 @@ def render_search_results(query, results):
 
         return rendered
 
+def create_view(collection_name, view_name,
+                spark=SparkSession.builder.appName("AIPS").getOrCreate()):
+    opts = {"zkhost": AIPS_ZK_HOST, "collection": collection_name}    
+    spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
+  
 def fetch_products(doc_ids):
     import requests
     doc_ids = ["%s" % doc_id for doc_id in doc_ids]
