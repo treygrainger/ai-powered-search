@@ -87,6 +87,23 @@ class SolrEngine:
         csv_df.write.format("solr").options(**options).mode("overwrite").save()
         print("Status: Success")
 
+    def populate_collection_from_csv(self, collection, file):
+        print(f"Loading {collection}")
+        spark = SparkSession.builder.appName("AIPS").getOrCreate()
+        csv_df = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(file)
+        print(f"{collection} Schema: ")
+        csv_df.printSchema()
+        options = {"zkhost": AIPS_ZK_HOST, "collection": collection,
+                   "gen_uniq_key": "true", "commit_within": "5000"}
+        csv_df.write.format("solr").options(**options).mode("overwrite").save()
+        print("Status: Success")
+    
+    def populate_from_spark(self, collection, query,
+                            spark=SparkSession.builder.appName("AIPS").getOrCreate()):
+        opts = {"zkhost": "aips-zk", "collection": collection,
+                "gen_uniq_key": "true", "commit_within": "5000"}
+        spark.sql(query).write.format("solr").options(**opts).mode("overwrite").save()
+    
     def upsert_text_field(self, collection, field_name):
         delete_field = {"delete-field":{ "name":field_name }}
         response = requests.post(f"{SOLR_URL}/{collection}/schema", json=delete_field).json()
