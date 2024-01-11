@@ -64,7 +64,6 @@ def create_collection(collection_name):
     print_status(response)
 
 def enable_ltr(collection_name):
-
     collection_config_url = f'{SOLR_URL}/{collection_name}/config'
 
     del_ltr_query_parser = { "delete-queryparser": "ltr" }
@@ -111,7 +110,6 @@ def clear_copy_fields(collection_name):
         delete_copy_field = {"delete-copy-field": rule}
         response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_copy_field).json()
         print_status(response)
-
 
 def add_text_field_type(collection_name, analyzer, name,
                         omitTermFreqAndPositions=False,
@@ -168,7 +166,6 @@ def add_text_field_type(collection_name, analyzer, name,
     print("Create dynamic field")
     print_status(response.json())
 
-
 def add_copy_field(collection_name, src_field, dest_fields):
     rule = {"source": src_field, "dest": dest_fields}
     add_copy_field = {"add-copy-field": rule}
@@ -176,7 +173,6 @@ def add_copy_field(collection_name, src_field, dest_fields):
     print(f"Adding Copy Field {src_field} -> {dest_fields}'")
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_copy_field).json()
     print_status(response)
-
 
 def upsert_text_field(collection_name, field_name):
     #clear out old field to ensure this function is idempotent

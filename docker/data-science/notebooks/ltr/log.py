@@ -6,8 +6,8 @@ class FeatureLogger:
         ...Building up a training set...
     """
 
-    def __init__(self, client, index, feature_set, drop_missing=True, id_field='id'):
-        self.client=client
+    def __init__(self, engine, index, feature_set, drop_missing=True, id_field='id'):
+        self.engine=engine
         self.index=index
         self.feature_set=feature_set
         self.drop_missing=drop_missing
@@ -60,8 +60,8 @@ class FeatureLogger:
             }
 
             ids = [str(doc_id) for doc_id in ids]
-            res = self.client.log_query(index=self.index, featureset=self.feature_set, ids=ids,
-                                        options=params, id_field=self.id_field)
+            res = self.engine.log_query(self.index, self.feature_set, ids,
+                                        params, self.id_field)
 
             # Add feature back to each judgment
             for doc in res:

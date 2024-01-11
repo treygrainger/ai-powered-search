@@ -47,7 +47,7 @@ def indexable_movies(enrich=noop, movies='data/tmdb.json'):
                         'directors': [director['name'] for director in tmdbMovie['directors']],
                         'cast': " ".join([castMember['name'] for castMember in tmdbMovie['cast']]),
                         'genres': [genre['name'] for genre in tmdbMovie['genres']],
-                        'release_date': releaseDate,
+                        'release_date': releaseDate + 'T00:00:00Z',
                         'release_year': releaseYear,
                         'poster_path': full_poster_path,
                         'vote_average': float(tmdbMovie['vote_average']) if 'vote_average' in tmdbMovie else None,
