@@ -63,12 +63,14 @@ class SolrEngine:
             case "stackexchange" | "health" | "cooking" | "scifi" | "outdoors" | "travel" | "devops":
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "body")
+            case "tmdb" :
+                self.upsert_text_field(collection, "title")
+                self.upsert_text_field(collection, "overview")
+                self.upsert_double_field(collection, "release_year")                
             case _:
                 pass
-    def populate_collection_from_csv(self, collection, file):
-        self.populate_collection_from_csv(collection, file, False)
-        
-    def populate_collection_from_csv(self, collection, file, more_opts):
+            
+    def populate_collection_from_csv(self, collection, file, more_opts=False):
         print(f"Loading {collection}")
         spark = SparkSession.builder.appName("AIPS").getOrCreate()
         reader = spark.read.format("csv").option("header", "true").option("inferSchema", "true")
@@ -105,47 +107,59 @@ class SolrEngine:
         spark.sql(query).write.format("solr").options(**opts).mode("overwrite").save()
     
     def upsert_text_field(self, collection, field_name):
-        delete_field = {"delete-field":{ "name":field_name }}
-        response = requests.post(f"{SOLR_URL}/{collection}/schema", json=delete_field).json()
-        add_field = {"add-field":{ "name":field_name, "type":"text_general", "stored":"true", "indexed":"true", "multiValued":"false" }}
-        response = requests.post(f"{SOLR_URL}/{collection}/schema", json=add_field).json()
-
-    def upsert_boosts_field(self, collection_name, field_name, field_type_name="boosts"):
-        delete_field = {"delete-field":{ "name":field_name }}
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-        self.upsert_boosts_field_type(collection_name, field_type_name);
+        self.upsert_field(collection, field_name, "text_general")
         
-        print(f"Adding '{field_name}' field to collection")
-        add_field = {"add-field":{ "name":field_name, "type":"boosts", "stored":"true", "indexed":"true", "multiValued":"true" }}
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
-
-        self.print_status(response)
-
-    def upsert_boosts_field_type(self, collection_name, field_type_name):
-        delete_field_type = {"delete-field-type":{ "name":field_type_name }}
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field_type).json()
-
-        print(f"Adding '{field_type_name}' field type to collection")
-        add_field_type = { 
-            "add-field-type" : {
-                "name": field_type_name,
-                "class":"solr.TextField",
-                "positionIncrementGap":"100",
-                "analyzer" : {
-                    "tokenizer": {
-                        "class":"solr.PatternTokenizerFactory",
-                        "pattern": "," },
-                    "filters":[
-                        { "class":"solr.LowerCaseFilterFactory" },
-                        { "class":"solr.DelimitedPayloadFilterFactory", "delimiter": "|", "encoder": "float" }]}}}
-
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field_type).json()
-        self.print_status(response)
-
+    def upsert_double_field(self, collection, field_name):
+        self.upsert_field(collection, field_name, "pdouble")
+        
+    def upsert_field(self, collection, field_name, type):
+        delete_field = {"delete-field":{ "name": field_name }}
+        response = requests.post(f"{SOLR_URL}/{collection}/schema", json=delete_field)
+        add_field = {"add-field":{ "name": field_name, "type": type, "stored": "true",
+                                  "indexed": "true", "multiValued": "false" }}
+        response = requests.post(f"{SOLR_URL}/{collection}/schema", json=add_field)
+    
     def add_documents(self, collection, docs):
         print(f"\nAdding Documents to '{collection}' collection")
         return requests.post(f"{SOLR_URL}/{collection}/update?commit=true", json=docs).json()
+
+    def enable_ltr(self, collection_name):
+        collection_config_url = f'{SOLR_URL}/{collection_name}/config'
+
+        del_ltr_query_parser = { "delete-queryparser": "ltr" }
+        add_ltr_q_parser = {
+        "add-queryparser": {
+            "name": "ltr",
+                "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
+            }
+        }
+
+        print(f"Adding LTR QParser for {collection_name} collection")
+        response = requests.post(collection_config_url, json=del_ltr_query_parser)
+        response = requests.post(collection_config_url, json=add_ltr_q_parser)
+        self.print_status(response.json())
+
+        del_ltr_transformer = { "delete-transformer": "features" }
+        add_transformer =  {
+        "add-transformer": {
+            "name": "features",
+            "class": "org.apache.solr.ltr.response.transform.LTRFeatureLoggerTransformerFactory",
+            "fvCacheName": "QUERY_DOC_FV"
+        }}
+
+        print(f"Adding LTR Doc Transformer for {collection_name} collection")
+        response = requests.post(collection_config_url, json=del_ltr_transformer)
+        response = requests.post(collection_config_url, json=add_transformer)
+        self.print_status(response.json())    
+
+    def delete_feature_store(self, collection, name):
+        return requests.delete(f'{SOLR_URL}/{collection}/schema/feature-store/{name}')
+
+    def create_feature_store(self, collection, features):
+        return requests.put(f'{SOLR_URL}/{collection}/schema/feature-store', json=features)
+    
+    def search(self, collection, request=None, data=None):
+        return requests.post(f"{SOLR_URL}/{collection}/select", json=request, data=data)
 
     def docs(self, response):
         return response.json()["response"]["docs"]
@@ -153,8 +167,22 @@ class SolrEngine:
     def docs_as_html(self, response):
         return str(response.json()["response"]["docs"]).replace('\\n', '').replace(", '", ",<br/>'")
     
-    def search(self, collection, request):
-        return requests.post(f"{SOLR_URL}/{collection}/select", json=request)
-
     def spell_check(self, collection, request):
         return requests.post(f"{SOLR_URL}/{collection}/spell", json=request)
+    
+    def log_query(self, collection, featureset, ids, options={}, id_field='id'):
+        efi = ' '.join(f'efi.{k}="{v}"' for k, v in options.items())
+        params = {
+            'fl': f"{id_field},[features store={featureset} {efi}]",
+            'q': "{{!terms f={}}}{}".format(id_field, ','.join(ids)) if ids else "*:*",
+            'rows': 1000,
+            'wt': 'json'
+        }
+        resp = self.search(collection, data=params)
+        docs = resp.json()['response']['docs']
+        # Clean up features to consistent format
+        for d in docs:
+            features = list(map(lambda f : float(f.split('=')[1]), d['[features]'].split(',')))
+            d['ltr_features'] = features
+
+        return docs

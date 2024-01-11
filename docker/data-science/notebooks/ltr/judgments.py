@@ -82,12 +82,9 @@ class Judgment:
 
     def __init__(self, grade, keywords, doc_id, qid=None, features=[], weight=1):
         self.grade = grade
-        if qid is not None:
-            self.qid = qid
-        else: #Convenience, we assign a qid
-            self.qid = Judgment.qid_for_keywords(keywords)
         self.keywords = keywords
         self.doc_id = str(doc_id)
+        self.qid = Judgment.qid_for_keywords(keywords) if qid is None else qid
         self.features = features # 0th feature is ranklib feature 1
         self.weight = weight
 
