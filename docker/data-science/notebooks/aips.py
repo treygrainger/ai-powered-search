@@ -1,10 +1,11 @@
-import requests
+import glob 
+from IPython.display import display,HTML
 import os
-import re
 import pandas as pd
-from solr import SolrEngine
 from pyspark.sql import SparkSession
-from IPython.display import display, HTML
+import re
+import requests
+from solr import SolrEngine
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_NOTEBOOK_HOST="aips-notebook"
@@ -266,6 +267,11 @@ def upsert_boosts_field(collection_name, field_name, field_type_name="boosts"):
 
     print_status(response)
     
+def all_sessions():
+    sessions = pd.concat([pd.read_csv(f, compression='gzip')
+                          for f in glob.glob('data/*_sessions.gz')])
+    return sessions.rename(columns={'clicked_doc_id': 'doc_id'})
+
 def num2str(number):
     return str(round(number,4)) #round to 4 decimal places for readibility
 
@@ -352,7 +358,6 @@ def create_view(collection_name, view_name,
     spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
   
 def fetch_products(doc_ids):
-    import requests
     doc_ids = ["%s" % doc_id for doc_id in doc_ids]
     query = "upc:( " + " OR ".join(doc_ids) + " )"
     params = {'q':  query, 'wt': 'json', 'rows': len(doc_ids)}
