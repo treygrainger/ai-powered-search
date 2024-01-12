@@ -18,7 +18,7 @@ AIPS_WEBSERVER_PORT = os.getenv('WEBSERVER_PORT') or 2345
 #SOLR_HOST = os.getenv('SOLR_HOST') or 'aips-solr'
 #SOLR_PORT = os.getenv('SOLR_PORT') or 8983
 #SOLR_HOST_URL = "http://" + SOLR_HOST + ":" + str(SOLR_PORT) + "/solr"
-SOLR_URL = "http://localhost:8983/solr"
+#SOLR_URL = "http://localhost:8983/solr"
 
 def query_solr(collection,query):   
     response = requests.post(SOLR_URL + '/' + collection + '/select',
