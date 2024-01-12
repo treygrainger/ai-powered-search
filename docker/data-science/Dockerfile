@@ -15,8 +15,6 @@ RUN mkdir -p /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
     echo "c5293f10257603bcf650780afcb91ed1bb118f09feb731502c2dc7ac14ba950e586a033cb2f50e5c122c5ec442dc0d2b55f76c4f6522b555e67f4981a38bca26 *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" | sha512sum -c - && \
     chmod a+rwx $SHADED_SOLR_JAR_PATH
 
-COPY notebooks notebooks
-
 WORKDIR /home/$NB_USER
 
 # Pull Requirements, Install Notebooks
@@ -30,6 +28,8 @@ RUN python -m spacy download en_core_web_sm
 RUN pip --no-cache-dir install https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_coreference_web_trf-3.4.0a2-py3-none-any.whl
 
 COPY log4j.properties /usr/local/spark/conf/
+
+COPY notebooks notebooks
 
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 USER $NB_UID
@@ -50,5 +50,6 @@ WORKDIR notebooks
 # Mark all notebooks as trusted by default
 RUN find . -name \*.ipynb -print0|xargs -0 jupyter-trust -y
 
-CMD start-notebook.sh --ServerApp.token='' --ServerApp.password='' --ServerApp.ip=0.0.0.0 --no-browser \
-  --LabApp.default_url='/lab/tree/welcome.ipynb' --NotebookApp.token='token'
+RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+CMD start-notebook.sh --ServerApp.token='test' --ServerApp.password='' --ServerApp.ip=0.0.0.0 --no-browser \
+  --LabApp.default_url='/lab/tree/welcome.ipynb' --NotebookApp.token='token' --LabApp.token='test'
