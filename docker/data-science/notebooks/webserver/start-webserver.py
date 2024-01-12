@@ -31,16 +31,16 @@ def query_solr(collection,query):
 
     return response
 
-def tag_query(post_body):
-    return requests.post(SOLR_URL + '/entities/tag?json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,command_function', post_body).text
+def tag_query(query_bytes):
+    return requests.post(SOLR_URL + '/entities/tag?json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,command_function', query_bytes).text
 
-def tag_places(post_body):
-    x = json.dumps(post_body)
-    return requests.post(SOLR_URL + '/reviews/select', json=post_body).text
+def tag_places(json_query):
+    x = json.dumps(json_query)
+    return requests.post(SOLR_URL + '/reviews/select', json=json_query).text
 
-def post_search(post_body):
-    x = json.dumps(post_body)
-    return requests.post(SOLR_URL + '/reviews/select', json=post_body).text
+def structured_search(json_query):
+    x = json.dumps(json_query)
+    return requests.post(SOLR_URL + '/reviews/select', json=json_query).text
 
 def queryTreeToResolvedString(query_tree):
     resolved_query = ""
@@ -53,7 +53,7 @@ def queryTreeToResolvedString(query_tree):
     return resolved_query
 
 
-def run_search(text):     
+def keyword_search(text):     
      #http://localhost:8983/solr/places/select?q=%2B{!edismax%20v=%22bbq^0.9191%20ribs^0.6186%20pork^0.5991%22}%20%2B{!geofilt%20d=50%20sfield=location_p%20pt=%2234.9362399,-80.8379247%22}&fl=name_s,location_p,city_s,doc_type_s,state_s&debug=true&qf=text_t
      #url = "http://localhost:8983/solr/places/select?q=%2B{!edismax%20v=%22bbq^0.9191%20ribs^0.6186%20pork^0.5991%22}%20%2B{!geofilt%20d=50%20sfield=location_p%20pt=34.9362399,-80.8379247}&qf=text_t&defType=lucene"
      #solrQuery = {"query": text, "params":{ "defType": "lucene", "qf": "name_t^100 text_t city_t^0.1 categories_t^0.01", "debug": "true"}}
@@ -371,7 +371,7 @@ def get_category_and_term_vector_solr_response(keyword):
         } 
     }
     
-    response = post_search(query)
+    response = structured_search(query)
     #response.asyncRequestID = asyncRequestID; //used to guarantee order of processing
     return json.loads(response)
     
@@ -473,7 +473,7 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
             self.sendResponse(process_basic_query(post_body))
         elif self.path.startswith("/run_search"):
             text = post_body.decode('UTF-8')
-            results = json.loads(run_search(text))
+            results = json.loads(keyword_search(text))
             highlight_terms = post_body.decode('UTF-8').split(' ')
             rendered_results = render_search_results(results, highlight_terms)
             self.sendResponse(rendered_results)
