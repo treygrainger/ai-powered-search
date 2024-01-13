@@ -60,13 +60,25 @@ class SolrEngine:
                 self.upsert_text_field(collection, "company_country")
                 self.upsert_text_field(collection, "job_description")
                 self.upsert_text_field(collection, "company_description")
-            case "stackexchange" | "health" | "cooking" | "scifi" | "outdoors" | "travel" | "devops":
+            case "stackexchange" | "health" | "cooking" | "scifi" | "travel" | "devops":
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "body")
             case "tmdb" :
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "overview")
-                self.upsert_double_field(collection, "release_year")                
+                self.upsert_double_field(collection, "release_year")  
+            case "outdoors":
+                self.upsert_string_field(collection,"url")
+                self.upsert_integer_field(collection,"post_type_id")
+                self.upsert_integer_field(collection,"accepted_answer_id")
+                self.upsert_integer_field(collection,"parent_id")
+                self.upsert_integer_field(collection,"score")
+                self.upsert_integer_field(collection,"view_count")
+                self.upsert_text_field(collection,"body")
+                self.upsert_text_field(collection,"title")
+                self.upsert_keyword_field(collection,"tags")
+                self.upsert_integer_field(collection,"answer_count")
+                self.upsert_integer_field(collection,"owner_user_id")              
             case _:
                 pass
             
@@ -111,12 +123,22 @@ class SolrEngine:
         
     def upsert_double_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "pdouble")
+    
+    def upsert_integer_field(self, collection, field_name):
+        self.upsert_field(collection, field_name, "pint")
+    
+    def upsert_keyword_field(self, collection, field_name):
+        self.upsert_field(collection, field_name, "string", {"multiValued": "true", "docValues": "true"})
         
-    def upsert_field(self, collection, field_name, type):
-        delete_field = {"delete-field":{ "name": field_name }}
+    def upsert_string_field(self, collection, field_name):
+        self.upsert_field(collection, field_name, "string", {"indexed": "false", "docValues": "true"})
+        
+    def upsert_field(self, collection, field_name, type, additional_schema={}):
+        delete_field = {"delete-field":{"name": field_name}}
         response = requests.post(f"{SOLR_URL}/{collection}/schema", json=delete_field)
-        add_field = {"add-field":{ "name": field_name, "type": type, "stored": "true",
-                                  "indexed": "true", "multiValued": "false" }}
+        field = {"name": field_name, "type": type, "stored": "true", "indexed": "true", "multiValued": "false"}
+        field.update(additional_schema)
+        add_field = {"add-field": field}
         response = requests.post(f"{SOLR_URL}/{collection}/schema", json=add_field)
     
     def add_documents(self, collection, docs):
