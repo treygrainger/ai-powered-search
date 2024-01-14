@@ -1,3 +1,8 @@
+import sys
+sys.path.append('..')
+from semantic_search.semantic_functions.location_distance import *
+from semantic_search.semantic_functions.popularity import *
+
 def process_semantic_functions(query_tree):
     position = 0
     while position < len(query_tree):

@@ -8,7 +8,7 @@ from IPython.display import display,HTML
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_NOTEBOOK_HOST="aips-notebook"
 AIPS_ZK_HOST="aips-zk"
-#AIPS_SOLR_HOST = "localhost"
+AIPS_SOLR_HOST = "localhost"
 #AIPS_NOTEBOOK_HOST="localhost"
 #AIPS_ZK_HOST="localhost"
 AIPS_SOLR_PORT = os.getenv('AIPS_SOLR_PORT') or '8983'

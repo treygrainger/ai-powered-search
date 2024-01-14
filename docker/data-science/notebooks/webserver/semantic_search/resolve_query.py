@@ -54,7 +54,8 @@ def resolve_query(query_tree):
                 solrQuery = "+brand_s:\"" + item["canonical_form"] + "\""
                 query_tree[position] = {"type":"solr", "query": solrQuery}
             else:
-                print(item)
+                print(item["type"])
+                
                 #note ensure all item types either 1) have a surface form, or 2) are handled specially above
                 query_tree[position] = {"type":"solr", "query": "+{!edismax v=\"" + escape_quotes_in_query(item["surface_form"]) + "\"}"}
                 

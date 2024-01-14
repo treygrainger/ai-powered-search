@@ -1,7 +1,7 @@
 import sys
 sys.path.append('..')
 import json
-from methods.tag_places import *
+from semantic_search.engine.tag_places import *
 
 def location_distance(query, position):
       
