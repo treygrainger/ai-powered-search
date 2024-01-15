@@ -38,6 +38,9 @@ def healthcheck():
 def get_engine():
     return ENGINE
 
+def as_html(json):
+    return str(json).replace('\\n', '').replace(", '", ",<br/>'")
+    
 def print_status(solr_response):
       print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
