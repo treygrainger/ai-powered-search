@@ -96,12 +96,6 @@
   
   <script type="text/javascript">
 
-
-    let urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('q')){
-      queryToSubmit = urlParams.get('q');
-    };
-
       var latestAsyncRequestID; //optimistic concurrency for in-order results
 
       /* UI Stuff */
@@ -160,9 +154,23 @@
             
             }
           );  
+            
+          //initialize
+          let urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.has('q')){
+            userQuery = urlParams.get('q');
+            shouldSubmit = urlParams.get('submit') == "false" ? false : true;
+            $('#text').val(userQuery); 
+            UI.process_user_query(userQuery, true);
+          }
+            
         });
 
       return {
+        process_user_query: function(user_query, submit=true){
+                process_user_query(user_query, submit);  
+        },
+        
         updateTaggerResponse: function(data){
                 $('#results').text(JSON.stringify(data, null, '  '));  
         },
@@ -585,9 +593,7 @@
        }
         
         return query;
-      }
-      
-           
+      }    
       
   </script>
  </head>
