@@ -31,6 +31,7 @@ class SolrEngine:
         print(f"Wiping '{name}' collection")
         response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
         self.print_status(response)
+        requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
 
         create_collection_params = [
             ('action', "CREATE"),
@@ -80,7 +81,25 @@ class SolrEngine:
                 self.upsert_text_field(collection,"title")
                 self.upsert_keyword_field(collection,"tags")
                 self.upsert_integer_field(collection,"answer_count")
-                self.upsert_integer_field(collection,"owner_user_id")              
+                self.upsert_integer_field(collection,"owner_user_id")
+            case "reviews":
+                self.add_delimited_field_type(collection, "commaDelimited", ",\\\s*")
+                self.add_delimited_field_type(collection, "pipeDelimited", "\\|\\\s*") #necessary? is this used
+                self.upsert_field(collection, "doc_type", "commaDelimited", {"multiValued": "true"})
+                self.add_copy_field(collection, "categories_t", ["doc_type"])
+                self.upsert_field(collection, "location_p", "location")
+                self.add_copy_field(collection, "location_pt_s", ["location_p"])
+            case "entities":
+                self.add_tag_field_type(collection)
+                self.upsert_string_field(collection, "surface_form")
+                self.upsert_string_field(collection, "canonical_form")
+                self.upsert_field(collection, "name", "text_general")
+                self.upsert_integer_field(collection, "popularity")
+                self.upsert_field(collection, "name_tag", "tag")
+                self.add_copy_field(collection, "name", ["surface_form", "name_tag", "canonical_form"])
+                self.add_copy_field(collection, "population_i", ["popularity"]) #what is the source field here?
+                self.add_copy_field(collection, "surface_form", ["name_tag"])
+                self.add_request_handler(collection, "/tag", "name_tag")
             case _:
                 pass
             
