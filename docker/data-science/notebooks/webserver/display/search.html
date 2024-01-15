@@ -80,14 +80,17 @@
 
     #tagged:before {
       content: "TAGGED: ";
+      font-weight: bold;
+    }
+
+    #enriched:before {
+      content: "ENRICHED: ";
+      font-weight: bold;
     }
 
     #transformed:before {
-      content: "PARSED: ";
-    }
-
-    #resolved:before {
-      content: "TO SOLR: ";
+      content: "TRANSFORMED: ";
+      font-weight: bold;
     }
     
   </style>
@@ -113,8 +116,8 @@
                   if (processed_query && processed_query.asyncRequestID === latestAsyncRequestID) {
                     UI.updateTaggerResponse(processed_query.tagger_data);
                     UI.updateTaggedQuery(processed_query.tagged_query);
-                    UI.updateTransformedQuery(processed_query.transformed_query);    
-                    UI.updateResolvedQuery(processed_query.resolved_query);
+                    UI.updateEnrichedQuery(processed_query.enriched_query);    
+                    UI.updateTransformedQuery(processed_query.transformed_query);
                     UI.showDebug();
                   }
                 }
@@ -124,7 +127,7 @@
                 }
                 if (submitSearch) {
                   submitSearch = false;
-                  let searchResults = await runSearch(processed_query.resolved_query);
+                  let searchResults = await runSearch(processed_query.transformed_query);
                   UI.hideDebug();
                   UI.updateSearchResults(searchResults);
                 }
@@ -184,6 +187,15 @@
           }
         },
 
+        updateEnrichedQuery: function(enriched_query){
+          if (enriched_query.length > 0){
+            $('#enriched').html(enriched_query);
+            $('#enriched').css("visibility", "visible")
+          }else{
+            $('#enriched').css("visibility", "hidden");
+          }     
+        },
+
         updateTransformedQuery: function(transformed_query){
           if (transformed_query.length > 0){
             $('#transformed').html(transformed_query);
@@ -193,25 +205,7 @@
           }     
         },
 
-        updateResolvedQuery: function(resolved_query){
-          if (resolved_query.length > 0){
-            $('#resolved').html(resolved_query);
-            $('#resolved').css("visibility", "visible")
-          }else{
-            $('#resolved').css("visibility", "hidden");
-          }     
-        },
-
-        updateSearchResults: function(search_results){
-          /**
-          if (resolved_query.length > 0){
-            $('#resolved').html(resolved_query);
-            $('#resolved').css("visibility", "visible")
-          }else{
-            $('#resolved').css("visibility", "hidden");
-          }  
-
-          */   
+        updateSearchResults: function(search_results){ 
           $("#searchResults").html(search_results);
         },
         hideDebug: function(){
@@ -350,14 +344,14 @@
     
     
     function queryTreeToResolvedString(query){
-      var resolved_query = "";
+      var transformed_query = "";
       for (i=0; i<query.query_tree.length; i++){
-        if (resolved_query.length > 0){
-          resolved_query += " ";
+        if (transformed_query.length > 0){
+          transformed_query += " ";
         }
-        resolved_query += query.query_tree[i].query;
+        transformed_query += query.query_tree[i].query;
       }
-      return resolved_query;
+      return transformed_query;
     }
 
 
@@ -607,8 +601,8 @@
     </div>
     <div id="queryExplain">
       <p class="note" id="tagged" style="visibility:hidden"></p>
+      <p class="note" id="enriched" style="visibility:hidden"></p>
       <p class="note" id="transformed" style="visibility:hidden"></p>
-      <p class="note" id="resolved" style="visibility:hidden"></p>
       <p class="note" id="final" style="visibility:hidden"></p>
     </div>
     <div style="position:relative; float: left; clear: left; background-color: #eeeeee; margin: 10px;">
