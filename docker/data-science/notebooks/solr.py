@@ -167,6 +167,3 @@ class SolrEngine:
 
     def response_docs(self, response):
         return response.json()["response"]["docs"]
-        
-    def documents_as_html(self, response):
-        return str(response.json()["response"]["docs"]).replace('\\n', '').replace(", '", ",<br/>'")
