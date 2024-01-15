@@ -160,10 +160,10 @@ class SolrEngine:
         return docs
     
     def spell_check(self, collection, request):
-        return requests.post(f"{SOLR_URL}/{collection}/spell", json=request)
+        return requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request)
     
     def print_status(self, solr_response):
         print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
-    def response_docs(self, response):
-        return response.json()["response"]["docs"]
+    def docs_from_response(self, response):
+        return response["response"]["docs"]
