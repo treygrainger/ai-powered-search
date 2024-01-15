@@ -1,1 +1,1 @@
-from .outdoors import cleanDataset,transformDataFrame
+from .outdoors import clean,transform_dataframe

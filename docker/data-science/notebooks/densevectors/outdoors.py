@@ -19,7 +19,7 @@ def splitTags(tags):
     else:
         return None
 
-def cleanDataset(filename):
+def clean_dataset(filename):
     nullval = None
     df = pandas.read_csv(filename)
     df["title"] = df["title"].fillna('')
@@ -37,7 +37,7 @@ def cleanDataset(filename):
     df["owner_user_id"] = pandas.to_numeric(df["owner_user_id"], errors='coerce').astype(int)
     return df
     
-def transformDataFrame(df):
+def transform_dataframe(df):
     data = []
     nullval = None
     for idx,row in df.iterrows():
