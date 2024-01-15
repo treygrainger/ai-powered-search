@@ -160,15 +160,15 @@
           if (urlParams.has('q')){
             userQuery = urlParams.get('q');
             shouldSubmit = urlParams.get('submit') == "false" ? false : true;
-            UI.process_user_query(userQuery, shouldSubmit);
-            $('#text').val(userQuery);  
+            $('#text').val(userQuery); 
+            UI.process_user_query(userQuery, true);
           }
             
         });
 
       return {
-        process_user_query: function(user_query){
-                process_user_query(user_query);  
+        process_user_query: function(user_query, submit=true){
+                process_user_query(user_query, submit);  
         },
         
         updateTaggerResponse: function(data){
