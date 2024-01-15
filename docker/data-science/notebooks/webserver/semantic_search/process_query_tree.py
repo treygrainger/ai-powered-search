@@ -3,11 +3,10 @@ sys.path.append('..')
 from aips import *
 import requests
 from semantic_search.query_tree.process_semantic_functions import *
-from semantic_search.engine.get_category_and_term_vector_solr_response import *
-from semantic_search.engine.parse_category_and_term_vector_from_solr_response import *
+from semantic_search.engine.semantic_knowledge_graph import *
 from semantic_search.query_tree.escape_quotes_in_query import *
 
-def resolve_query(query_tree):
+def process_query_tree(query_tree):
     query_tree = process_semantic_functions(query_tree)
         
     # Now process everything that is not yet resolved
@@ -16,8 +15,8 @@ def resolve_query(query_tree):
         if (item["type"] != "solr"): #already resolved
             if (item["type"] == "keyword"):  
                 categoryAndTermVector = None
-                solrResponse = get_category_and_term_vector_solr_response(item["surface_form"])
-                categoryAndTermVector = parse_category_and_term_vector_from_solr_response(solrResponse)       
+                skgResponse = traverse_skg(item["surface_form"])
+                categoryAndTermVector = parse_skg_response(skgResponse)       
 
                 queryString = ""
                 if ("term_vector" in categoryAndTermVector):
