@@ -14,14 +14,13 @@ AIPS_ZK_PORT= os.getenv('AIPS_ZK_PORT') or '2181'
 SOLR_URL = f'http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr'
 SOLR_COLLECTIONS_URL = f'{SOLR_URL}/admin/collections'
 STATUS_URL = f'{SOLR_URL}/admin/zookeeper/status'
-name = None
 
 class SolrCollection:
     def __init__(self, name):
         self.name = name
 
     def write_from_csv(self, file, more_opts=False):
-        print(f"Loading {name}")
+        print(f"Loading {self.name}")
         spark = SparkSession.builder.appName("AIPS").getOrCreate()
         reader = spark.read.format("csv").option("header", "true").option("inferSchema", "true")
         if more_opts:
@@ -31,25 +30,14 @@ class SolrCollection:
             # We can rely on automatic generation of IDs, or we can create them ourselves. 
             # If we do it, comment out previous line
             # .withColumn("id", concat(col("category"), lit("_") col("id")))
-            csv_df = csv_df.withColumn("category", lit(name)).drop("id")
-        print(f"{name} Schema: ")
+            csv_df = csv_df.withColumn("category", lit(self.name)).drop("id")
+        print(f"{self.name} Schema: ")
         csv_df.printSchema()
-        options = {"zkhost": AIPS_ZK_HOST, "collection": name,
+        options = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
                    "gen_uniq_key": "true", "commit_within": "5000"}
         csv_df.write.format("solr").options(**options).mode("overwrite").save()
         print("Status: Success")
 
-    def write_from_csv(self, file):
-        print(f"Loading {name}")
-        spark = SparkSession.builder.appName("AIPS").getOrCreate()
-        csv_df = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(file)
-        print(f"{name} Schema: ")
-        csv_df.printSchema()
-        options = {"zkhost": AIPS_ZK_HOST, "collection": name,
-                   "gen_uniq_key": "true", "commit_within": "5000"}
-        csv_df.write.format("solr").options(**options).mode("overwrite").save()
-        print("Status: Success")
-    
     def write_from_dataframe(self, dataframe):
         opts = {"zkhost": "aips-zk", "collection": name,
                 "gen_uniq_key": "true", "commit_within": "5000"}

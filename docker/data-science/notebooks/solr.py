@@ -3,7 +3,7 @@ import os
 from IPython.display import display,HTML
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
-import SolrCollection
+from solr_collection import SolrCollection
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_ZK_HOST="aips-zk"
@@ -31,6 +31,7 @@ class SolrEngine:
         print(f"Wiping '{name}' collection")
         response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
         self.print_status(response)
+        requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
 
         create_collection_params = [
             ('action', "CREATE"),
@@ -80,7 +81,25 @@ class SolrEngine:
                 self.upsert_text_field(collection,"title")
                 self.upsert_keyword_field(collection,"tags")
                 self.upsert_integer_field(collection,"answer_count")
-                self.upsert_integer_field(collection,"owner_user_id")              
+                self.upsert_integer_field(collection,"owner_user_id")
+            case "reviews":
+                self.add_delimited_field_type(collection, "commaDelimited", ",\\\s*")
+                self.add_delimited_field_type(collection, "pipeDelimited", "\\|\\\s*") #necessary? is this used
+                self.upsert_field(collection, "doc_type", "commaDelimited", {"multiValued": "true"})
+                self.add_copy_field(collection, "categories_t", ["doc_type"])
+                self.upsert_field(collection, "location_p", "location")
+                self.add_copy_field(collection, "location_pt_s", ["location_p"])
+            case "entities":
+                self.add_tag_field_type(collection)
+                self.upsert_string_field(collection, "surface_form")
+                self.upsert_string_field(collection, "canonical_form")
+                self.upsert_field(collection, "name", "text_general")
+                self.upsert_integer_field(collection, "popularity")
+                self.upsert_field(collection, "name_tag", "tag")
+                self.add_copy_field(collection, "name", ["surface_form", "name_tag", "canonical_form"])
+                self.add_copy_field(collection, "population_i", ["popularity"]) #what is the source field here?
+                self.add_copy_field(collection, "surface_form", ["name_tag"])
+                self.add_request_handler(collection, "/tag", "name_tag")
             case _:
                 pass
             
@@ -106,7 +125,67 @@ class SolrEngine:
         field.update(additional_schema)
         add_field = {"add-field": field}
         response = requests.post(f"{SOLR_URL}/{collection}/schema", json=add_field)
-
+        
+    def add_copy_field(self, collection, source, dest):
+        request = {"add-copy-field": {"source": source, "dest": dest}}
+        requests.post(f"{SOLR_URL}/{collection}/schema", data=request)
+    
+    def add_request_handler(self, collection, request_name, field):
+        request = {
+            "add-requesthandler" : {
+                "name": request_name,
+                "class": "solr.TaggerRequestHandler",
+                "defaults": {"field": field}
+            }
+        }
+        requests.post(f"{SOLR_URL}/{collection}/config", data=request)
+    
+    def add_tag_field_type(self, collection):
+        request = {
+            "add-field-type": {
+                "name": "tag",
+                "class": "solr.TextField",
+                "postingsFormat": "FST50",
+                "omitNorms": "true",
+                "omitTermFreqAndPositions": "true",
+                "indexAnalyzer": {
+                    "tokenizer": {
+                        "class": "solr.StandardTokenizerFactory"},
+                    "filters": [
+                        {"class": "solr.EnglishPossessiveFilterFactory"},
+                        {"class": "solr.ASCIIFoldingFilterFactory"},
+                        {"class": "solr.LowerCaseFilterFactory"},
+                        {"class": "solr.ConcatenateGraphFilterFactory", "preservePositionIncrements": "false"}
+                    ]},
+                "queryAnalyzer": {
+                    "tokenizer": {
+                        "class": "solr.StandardTokenizerFactory"},
+                    "filters": [
+                        {"class": "solr.EnglishPossessiveFilterFactory"},
+                        {"class": "solr.ASCIIFoldingFilterFactory"},
+                        {"class": "solr.LowerCaseFilterFactory"}
+                    ]}
+                }
+            }
+        requests.post(f"{SOLR_URL}/{collection}/schema", data=request)
+    
+    def add_delimited_field_type(self, collection, field_name, pattern):
+        request = {
+            "add-field-type": {
+                "name": field_name,
+                "class": "solr.TextField",
+                "positionIncrementGap": 100,
+                "omitTermFreqAndPositions": "true",
+                "indexAnalyzer": {
+                    "tokenizer": {
+                        "class": "solr.PatternTokenizerFactory",
+                        "pattern": pattern
+                    }
+                }
+            }
+        }
+        return requests.post(f"{SOLR_URL}/{collection}/schema", json=request)
+    
     def enable_ltr(self, collection):
         collection_config_url = f'{SOLR_URL}/{collection.name}/config'
 
