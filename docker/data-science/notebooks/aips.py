@@ -352,9 +352,9 @@ def render_search_results(query, results):
 
         return rendered
 
-def create_view(collection_name, view_name,
+def create_view(collection, view_name,
                 spark=SparkSession.builder.appName("AIPS").getOrCreate()):
-    opts = {"zkhost": AIPS_ZK_HOST, "collection": collection_name}    
+    opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    
     spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
   
 def fetch_products(doc_ids):

@@ -3,7 +3,7 @@ import os
 from IPython.display import display,HTML
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
-import SolrCollection
+from solr_collection import SolrCollection
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_ZK_HOST="aips-zk"
@@ -50,8 +50,8 @@ class SolrEngine:
     def apply_schema_for_collection(self, collection):
         match collection:
             case "cat_in_the_hat":
-                self.upsert_text_field("title")
-                self.upsert_text_field("description")
+                self.upsert_text_field(collection, "title")
+                self.upsert_text_field(collection, "description")
             case "products" | "products_with_signals_boosts":
                 self.upsert_text_field(collection, "upc")
                 self.upsert_text_field(collection, "name")
@@ -106,6 +106,41 @@ class SolrEngine:
         field.update(additional_schema)
         add_field = {"add-field": field}
         response = requests.post(f"{SOLR_URL}/{collection}/schema", json=add_field)
+        
+    def upsert_boosts_field(self, collection, field_name, field_type_name="boosts"):
+        
+        #clear out old field to ensure this function is idempotent
+        delete_field = {"delete-field":{ "name":field_name }}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field).json()
+
+        self.upsert_boosts_field_type(collection, field_type_name);
+        
+        print(f"Adding '{field_name}' field to collection")
+        add_field = {"add-field":{ "name":field_name, "type":"boosts", "stored":"true", "indexed":"true", "multiValued":"true" }}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field).json()
+
+        self.print_status(response)
+        
+    def upsert_boosts_field_type(self, collection, field_type_name):
+        delete_field_type = {"delete-field-type":{ "name":field_type_name }}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type).json()
+
+        print(f"Adding '{field_type_name}' field type to collection")
+        add_field_type = { 
+            "add-field-type" : {
+                "name": field_type_name,
+                "class":"solr.TextField",
+                "positionIncrementGap":"100",
+                "analyzer" : {
+                    "tokenizer": {
+                        "class":"solr.PatternTokenizerFactory",
+                        "pattern": "," },
+                    "filters":[
+                        { "class":"solr.LowerCaseFilterFactory" },
+                        { "class":"solr.DelimitedPayloadFilterFactory", "delimiter": "|", "encoder": "float" }]}}}
+
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type).json()
+        self.print_status(response)
 
     def enable_ltr(self, collection):
         collection_config_url = f'{SOLR_URL}/{collection.name}/config'
