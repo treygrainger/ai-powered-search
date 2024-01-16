@@ -227,6 +227,20 @@ def upsert_string_field(collection_name, field_name):
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
     print_status(response)
     
+def upsert_boosts_field(collection_name, field_name, field_type_name="boosts"):
+    
+    #clear out old field to ensure this function is idempotent
+    delete_field = {"delete-field":{ "name":field_name }}
+    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
+
+    upsert_boosts_field_type(collection_name, field_type_name);
+    
+    print(f"Adding '{field_name}' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"boosts", "stored":"true", "indexed":"true", "multiValued":"true" }}
+    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
+
+    print_status(response)
+    
 def upsert_boosts_field_type(collection_name, field_type_name):
     delete_field_type = {"delete-field-type":{ "name":field_type_name }}
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field_type).json()
