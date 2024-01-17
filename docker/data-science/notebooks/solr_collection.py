@@ -26,11 +26,11 @@ class SolrCollection:
         if more_opts:
             reader = reader.option("charset", "utf-8").option("quote", "\"").option("escape", "\"").option("multiLine","true").option("delimiter", ",")
         csv_df = reader.load(file)
-        if more_opts:
+        if more_opts and "category" in more_opts:
             # We can rely on automatic generation of IDs, or we can create them ourselves. 
             # If we do it, comment out previous line
             # .withColumn("id", concat(col("category"), lit("_") col("id")))
-            csv_df = csv_df.withColumn("category", lit(more_opts["category"])).drop("id")
+            csv_df = csv_df.withColumn("category", lit(more_opts.get("category"))).drop("id")
         print(f"{self.name} Schema: ")
         csv_df.printSchema()
         options = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
