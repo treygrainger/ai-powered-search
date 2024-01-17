@@ -30,7 +30,6 @@ class SolrEngine:
         ]
         print(f"Wiping '{name}' collection")
         response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
-        self.print_status(response)
         requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
 
         create_collection_params = [
@@ -218,6 +217,9 @@ class SolrEngine:
     
     def spell_check(self, collection, request):
         return requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request)
+    
+    def tag(self, collection, params, body):
+        return requests.post(f"{SOLR_URL}/{collection.name}/tag?{params}", body)
     
     def print_status(self, solr_response):
         print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )

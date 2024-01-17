@@ -14,11 +14,8 @@ from urllib.parse import urlparse, parse_qs
 FILE = 'semantic-search'
 AIPS_WEBSERVER_PORT = os.getenv('WEBSERVER_PORT') or 2345
 
-from semantic_search.engine.tag_query import *
-from semantic_search.engine.tag_places import *
-from semantic_search.engine.keyword_search import *
-from semantic_search.process_basic_query import *
-from semantic_search.process_semantic_query import *
+from semantic_search.engine import tag_places, tag_query, keyword_search
+from semantic_search import process_basic_query, process_semantic_query
 from display.render_search_results import *
 
 class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
