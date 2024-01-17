@@ -160,6 +160,66 @@ class SolrEngine:
         response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type).json()
         self.print_status(response)
 
+    def add_copy_field(self, collection, source, dest):
+        request = {"add-copy-field": {"source": source, "dest": dest}}
+        requests.post(f"{SOLR_URL}/{collection}/schema", data=request)
+    
+    def add_request_handler(self, collection, request_name, field):
+        request = {
+            "add-requesthandler" : {
+                "name": request_name,
+                "class": "solr.TaggerRequestHandler",
+                "defaults": {"field": field}
+            }
+        }
+        requests.post(f"{SOLR_URL}/{collection}/config", data=request)
+    
+    def add_tag_field_type(self, collection):
+        request = {
+            "add-field-type": {
+                "name": "tag",
+                "class": "solr.TextField",
+                "postingsFormat": "FST50",
+                "omitNorms": "true",
+                "omitTermFreqAndPositions": "true",
+                "indexAnalyzer": {
+                    "tokenizer": {
+                        "class": "solr.StandardTokenizerFactory"},
+                    "filters": [
+                        {"class": "solr.EnglishPossessiveFilterFactory"},
+                        {"class": "solr.ASCIIFoldingFilterFactory"},
+                        {"class": "solr.LowerCaseFilterFactory"},
+                        {"class": "solr.ConcatenateGraphFilterFactory", "preservePositionIncrements": "false"}
+                    ]},
+                "queryAnalyzer": {
+                    "tokenizer": {
+                        "class": "solr.StandardTokenizerFactory"},
+                    "filters": [
+                        {"class": "solr.EnglishPossessiveFilterFactory"},
+                        {"class": "solr.ASCIIFoldingFilterFactory"},
+                        {"class": "solr.LowerCaseFilterFactory"}
+                    ]}
+                }
+            }
+        requests.post(f"{SOLR_URL}/{collection}/schema", data=request)
+    
+    def add_delimited_field_type(self, collection, field_name, pattern):
+        request = {
+            "add-field-type": {
+                "name": field_name,
+                "class": "solr.TextField",
+                "positionIncrementGap": 100,
+                "omitTermFreqAndPositions": "true",
+                "indexAnalyzer": {
+                    "tokenizer": {
+                        "class": "solr.PatternTokenizerFactory",
+                        "pattern": pattern
+                    }
+                }
+            }
+        }
+        return requests.post(f"{SOLR_URL}/{collection}/schema", json=request)
+    
     def enable_ltr(self, collection):
         collection_config_url = f'{SOLR_URL}/{collection.name}/config'
 
@@ -218,7 +278,11 @@ class SolrEngine:
     def spell_check(self, collection, request):
         return requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request)
     
+<<<<<<< HEAD
     def tag(self, collection, params, body=None):
+=======
+    def tag(self, collection, params, body):
+>>>>>>> 93ff869c81f523ea871e858db1702aacaec91176
         return requests.post(f"{SOLR_URL}/{collection.name}/tag?{params}", body)
     
     def print_status(self, solr_response):

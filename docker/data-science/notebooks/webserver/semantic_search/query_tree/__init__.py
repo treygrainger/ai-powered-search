@@ -1,4 +1,4 @@
-from ..engine.semantic_knowledge_graph import *
+from semantic_search.engine.semantic_knowledge_graph import *
 
 def escape_quotes_in_query(query):
     return query.replace('"', '\\"')

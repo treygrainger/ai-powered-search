@@ -30,14 +30,22 @@ class SolrCollection:
             # We can rely on automatic generation of IDs, or we can create them ourselves. 
             # If we do it, comment out previous line
             # .withColumn("id", concat(col("category"), lit("_") col("id")))
+<<<<<<< HEAD
             csv_df = csv_df.withColumn("category", lit(more_opts["category"])).drop("id")
+=======
+            csv_df = csv_df.withColumn("category", lit(self.name)).drop("id")
+>>>>>>> 93ff869c81f523ea871e858db1702aacaec91176
         print(f"{self.name} Schema: ")
         csv_df.printSchema()
         options = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
                    "gen_uniq_key": "true", "commit_within": "5000"}
         csv_df.write.format("solr").options(**options).mode("overwrite").save()
         print("Status: Success")
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 93ff869c81f523ea871e858db1702aacaec91176
     def write_from_dataframe(self, dataframe):
         opts = {"zkhost": "aips-zk", "collection": self.name,
                 "gen_uniq_key": "true", "commit_within": "5000"}

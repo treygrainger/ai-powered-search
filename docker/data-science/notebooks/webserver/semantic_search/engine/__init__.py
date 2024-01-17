@@ -21,7 +21,7 @@ def query_solr(collection, query):
             "data": json.puts(query),
             "dataType": 'json',
             "contentType": 'application/json'          
-          });
+          })
 
     return response
 
