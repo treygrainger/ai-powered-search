@@ -37,7 +37,7 @@ def healthcheck():
 
 def get_engine():
     return ENGINE
-
+    
 def print_status(solr_response):
       print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
@@ -227,6 +227,20 @@ def upsert_string_field(collection_name, field_name):
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
     print_status(response)
     
+def upsert_boosts_field(collection_name, field_name, field_type_name="boosts"):
+    
+    #clear out old field to ensure this function is idempotent
+    delete_field = {"delete-field":{ "name":field_name }}
+    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
+
+    upsert_boosts_field_type(collection_name, field_type_name);
+    
+    print(f"Adding '{field_name}' field to collection")
+    add_field = {"add-field":{ "name":field_name, "type":"boosts", "stored":"true", "indexed":"true", "multiValued":"true" }}
+    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
+
+    print_status(response)
+    
 def upsert_boosts_field_type(collection_name, field_type_name):
     delete_field_type = {"delete-field-type":{ "name":field_type_name }}
     response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field_type).json()
@@ -352,9 +366,9 @@ def render_search_results(query, results):
 
         return rendered
 
-def create_view(collection_name, view_name,
+def create_view(collection, view_name,
                 spark=SparkSession.builder.appName("AIPS").getOrCreate()):
-    opts = {"zkhost": AIPS_ZK_HOST, "collection": collection_name}    
+    opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    
     spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
   
 def fetch_products(doc_ids):
