@@ -172,11 +172,14 @@ class SolrEngine:
         self.print_status(response.json())    
 
     def delete_feature_store(self, collection, name):
-        return requests.delete(f'{SOLR_URL}/{collection}/schema/feature-store/{name}')
+        return requests.delete(f'{SOLR_URL}/{collection.name}/schema/feature-store/{name}')
 
     def create_feature_store(self, collection, features):
-        return requests.put(f'{SOLR_URL}/{collection}/schema/feature-store', json=features)
+        return requests.put(f'{SOLR_URL}/{collection.name}/schema/feature-store', json=features)
 
+    def upload_model(self, collection, model):
+        return requests.put(f'{SOLR_URL}/{collection.name}/schema/model-store', json=model)
+    
     def log_query(self, collection, featureset, ids, options={}, id_field='id'):
         efi = ' '.join(f'efi.{k}="{v}"' for k, v in options.items())
         params = {
