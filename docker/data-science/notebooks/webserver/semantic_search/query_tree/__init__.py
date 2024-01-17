@@ -1,17 +1,17 @@
 from semantic_search.engine.semantic_knowledge_graph import *
-
+from semantic_search.semantic_functions import *
 def escape_quotes_in_query(query):
     return query.replace('"', '\\"')
 
 def to_query_string(query_tree):
     return " ".join([node["query"] for node in query_tree])
 
-def enrich(query_tree):
+def enrich(collection, query_tree):
     query_tree = process_semantic_functions(query_tree)    
     for i in range(len(query_tree)):
         item = query_tree[i]
         if item["type"] == "keyword":
-            skg_response = traverse_skg(item["surface_form"])
+            skg_response = traverse_skg(collection, item["surface_form"])
             enrichments = parse_skg_response(skg_response)
             query_tree[i] = {"type": "skg_enriched", 
                              "enrichments": enrichments}                    

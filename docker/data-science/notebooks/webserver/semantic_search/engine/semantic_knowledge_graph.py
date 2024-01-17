@@ -42,6 +42,3 @@ def parse_skg_response(skg_response):
     parsed["term_vector"] = term_vector
 
     return parsed
-
-def determine_category_and_related_terms(keyword):
-    return parse_skg_response(traverse_skg(keyword))

@@ -28,7 +28,16 @@ def query_solr(collection, query):
 def tag_places(post_body):
     return requests.post(SOLR_URL + '/reviews/select', json=post_body).text
 
-def tag_query():
-    return '''json.nl=map&sort=popularity%20desc&matchText=true&
-        echoParams=all&fl=id,type,canonical_form,name,country:countrycode_s,
-        admin_area:admin_code_1_s,popularity,*_p,semantic_function'''
+#Temporary attempt to create a functional tag request
+def tag_request(query):
+    return {
+        "query": query,
+        "params": {
+            "matchText": "true",
+			"json.nl": "map",
+			"field": "name_tag",
+			"echoParams": "all",
+			"fl": "id,type,canonical_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,semantic_function",
+			"sort": "popularity desc"
+		}
+    }

@@ -2,16 +2,16 @@ import sys
 sys.path.append('..')
 from aips import *
 import json
-from webserver.semantic_search.engine import tag_query
 from webserver.semantic_search.query_tree import *
 
-def process_semantic_query(query_bytes):
+def process_semantic_query(collection, query_bytes):
     text = query_bytes.decode('UTF-8')
-    tagger_data = json.loads(tag_query(query_bytes))
+    engine = get_engine()
+    tagger_data = engine.tag_query("entities", query_bytes)
     
     query_tree, tagged_query, enriched_query = generate_query_representations(text, tagger_data)
         
-    enriched_query_tree = enrich(query_tree)
+    enriched_query_tree = enrich(collection, query_tree)
     transformed = transform_query(enriched_query_tree)
     query_string = to_query_string(transformed)      
 
