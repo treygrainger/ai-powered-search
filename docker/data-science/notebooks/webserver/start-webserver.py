@@ -14,11 +14,8 @@ from urllib.parse import urlparse, parse_qs
 FILE = 'semantic-search'
 AIPS_WEBSERVER_PORT = os.getenv('WEBSERVER_PORT') or 2345
 
-from semantic_search.engine.tag_query import *
-from semantic_search.engine.tag_places import *
-from semantic_search.engine.keyword_search import *
-from semantic_search.process_basic_query import *
-from semantic_search.process_semantic_query import *
+from semantic_search.engine import tag_places, keyword_search
+from semantic_search import process_basic_query, process_semantic_query
 from display.render_search_results import *
 
 class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
@@ -46,11 +43,11 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
         post_body = self.rfile.read(content_len)
 
         if (self.path.startswith("/tag_query")):
-            self.sendResponse(tag_query(post_body))
+            self.sendResponse(get_engine().tag_query("entities", post_body))
         elif self.path.startswith("/tag_places"):
             self.sendResponse(tag_places(post_body))
         elif self.path.startswith("/process_semantic_query"):
-            self.sendResponse(process_semantic_query(post_body))
+            self.sendResponse(process_semantic_query(get_engine().get_collection("reviews"), post_body))
         elif self.path.startswith("/process_basic_query"):
             self.sendResponse(process_basic_query(post_body))
         elif self.path.startswith("/run_search"):
