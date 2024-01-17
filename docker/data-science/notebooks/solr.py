@@ -3,17 +3,18 @@ import os
 from IPython.display import display,HTML
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
+from solr_collection import SolrCollection
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_ZK_HOST="aips-zk"
 #AIPS_SOLR_HOST = "localhost"
 #AIPS_ZK_HOST = "localhost"
-AIPS_SOLR_PORT = os.getenv('AIPS_SOLR_PORT') or '8983'
-AIPS_ZK_PORT= os.getenv('AIPS_ZK_PORT') or '2181'
+AIPS_SOLR_PORT = os.getenv("AIPS_SOLR_PORT") or "8983"
+AIPS_ZK_PORT= os.getenv("AIPS_ZK_PORT") or "2181"
 
-SOLR_URL = f'http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr'
-SOLR_COLLECTIONS_URL = f'{SOLR_URL}/admin/collections'
-STATUS_URL = f'{SOLR_URL}/admin/zookeeper/status'
+SOLR_URL = f"http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr"
+SOLR_COLLECTIONS_URL = f"{SOLR_URL}/admin/collections"
+STATUS_URL = f"{SOLR_URL}/admin/zookeeper/status"
 
 class SolrEngine:
     def __init__(self):
@@ -22,31 +23,32 @@ class SolrEngine:
     def health_check(self):
         return requests.get(STATUS_URL).json()["responseHeader"]["status"] == 0
 
-    def print_status(self, solr_response):
-        print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
-
-    def create_collection(self, collection):
+    def create_collection(self, name):
         wipe_collection_params = [
-            ('action', "delete"),
-            ('name', collection)
+            ("action", "delete"),
+            ("name", name)
         ]
-        print(f"Wiping '{collection}' collection")
+        print(f'Wiping "{name}" collection')
         response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
-        self.print_status(response)
+        requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
 
         create_collection_params = [
-            ('action', "CREATE"),
-            ('name', collection),
-            ('numShards', 1),
-            ('replicationFactor', 1) ]
-        print(f"Creating '{collection}' collection")
-        response = requests.post(SOLR_COLLECTIONS_URL, data=create_collection_params).json()
+            ("action", "CREATE"),
+            ("name", name),
+            ("numShards", 1),
+            ("replicationFactor", 1) ]
+        print(f'Creating "{name}" collection')
+        response = requests.post(SOLR_COLLECTIONS_URL + "?commit=true", data=create_collection_params).json()
         
-        self.apply_schema_for_collection(collection)
+        self.apply_schema_for_collection(self.get_collection(name))
         self.print_status(response)
+        return SolrCollection(name)
 
+    def get_collection(self, name):
+        return SolrCollection(name)
+    
     def apply_schema_for_collection(self, collection):
-        match collection:
+        match collection.name:
             case "cat_in_the_hat":
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
@@ -78,35 +80,28 @@ class SolrEngine:
                 self.upsert_text_field(collection,"title")
                 self.upsert_keyword_field(collection,"tags")
                 self.upsert_integer_field(collection,"answer_count")
-                self.upsert_integer_field(collection,"owner_user_id")              
+                self.upsert_integer_field(collection,"owner_user_id")
+            case "reviews":
+                self.add_delimited_field_type(collection, "commaDelimited", ",\\\s*")
+                self.add_delimited_field_type(collection, "pipeDelimited", "\\|\\\s*") #necessary? is this used
+                self.upsert_field(collection, "doc_type", "commaDelimited", {"multiValued": "true"})
+                self.add_copy_field(collection, "categories_t", ["doc_type"])
+                self.upsert_field(collection, "location_p", "location")
+                self.add_copy_field(collection, "location_pt_s", ["location_p"])
+            case "entities":
+                self.add_tag_field_type(collection)
+                self.upsert_string_field(collection, "surface_form")
+                self.upsert_string_field(collection, "canonical_form")
+                self.upsert_field(collection, "name", "text_general")
+                self.upsert_integer_field(collection, "popularity")
+                self.upsert_field(collection, "name_tag", "tag", {"stored": "false"})
+                self.add_copy_field(collection, "name", ["surface_form", "name_tag", "canonical_form"])
+                self.add_copy_field(collection, "population_i", ["popularity"]) #what is the source field here?
+                self.add_copy_field(collection, "surface_form", ["name_tag"])
+                self.add_request_handler(collection, "/tag", "name_tag")
             case _:
                 pass
             
-    def populate_collection_from_csv(self, collection, file, more_opts=False):
-        print(f"Loading {collection}")
-        spark = SparkSession.builder.appName("AIPS").getOrCreate()
-        reader = spark.read.format("csv").option("header", "true").option("inferSchema", "true")
-        if more_opts:
-            reader = reader.option("charset", "utf-8").option("quote", "\"").option("escape", "\"").option("multiLine","true").option("delimiter", ",")
-        csv_df = reader.load(file)
-        if more_opts and "category" in more_opts:
-            # We can rely on automatic generation of IDs, or we can create them ourselves. 
-            # If we do it, comment out previous line
-            # .withColumn("id", concat(col("category"), lit("_") col("id")))
-            csv_df = csv_df.withColumn("category", lit(more_opts.get("category"))).drop("id")
-        print(f"{collection} Schema: ")
-        csv_df.printSchema()
-        options = {"zkhost": AIPS_ZK_HOST, "collection": collection,
-                   "gen_uniq_key": "true", "commit_within": "5000"}
-        csv_df.write.format("solr").options(**options).mode("overwrite").save()
-        print("Status: Success")
-    
-    def populate_from_spark(self, collection, query,
-                            spark=SparkSession.builder.appName("AIPS").getOrCreate()):
-        opts = {"zkhost": "aips-zk", "collection": collection,
-                "gen_uniq_key": "true", "commit_within": "5000"}
-        spark.sql(query).write.format("solr").options(**opts).mode("overwrite").save()
-    
     def upsert_text_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "text_general")
         
@@ -121,21 +116,102 @@ class SolrEngine:
         
     def upsert_string_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "string", {"indexed": "false", "docValues": "true"})
-        
+    
+    def upsert_boosts_field(self, collection, field_name, field_type_name="boosts"):
+        self.upsert_field(collection, field_name, field_type_name, {"multiValued":"true"})
+           
     def upsert_field(self, collection, field_name, type, additional_schema={}):
         delete_field = {"delete-field":{"name": field_name}}
-        response = requests.post(f"{SOLR_URL}/{collection}/schema", json=delete_field)
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
         field = {"name": field_name, "type": type, "stored": "true", "indexed": "true", "multiValued": "false"}
         field.update(additional_schema)
         add_field = {"add-field": field}
-        response = requests.post(f"{SOLR_URL}/{collection}/schema", json=add_field)
-    
-    def add_documents(self, collection, docs):
-        print(f"\nAdding Documents to '{collection}' collection")
-        return requests.post(f"{SOLR_URL}/{collection}/update?commit=true", json=docs).json()
+        return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field)
+        
+    def upsert_boosts_field_type(self, collection, field_type_name):
+        delete_field_type = {"delete-field-type":{ "name":field_type_name }}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type).json()
 
-    def enable_ltr(self, collection_name):
-        collection_config_url = f'{SOLR_URL}/{collection_name}/config'
+        print(f'Adding "{field_type_name}" field type to collection')
+        add_field_type = { 
+            "add-field-type" : {
+                "name": field_type_name,
+                "class":"solr.TextField",
+                "positionIncrementGap":"100",
+                "analyzer" : {
+                    "tokenizer": {
+                        "class":"solr.PatternTokenizerFactory",
+                        "pattern": "," },
+                    "filters":[
+                        { "class":"solr.LowerCaseFilterFactory" },
+                        { "class":"solr.DelimitedPayloadFilterFactory", "delimiter": "|", "encoder": "float" }]}}}
+
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type).json()
+        self.print_status(response)
+
+    def add_copy_field(self, collection, source, dest):
+        request = {"add-copy-field": {"source": source, "dest": dest}}
+        requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
+    
+    def add_request_handler(self, collection, request_name, field):
+        request = {
+            "add-requesthandler" : {
+                "name": request_name,
+                "class": "solr.TaggerRequestHandler",
+                "defaults": {"field": field}
+            }
+        }
+        return requests.post(f"{SOLR_URL}/{collection.name}/config", json=request)
+        
+    def add_tag_field_type(self, collection):
+        request = {
+            "add-field-type": {
+                "name": "tag",
+                "class": "solr.TextField",
+                "postingsFormat": "FST50",
+                "omitNorms": "true",
+                "omitTermFreqAndPositions": "true",
+                "indexAnalyzer": {
+                    "tokenizer": {
+                        "class": "solr.StandardTokenizerFactory"},
+                    "filters": [
+                        {"class": "solr.EnglishPossessiveFilterFactory"},
+                        {"class": "solr.ASCIIFoldingFilterFactory"},
+                        {"class": "solr.LowerCaseFilterFactory"},
+                        {"class": "solr.ConcatenateGraphFilterFactory", "preservePositionIncrements": "false"}
+                    ]},
+                "queryAnalyzer": {
+                    "tokenizer": {
+                        "class": "solr.StandardTokenizerFactory"},
+                    "filters": [
+                        {"class": "solr.EnglishPossessiveFilterFactory"},
+                        {"class": "solr.ASCIIFoldingFilterFactory"},
+                        {"class": "solr.LowerCaseFilterFactory"}
+                    ]}
+                }
+            }
+        print(f"{SOLR_URL}/{collection.name}/schema")
+        print(requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request).text)
+    
+    def add_delimited_field_type(self, collection, field_name, pattern):
+        request = {
+            "add-field-type": {
+                "name": field_name,
+                "class": "solr.TextField",
+                "positionIncrementGap": 100,
+                "omitTermFreqAndPositions": "true",
+                "indexAnalyzer": {
+                    "tokenizer": {
+                        "class": "solr.PatternTokenizerFactory",
+                        "pattern": pattern
+                    }
+                }
+            }
+        }
+        return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
+    
+    def enable_ltr(self, collection):
+        collection_config_url = f"{SOLR_URL}/{collection.name}/config"
 
         del_ltr_query_parser = { "delete-queryparser": "ltr" }
         add_ltr_q_parser = {
@@ -145,7 +221,7 @@ class SolrEngine:
             }
         }
 
-        print(f"Adding LTR QParser for {collection_name} collection")
+        print(f"Adding LTR QParser for {collection.name} collection")
         response = requests.post(collection_config_url, json=del_ltr_query_parser)
         response = requests.post(collection_config_url, json=add_ltr_q_parser)
         self.print_status(response.json())
@@ -158,42 +234,49 @@ class SolrEngine:
             "fvCacheName": "QUERY_DOC_FV"
         }}
 
-        print(f"Adding LTR Doc Transformer for {collection_name} collection")
+        print(f"Adding LTR Doc Transformer for {collection.name} collection")
         response = requests.post(collection_config_url, json=del_ltr_transformer)
         response = requests.post(collection_config_url, json=add_transformer)
         self.print_status(response.json())    
 
     def delete_feature_store(self, collection, name):
-        return requests.delete(f'{SOLR_URL}/{collection}/schema/feature-store/{name}')
+        return requests.delete(f"{SOLR_URL}/{collection.name}/schema/feature-store/{name}")
 
     def create_feature_store(self, collection, features):
-        return requests.put(f'{SOLR_URL}/{collection}/schema/feature-store', json=features)
-    
-    def search(self, collection, request=None, data=None):
-        return requests.post(f"{SOLR_URL}/{collection}/select", json=request, data=data)
+        return requests.put(f"{SOLR_URL}/{collection.name}/schema/feature-store", json=features)
 
-    def docs(self, response):
-        return response.json()["response"]["docs"]
-        
-    def docs_as_html(self, response):
-        return str(response.json()["response"]["docs"]).replace('\\n', '').replace(", '", ",<br/>'")
+    def upload_model(self, collection, model):
+        return requests.put(f"{SOLR_URL}/{collection.name}/schema/model-store", json=model)
     
-    def spell_check(self, collection, request):
-        return requests.post(f"{SOLR_URL}/{collection}/spell", json=request)
-    
-    def log_query(self, collection, featureset, ids, options={}, id_field='id'):
-        efi = ' '.join(f'efi.{k}="{v}"' for k, v in options.items())
+    def log_query(self, collection, featureset, ids, options={}, id_field="id"):
+        efi = " ".join(f'efi.{k}="{v}"' for k, v in options.items())
         params = {
-            'fl': f"{id_field},[features store={featureset} {efi}]",
-            'q': "{{!terms f={}}}{}".format(id_field, ','.join(ids)) if ids else "*:*",
-            'rows': 1000,
-            'wt': 'json'
+            "fl": f"{id_field},[features store={featureset} {efi}]",
+            "q": "{{!terms f={}}}{}".format(id_field, ",".join(ids)) if ids else "*:*",
+            "rows": 1000,
+            "wt": "json"
         }
-        resp = self.search(collection, data=params)
-        docs = resp.json()['response']['docs']
+        resp = collection.search(data=params)
+        docs = resp.json()["response"]["docs"]
         # Clean up features to consistent format
         for d in docs:
-            features = list(map(lambda f : float(f.split('=')[1]), d['[features]'].split(',')))
-            d['ltr_features'] = features
+            features = list(map(lambda f : float(f.split("=")[1]), d["[features]"].split(",")))
+            d["ltr_features"] = features
 
         return docs
+<<<<<<< HEAD
+=======
+    
+    def spell_check(self, collection, request):
+        return requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request)
+
+    def print_status(self, solr_response):
+        print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
+
+    def docs_from_response(self, response):
+        return response["response"]["docs"]
+    
+    def tag_query(self, collection_name, query):
+        url_params = "json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,surface_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,semantic_function"
+        return requests.post(f"{SOLR_URL}/{collection_name}/tag?{url_params}", query).json()
+>>>>>>> 5f0dd31 (Adding SolrCollection and codebase cleanup (#153))
