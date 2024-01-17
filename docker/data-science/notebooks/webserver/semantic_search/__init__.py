@@ -2,8 +2,8 @@ import sys
 sys.path.append('..')
 from aips import *
 import json
-from semantic_search.engine import tag_query
-from semantic_search.query_tree import *
+from webserver.semantic_search.engine import tag_query
+from webserver.semantic_search.query_tree import *
 
 def process_semantic_query(query_bytes):
     text = query_bytes.decode('UTF-8')

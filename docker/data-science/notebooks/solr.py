@@ -218,7 +218,7 @@ class SolrEngine:
     def spell_check(self, collection, request):
         return requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request)
     
-    def tag(self, collection, params, body):
+    def tag(self, collection, params, body=None):
         return requests.post(f"{SOLR_URL}/{collection.name}/tag?{params}", body)
     
     def print_status(self, solr_response):

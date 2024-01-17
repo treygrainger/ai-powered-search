@@ -1,5 +1,7 @@
 import sys
 sys.path.append('..')
+import urllib.parse
+import json
 from aips import *
 import requests
 
@@ -12,14 +14,14 @@ def keyword_search(text):
      
     return requests.get(SOLR_URL + "/reviews/select?q=" + q + "&qf=" + qf + "&defType=" + defType).text
 
-def query_solr(collection,query):   
+def query_solr(collection, query):   
     response = requests.post(SOLR_URL + '/' + collection + '/select',
           {
             "type": 'POST',
             "data": json.puts(query),
             "dataType": 'json',
             "contentType": 'application/json'          
-          });   
+          });
 
     return response
 

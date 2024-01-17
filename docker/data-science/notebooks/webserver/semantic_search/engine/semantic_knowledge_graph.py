@@ -1,7 +1,6 @@
 import sys
 sys.path.append("..")
 from aips import *
-import requests, json
 
 def traverse_skg(collection, keyword):
     query = {
