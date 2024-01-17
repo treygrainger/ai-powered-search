@@ -89,22 +89,11 @@ class SolrEngine:
         if more_opts:
             reader = reader.option("charset", "utf-8").option("quote", "\"").option("escape", "\"").option("multiLine","true").option("delimiter", ",")
         csv_df = reader.load(file)
-        if more_opts:
+        if more_opts and "category" in more_opts:
             # We can rely on automatic generation of IDs, or we can create them ourselves. 
             # If we do it, comment out previous line
             # .withColumn("id", concat(col("category"), lit("_") col("id")))
-            csv_df = csv_df.withColumn("category", lit(collection)).drop("id")
-        print(f"{collection} Schema: ")
-        csv_df.printSchema()
-        options = {"zkhost": AIPS_ZK_HOST, "collection": collection,
-                   "gen_uniq_key": "true", "commit_within": "5000"}
-        csv_df.write.format("solr").options(**options).mode("overwrite").save()
-        print("Status: Success")
-
-    def populate_collection_from_csv(self, collection, file):
-        print(f"Loading {collection}")
-        spark = SparkSession.builder.appName("AIPS").getOrCreate()
-        csv_df = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(file)
+            csv_df = csv_df.withColumn("category", lit(more_opts.get("category"))).drop("id")
         print(f"{collection} Schema: ")
         csv_df.printSchema()
         options = {"zkhost": AIPS_ZK_HOST, "collection": collection,
