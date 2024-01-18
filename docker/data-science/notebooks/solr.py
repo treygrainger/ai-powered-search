@@ -82,8 +82,8 @@ class SolrEngine:
                 self.upsert_integer_field(collection,"answer_count")
                 self.upsert_integer_field(collection,"owner_user_id")
             case "reviews":
-                self.add_delimited_field_type(collection, "commaDelimited", ",\\\s*")
-                self.add_delimited_field_type(collection, "pipeDelimited", "\\|\\\s*") #necessary? is this used
+                self.add_delimited_field_type(collection, "commaDelimited", ",\s*")
+                self.add_delimited_field_type(collection, "pipeDelimited", "\|\s*") #necessary? is this used
                 self.upsert_field(collection, "doc_type", "commaDelimited", {"multiValued": "true"})
                 self.add_copy_field(collection, "categories_t", ["doc_type"])
                 self.upsert_field(collection, "location_p", "location")
@@ -98,7 +98,7 @@ class SolrEngine:
                 self.add_copy_field(collection, "name", ["surface_form", "name_tag", "canonical_form"])
                 self.add_copy_field(collection, "population_i", ["popularity"]) #what is the source field here?
                 self.add_copy_field(collection, "surface_form", ["name_tag"])
-                self.add_request_handler(collection, "/tag", "name_tag")
+                self.add_tag_request_handler(collection, "/tag", "name_tag")
             case _:
                 pass
             
@@ -153,7 +153,7 @@ class SolrEngine:
         request = {"add-copy-field": {"source": source, "dest": dest}}
         requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
     
-    def add_request_handler(self, collection, request_name, field):
+    def add_tag_request_handler(self, collection, request_name, field):
         request = {
             "add-requesthandler" : {
                 "name": request_name,
