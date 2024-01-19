@@ -104,6 +104,17 @@ class SolrEngine:
                 self.add_tag_request_handler(collection, "/tag", "name_tag")
             case _:
                 pass
+    
+    def apply_additional_schema(self, collection):
+        self.upsert_text_field(collection, "collectionName")
+        self.delete_copy_fields(collection)
+        self.add_copy_field(collection, "name", "name_ngram")
+        self.add_copy_field(collection, "name", "name_omit_norms")
+        self.add_copy_field(collection, "name", "name_txt_en_split")
+        
+    def add_copy_field(self, collection, source, dest):
+        request = {"add-copy-field": {"source": source, "dest": dest}}
+        requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
             
     def upsert_text_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "text_general")
@@ -152,10 +163,72 @@ class SolrEngine:
         response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type).json()
         self.print_status(response)
 
-    def add_copy_field(self, collection, source, dest):
-        request = {"add-copy-field": {"source": source, "dest": dest}}
-        requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
-    
+    def add_ngram_field_type(self, collection):
+        ngram_analyzer = {
+            "tokenizer": {"class": "solr.StandardTokenizerFactory"},
+            "filters":
+                [{"class": "solr.LowerCaseFilterFactory"},
+                {"class": "solr.NGramFilterFactory",
+                "minGramSize": "3",
+                #"preserveOriginal": "true",
+                "maxGramSize": "6"}]
+        }
+        self.add_text_field_type(collection, "ngram", ngram_analyzer,
+                                 omitTermFreqAndPositions=True)
+
+    def add_omit_norms_field_type(self, collection):
+        text_general_analyzer = {
+            "tokenizer": {"class": "solr.StandardTokenizerFactory"},
+            "filters":[{"class": "solr.LowerCaseFilterFactory"}]
+        }
+        self.add_text_field_type(collection, "omit_norms", text_general_analyzer,
+                                 omitNorms=True)
+
+    def add_text_field_type(self, collection, name, analyzer, 
+                            omitTermFreqAndPositions=False,
+                            omitNorms=False):
+        """Create a field type and a corresponding dynamic field."""
+        
+        dynamic_field_name = f"*_{name}"
+        delete_dynamic_field = {"delete-dynamic-field": {"name": dynamic_field_name}}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_dynamic_field)
+        
+        field_type_name = f"text_{name}"
+        delete_field_type = {"delete-field-type": {"name": field_type_name}}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type)
+
+        add_field_type = {
+            "add-field-type": {
+                "name": field_type_name,
+                "class":"solr.TextField",
+                "positionIncrementGap":"100",
+                "analyzer": analyzer,
+                "omitTermFreqAndPositions": omitTermFreqAndPositions,
+                "omitNorms": omitNorms
+            }
+        }
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type)
+
+        add_dynamic_field = {
+            "add-dynamic-field": {
+                "name": dynamic_field_name,
+                "type": field_type_name,
+                "stored": True
+            }
+        }        
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_dynamic_field)
+
+    def delete_copy_fields(self, collection):
+        copy_fields = requests.get(f"{SOLR_URL}/{collection.name}/schema/copyfields?wt=json").json()
+        print("Deleting all copy fields")
+        for field in copy_fields["copyFields"]:
+                source = field["source"]
+                dest = field["dest"]
+                rule = {"source": source, "dest": dest}
+                delete_copy_field = {"delete-copy-field": rule}
+                response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_copy_field).json()
+                self.print_status(response)
+        
     def add_tag_request_handler(self, collection, request_name, field):
         request = {
             "add-requesthandler" : {
