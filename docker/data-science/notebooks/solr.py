@@ -106,10 +106,13 @@ class SolrEngine:
                 pass
     
     def apply_additional_schema(self, collection):
+        self.upsert_text_field(collection, "collectionName")
         self.delete_copy_fields(collection)
         self.add_copy_field(collection, "name", "name_ngram")
         self.add_copy_field(collection, "name", "name_omit_norms")
         self.add_copy_field(collection, "name", "name_txt_en_split")
+        self.add_ngram_field_type(collection)
+        self.add_omit_norms_field_type(collection)
         
     def add_copy_field(self, collection, source, dest):
         request = {"add-copy-field": {"source": source, "dest": dest}}
@@ -221,12 +224,12 @@ class SolrEngine:
         copy_fields = requests.get(f"{SOLR_URL}/{collection.name}/schema/copyfields?wt=json").json()
         print("Deleting all copy fields")
         for field in copy_fields["copyFields"]:
-                source = field["source"]
-                dest = field["dest"]
-                rule = {"source": source, "dest": dest}
-                delete_copy_field = {"delete-copy-field": rule}
-                response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_copy_field).json()
-                self.print_status(response)
+            source = field["source"]
+            dest = field["dest"]
+            rule = {"source": source, "dest": dest}
+            delete_copy_field = {"delete-copy-field": rule}
+            response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_copy_field).json()
+            self.print_status(response)
         
     def add_tag_request_handler(self, collection, request_name, field):
         request = {
