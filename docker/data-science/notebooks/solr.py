@@ -140,19 +140,21 @@ class SolrEngine:
                 pass
     
     def apply_additional_schema(self, collection):
-        self.upsert_text_field(collection, "collectionName")
         self.delete_copy_fields(collection)
+        self.upsert_text_field(collection, "collectionName")
         self.add_copy_field(collection, "name", "name_ngram")
         self.add_copy_field(collection, "name", "name_omit_norms")
         self.add_copy_field(collection, "name", "name_txt_en_split")
+        self.add_ngram_field_type(collection)
+        self.add_omit_norms_field_type(collection)
         
     def add_copy_field(self, collection, source, dest):
         request = {"add-copy-field": {"source": source, "dest": dest}}
         requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
-            
+
     def upsert_text_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "text_general")
-        
+    
     def upsert_double_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "pdouble")
     
@@ -256,12 +258,12 @@ class SolrEngine:
         copy_fields = requests.get(f"{SOLR_URL}/{collection.name}/schema/copyfields?wt=json").json()
         print("Deleting all copy fields")
         for field in copy_fields["copyFields"]:
-                source = field["source"]
-                dest = field["dest"]
-                rule = {"source": source, "dest": dest}
-                delete_copy_field = {"delete-copy-field": rule}
-                response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_copy_field).json()
-                self.print_status(response)
+            source = field["source"]
+            dest = field["dest"]
+            rule = {"source": source, "dest": dest}
+            delete_copy_field = {"delete-copy-field": rule}
+            response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_copy_field).json()
+            self.print_status(response)
         
     def add_tag_request_handler(self, collection, request_name, field):
         request = {
@@ -367,15 +369,13 @@ class SolrEngine:
             "wt": "json"
         }
         resp = collection.search(data=params)
-        docs = resp.json()["response"]["docs"]
+        docs = resp["response"]["docs"]
         # Clean up features to consistent format
         for d in docs:
             features = list(map(lambda f : float(f.split("=")[1]), d["[features]"].split(",")))
             d["ltr_features"] = features
 
         return docs
-<<<<<<< HEAD
-=======
     
     def spell_check(self, collection, request):
         return requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request).json()
@@ -389,4 +389,3 @@ class SolrEngine:
     def tag_query(self, collection_name, query):
         url_params = "json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,surface_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,semantic_function"
         return requests.post(f"{SOLR_URL}/{collection_name}/tag?{url_params}", query).json()
->>>>>>> 5f0dd31 (Adding SolrCollection and codebase cleanup (#153))
