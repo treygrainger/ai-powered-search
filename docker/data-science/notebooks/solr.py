@@ -106,7 +106,6 @@ class SolrEngine:
                 pass
     
     def apply_additional_schema(self, collection):
-        self.upsert_text_field(collection, "collectionName")
         self.delete_copy_fields(collection)
         self.add_copy_field(collection, "name", "name_ngram")
         self.add_copy_field(collection, "name", "name_omit_norms")
@@ -115,10 +114,10 @@ class SolrEngine:
     def add_copy_field(self, collection, source, dest):
         request = {"add-copy-field": {"source": source, "dest": dest}}
         requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
-            
+
     def upsert_text_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "text_general")
-        
+    
     def upsert_double_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "pdouble")
     
