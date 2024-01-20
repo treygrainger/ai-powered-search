@@ -1,6 +1,9 @@
 import requests
 import os
 import re
+import pandas as pd
+from solr import SolrEngine
+from IPython.display import display,HTML
 
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_NOTEBOOK_HOST="aips-notebook"
@@ -13,24 +16,25 @@ AIPS_NOTEBOOK_PORT= os.getenv('AIPS_NOTEBOOK_PORT') or '8888'
 AIPS_ZK_PORT= os.getenv('AIPS_ZK_PORT') or '2181'
 AIPS_WEBSERVER_HOST = os.getenv('AIPS_WEBSERVER_HOST') or 'localhost'
 AIPS_WEBSERVER_PORT = os.getenv('AIPS_WEBSERVER_PORT') or '2345'
+ENGINE = SolrEngine()
 
 SOLR_URL = f'http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr'
 SOLR_COLLECTIONS_URL = f'{SOLR_URL}/admin/collections'
 WEBSERVER_URL = f'http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}'
 
 def healthcheck():
-  import requests
-
   status_url = f'{SOLR_URL}/admin/zookeeper/status'
 
   try:
-    response = requests.get(status_url).json()
-    if (response["responseHeader"]["status"] == 0):
+    if (get_engine().health_check()):
       print ("Solr is up and responding.")
       print ("Zookeeper is up and responding.\n")
       print ("All Systems are ready. Happy Searching!")
   except:
       print ("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
+
+def get_engine():
+  return ENGINE
 
 def print_status(solr_response):
   print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
@@ -280,7 +284,10 @@ def img_path_for_upc(upc):
     unavailable_jpg_path = "../data/retrotech/images/unavailable.jpg"
     return expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
 
-
+def display_search(query, documents):
+  display(HTML(f"<strong>Query</strong>: <i>{query}</i><br/><br/><strong>Results:</strong>"))
+  display(HTML(documents))
+  
 def render_search_results(query, results):
     file_path = os.path.dirname(os.path.abspath(__file__))
     search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
@@ -311,9 +318,6 @@ def render_search_results(query, results):
             rendered += separator_template
 
         return rendered
-
-import pandas as pd
-from IPython.display import HTML
 
 def fetch_products(doc_ids):
     import requests
