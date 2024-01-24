@@ -4,17 +4,50 @@ from IPython.display import display,HTML
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
 from solr_collection import SolrCollection
+from env import *
 
-AIPS_SOLR_HOST = "aips-solr"
-AIPS_ZK_HOST="aips-zk"
-#AIPS_SOLR_HOST = "localhost"
-#AIPS_ZK_HOST = "localhost"
-AIPS_SOLR_PORT = os.getenv("AIPS_SOLR_PORT") or "8983"
-AIPS_ZK_PORT= os.getenv("AIPS_ZK_PORT") or "2181"
-
-SOLR_URL = f"http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr"
-SOLR_COLLECTIONS_URL = f"{SOLR_URL}/admin/collections"
-STATUS_URL = f"{SOLR_URL}/admin/zookeeper/status"
+def product_search_request(query):
+    return {
+        "query": query,
+        "fields": ["upc", "name", "manufacturer", "score"],
+        "limit": 5,
+        "params": {
+            "qf": "name manufacturer longDescription",
+            "defType": "edismax",
+            "indent": "true",
+            "sort": "score desc, upc asc"
+        }
+    }
+    
+def skg_request(query):
+    return {
+        "query": query,
+        "params": {
+            "qf": "title body",
+            "fore": "{!type=$defType qf=$qf v=$q}",
+            "back": "*:*",
+            "defType": "edismax",
+            "rows": 0,
+            "echoParams": "none",
+            "omitHeader": "true"
+        },
+        "facet": {
+            "body": {
+                "type": "terms",
+                "field": "body",
+                "sort": { "relatedness": "desc"},
+                "mincount": 2,
+                "limit": 8,
+                "facet": {
+                    "relatedness": {
+                        "type": "func",
+                        "func": "relatedness($fore,$back)"
+                        #"min_popularity": 0.0005
+                    }
+                }  
+            }
+        }
+    }
 
 class SolrEngine:
     def __init__(self):
@@ -53,6 +86,7 @@ class SolrEngine:
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
             case "products" | "products_with_signals_boosts":
+                self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
                 self.upsert_text_field(collection, "name")
                 self.upsert_text_field(collection, "manufacturer")
@@ -271,7 +305,7 @@ class SolrEngine:
 =======
     
     def spell_check(self, collection, request):
-        return requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request)
+        return requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request).json()
 
     def print_status(self, solr_response):
         print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
