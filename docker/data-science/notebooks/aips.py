@@ -6,23 +6,8 @@ from pyspark.sql import SparkSession
 import re
 import requests
 from solr import SolrEngine
-
-AIPS_SOLR_HOST = "aips-solr"
-AIPS_NOTEBOOK_HOST="aips-notebook"
-AIPS_ZK_HOST="aips-zk"
-#AIPS_SOLR_HOST = "localhost"
-#AIPS_NOTEBOOK_HOST="localhost"
-#AIPS_ZK_HOST="localhost"
-AIPS_SOLR_PORT = os.getenv('AIPS_SOLR_PORT') or '8983'
-AIPS_NOTEBOOK_PORT= os.getenv('AIPS_NOTEBOOK_PORT') or '8888'
-AIPS_ZK_PORT= os.getenv('AIPS_ZK_PORT') or '2181'
-AIPS_WEBSERVER_HOST = os.getenv('AIPS_WEBSERVER_HOST') or 'localhost'
-AIPS_WEBSERVER_PORT = os.getenv('AIPS_WEBSERVER_PORT') or '2345'
+from env import SOLR_URL, AIPS_ZK_HOST
 ENGINE = SolrEngine()
-
-SOLR_URL = f'http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr'
-SOLR_COLLECTIONS_URL = f'{SOLR_URL}/admin/collections'
-WEBSERVER_URL = f'http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}'
 
 def healthcheck():
     status_url = f'{SOLR_URL}/admin/zookeeper/status'
@@ -41,246 +26,6 @@ def get_engine():
 def print_status(solr_response):
       print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
-def create_collection(collection_name):
-    #Wipe previous collection
-    wipe_collection_params = [
-        ('action', "delete"),
-        ('name', collection_name)
-    ]
-
-    print(f"Wiping '{collection_name}' collection")
-    response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
-
-  #Create collection
-    create_collection_params = [
-        ('action', "CREATE"),
-        ('name', collection_name),
-        ('numShards', 1),
-        ('replicationFactor', 1) ]
-
-    print(create_collection_params)
-
-    print(f"Creating '{collection_name}' collection")
-    response = requests.post(SOLR_COLLECTIONS_URL, data=create_collection_params).json()
-    print_status(response)
-
-def enable_ltr(collection_name):
-    collection_config_url = f'{SOLR_URL}/{collection_name}/config'
-
-    del_ltr_query_parser = { "delete-queryparser": "ltr" }
-    add_ltr_q_parser = {
-     "add-queryparser": {
-        "name": "ltr",
-            "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
-        }
-    }
-
-    print(f"Del/Adding LTR QParser for {collection_name} collection")
-    response = requests.post(collection_config_url, json=del_ltr_query_parser)
-    print(response)
-    print_status(response.json())
-    response = requests.post(collection_config_url, json=add_ltr_q_parser).json()
-    print_status(response)
-
-    del_ltr_transformer = { "delete-transformer": "features" }
-    add_transformer =  {
-      "add-transformer": {
-        "name": "features",
-        "class": "org.apache.solr.ltr.response.transform.LTRFeatureLoggerTransformerFactory",
-        "fvCacheName": "QUERY_DOC_FV"
-    }}
-
-    print(f"Adding LTR Doc Transformer for {collection_name} collection")
-    response = requests.post(collection_config_url, json=del_ltr_transformer).json()
-    print_status(response)
-    response = requests.post(collection_config_url, json=add_transformer).json()
-    print_status(response)
-    
-def delete_field(collection_name, field_name):
-    #clear out old field to ensure this function is idempotent
-    delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-def clear_copy_fields(collection_name):
-    copy_fields = requests.get(f"{SOLR_URL}/{collection_name}/schema/copyfields?wt=json").json()
-    print("Deleting all copy fields")
-    for field in copy_fields['copyFields']:
-        source = field['source']
-        dest = field['dest']
-        rule = {"source": source, "dest": dest}
-        delete_copy_field = {"delete-copy-field": rule}
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_copy_field).json()
-        print_status(response)
-
-def add_text_field_type(collection_name, analyzer, name,
-                        omitTermFreqAndPositions=False,
-                        omitNorms=False):
-    """Create a field type and a corresponding dynamic field."""
-    field_type_name = "text_" + name
-    dynamic_field_name = "*_" + name
-    print(f"Creating Field Type {field_type_name}")
-    print(f" with Dynamic Field {dynamic_field_name}")
-
-    delete_dynamic_field = {
-        "delete-dynamic-field": {
-            "name": dynamic_field_name
-        }
-    }
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_dynamic_field)
-    print("Delete dynamic field")
-    print_status(response.json())
-
-    delete_field_type = {
-        "delete-field-type": {
-            "name": field_type_name
-        }
-    }
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field_type)
-    print("Delete field type")
-    print_status(response.json())
-
-    add_field_type = {
-        "add-field-type": {
-            "name": field_type_name,
-            "class":"solr.TextField",
-            "positionIncrementGap":"100",
-            "analyzer": analyzer,
-            "omitTermFreqAndPositions": omitTermFreqAndPositions,
-            "omitNorms": omitNorms
-        }
-    }
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field_type)
-    print("Create field type")
-    print_status(response.json())
-
-    add_dynamic_field = {
-        "add-dynamic-field": {
-            "name": dynamic_field_name,
-            "type": field_type_name,
-            "stored": True
-        }
-    }
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_dynamic_field)
-    print_status(response.json())
-
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_dynamic_field)
-    print("Create dynamic field")
-    print_status(response.json())
-
-def add_copy_field(collection_name, src_field, dest_fields):
-    rule = {"source": src_field, "dest": dest_fields}
-    add_copy_field = {"add-copy-field": rule}
-
-    print(f"Adding Copy Field {src_field} -> {dest_fields}'")
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_copy_field).json()
-    print_status(response)
-
-def upsert_text_field(collection_name, field_name):
-    #clear out old field to ensure this function is idempotent
-    delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-    print("Adding '" + field_name + "' field to collection")
-    add_field = {"add-field":{ "name":field_name, "type":"text_general", "stored":"true", "indexed":"true", "multiValued":"false" }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
-    print_status(response)
-
-def upsert_double_field(collection_name, field_name):
-    #clear out old field to ensure this function is idempotent
-    delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-    print("Adding '" + field_name + "' field to collection")
-    add_field = {"add-field":{ "name":field_name, "type":"pdouble", "stored":"true", "indexed":"true", "multiValued":"false" }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
-    print_status(response)
-    
-def upsert_integer_field(collection_name, field_name):
-    #clear out old field to ensure this function is idempotent
-    delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-    print("Adding '" + field_name + "' field to collection")
-    add_field = {"add-field":{ "name":field_name, "type":"pint", "stored":"true", "indexed":"true", "multiValued":"false" }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
-    print_status(response)
-
-def upsert_keyword_field(collection_name, field_name):
-    #clear out old field to ensure this function is idempotent
-    delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-    print("Adding '" + field_name + "' field to collection")
-    add_field = {"add-field":{ "name":field_name, "type":"string", "stored":"true", "indexed":"true", "multiValued":"true", "docValues":"true" }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
-
-    print_status(response)
-    
-def upsert_string_field(collection_name, field_name):
-    #clear out old field to ensure this function is idempotent
-    delete_field = {"delete-field":{ "name":field_name }}
-
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-    print("Adding '" + field_name + "' field to collection")
-    add_field = {"add-field":{ "name":field_name, "type":"string", "stored":"true", "indexed":"false", "multiValued":"false", "docValues":"true" }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
-    print_status(response)
-    
-def upsert_boosts_field(collection_name, field_name, field_type_name="boosts"):
-    
-    #clear out old field to ensure this function is idempotent
-    delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-    upsert_boosts_field_type(collection_name, field_type_name);
-    
-    print(f"Adding '{field_name}' field to collection")
-    add_field = {"add-field":{ "name":field_name, "type":"boosts", "stored":"true", "indexed":"true", "multiValued":"true" }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
-
-    print_status(response)
-    
-def upsert_boosts_field_type(collection_name, field_type_name):
-    delete_field_type = {"delete-field-type":{ "name":field_type_name }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field_type).json()
-
-    print(f"Adding '{field_type_name}' field type to collection")
-    add_field_type = { 
-        "add-field-type" : {
-            "name": field_type_name,
-            "class":"solr.TextField",
-            "positionIncrementGap":"100",
-            "analyzer" : {
-                "tokenizer": {
-                    "class":"solr.PatternTokenizerFactory",
-                    "pattern": "," },
-                 "filters":[
-                    { "class":"solr.LowerCaseFilterFactory" },
-                    { "class":"solr.DelimitedPayloadFilterFactory", "delimiter": "|", "encoder": "float" }]}}}
-
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field_type).json()
-    print_status(response)
-    
-def upsert_integer_field(collection_name, field_name):
-    #clear out old field to ensure this function is idempotent
-    delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-def upsert_boosts_field(collection_name, field_name, field_type_name="boosts"):
-    
-    #clear out old field to ensure this function is idempotent
-    delete_field = {"delete-field":{ "name":field_name }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field).json()
-
-    upsert_boosts_field_type(collection_name, field_type_name);
-    
-    print(f"Adding '{field_name}' field to collection")
-    add_field = {"add-field":{ "name":field_name, "type":"boosts", "stored":"true", "indexed":"true", "multiValued":"true" }}
-    response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field).json()
-
-    print_status(response)
-    
 def all_sessions():
     sessions = pd.concat([pd.read_csv(f, compression='gzip')
                           for f in glob.glob('data/*_sessions.gz')])
@@ -292,6 +37,7 @@ def num2str(number):
 def vec2str(vector):
   return "[" + ", ".join(map(num2str,vector)) + "]"
 
+
 def tokenize(text):
     return text.replace(".","").replace(",","").lower().split()
 
@@ -301,9 +47,13 @@ def img_path_for_upc(upc):
     unavailable_jpg_path = "../data/retrotech/images/unavailable.jpg"
     return expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
 
+def as_html(data):
+    return str(data).replace('\\n', '').replace(", '", ",<br/>'")
+
 def display_search(query, documents):
+    doc_html = as_html(documents)
     display(HTML(f"<strong>Query</strong>: <i>{query}</i><br/><br/><strong>Results:</strong>"))
-    display(HTML(documents))
+    display(HTML(doc_html))
    
 def display_product_search(query, documents):
     file_path = os.path.dirname(os.path.abspath(__file__))

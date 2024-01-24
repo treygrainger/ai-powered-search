@@ -1,23 +1,20 @@
 import requests
-import os
-from IPython.display import display,HTML
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
-
-AIPS_SOLR_HOST = "aips-solr"
-AIPS_ZK_HOST="aips-zk"
-#AIPS_SOLR_HOST = "localhost"
-#AIPS_ZK_HOST = "localhost"
-AIPS_SOLR_PORT = os.getenv('AIPS_SOLR_PORT') or '8983'
-AIPS_ZK_PORT= os.getenv('AIPS_ZK_PORT') or '2181'
-
-SOLR_URL = f'http://{AIPS_SOLR_HOST}:{AIPS_SOLR_PORT}/solr'
-SOLR_COLLECTIONS_URL = f'{SOLR_URL}/admin/collections'
-STATUS_URL = f'{SOLR_URL}/admin/zookeeper/status'
+import os
+from env import *
 
 class SolrCollection:
     def __init__(self, name):
+        #response = requests.get(f"{SOLR_COLLECTIONS_URL}/?action=LIST")
+        #print(response)
+        #collections = response.json()["collections"]
+        #if name.lower() not in [s.lower() for s in collections]:
+        #    raise ValueError(f"Collection name invalid. '{name}' does not exists.")
         self.name = name
+        
+    def commit(self):
+        return requests.post(f"{SOLR_URL}/{self.name}/update?commit=true")
 
     def write_from_csv(self, file, more_opts=False):
         print(f"Loading {self.name}")
@@ -38,24 +35,29 @@ class SolrCollection:
         csv_df.write.format("solr").options(**options).mode("overwrite").save()
         self.commit()
         print("Status: Success")
+        self.commit()
     
     def write_from_dataframe(self, dataframe):
-        opts = {"zkhost": "aips-zk", "collection": self.name,
+        opts = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
                 "gen_uniq_key": "true", "commit_within": "5000"}
         dataframe.write.format("solr").options(**opts).mode("overwrite").save()
         self.commit()
     
     def write_from_sql(self, query, spark=SparkSession.builder.appName("AIPS").getOrCreate()):
-        opts = {"zkhost": "aips-zk", "collection": self.name,
+        opts = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
                 "gen_uniq_key": "true", "commit_within": "5000"}
         spark.sql(query).write.format("solr").options(**opts).mode("overwrite").save()
         self.commit()
     
     def add_documents(self, docs, commit=True):
         print(f"\nAdding Documents to '{self.name}' collection")
-        return requests.post(f"{SOLR_URL}/{self.name}/update?commit={commit}", json=docs).json()
+        response = requests.post(f"{SOLR_URL}/{self.name}/update?commit={commit}", json=docs).json()
+        if (commit):
+            self.commit()
+        return response
     
     def commit(self):
+        #Improve functionality
         requests.post(f"{SOLR_URL}/{self.name}/update?commit=true").json()
         
     def write(self, docs):
