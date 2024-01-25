@@ -106,8 +106,8 @@ class SolrEngine:
                 pass
     
     def apply_additional_schema(self, collection):
-        self.upsert_text_field(collection, "collectionName")
         self.delete_copy_fields(collection)
+        self.upsert_text_field(collection, "collectionName")
         self.add_copy_field(collection, "name", "name_ngram")
         self.add_copy_field(collection, "name", "name_omit_norms")
         self.add_copy_field(collection, "name", "name_txt_en_split")
@@ -335,7 +335,7 @@ class SolrEngine:
             "wt": "json"
         }
         resp = collection.search(data=params)
-        docs = resp.json()["response"]["docs"]
+        docs = resp["response"]["docs"]
         # Clean up features to consistent format
         for d in docs:
             features = list(map(lambda f : float(f.split("=")[1]), d["[features]"].split(",")))
