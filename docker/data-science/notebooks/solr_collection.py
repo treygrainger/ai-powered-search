@@ -33,6 +33,7 @@ class SolrCollection:
         options = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
                    "gen_uniq_key": "true", "commit_within": "5000"}
         csv_df.write.format("solr").options(**options).mode("overwrite").save()
+        self.commit()
         print("Status: Success")
         self.commit()
     
@@ -48,11 +49,14 @@ class SolrCollection:
         spark.sql(query).write.format("solr").options(**opts).mode("overwrite").save()
         self.commit()
     
-    def add_documents(self, docs):
+    def add_documents(self, docs, commit=True):
         print(f"\nAdding Documents to '{self.name}' collection")
-        response = requests.post(f"{SOLR_URL}/{self.name}/update?commit=true", json=docs).json()
+        response = requests.post(f"{SOLR_URL}/{self.name}/update?commit={commit}", json=docs).json()
         self.commit()
         return response
+    
+    def commit(self):
+        requests.post(f"{SOLR_URL}/{self.name}/update?commit=true").json()
         
     def write(self, docs):
         return self.add_documents(docs)
