@@ -60,6 +60,7 @@ class FeatureLogger:
             }
 
             ids = [str(doc_id) for doc_id in ids]
+            #collection = self.engine.get_collection(self.index)
             res = self.engine.log_query(self.index, self.feature_set, ids,
                                         params, self.id_field)
 
