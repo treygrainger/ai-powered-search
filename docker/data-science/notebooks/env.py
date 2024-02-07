@@ -1,3 +1,5 @@
+import os
+
 AIPS_SOLR_HOST = "aips-solr"
 AIPS_NOTEBOOK_HOST="aips-notebook"
 AIPS_ZK_HOST="aips-zk"
