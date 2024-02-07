@@ -2,6 +2,7 @@ import requests
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
 from env import *
+import time
 
 class SolrCollection:
     def __init__(self, name):
@@ -14,6 +15,7 @@ class SolrCollection:
         
     def commit(self):
         return requests.post(f"{SOLR_URL}/{self.name}/update?commit=true")
+        time.sleep(10) # temporary
 
     def write_from_csv(self, file, more_opts=False):
         print(f"Loading {self.name}")
@@ -42,7 +44,9 @@ class SolrCollection:
         dataframe.write.format("solr").options(**opts).mode("overwrite").save()
         self.commit()
     
-    def write_from_sql(self, query, spark=SparkSession.builder.appName("AIPS").getOrCreate()):
+    def write_from_sql(self, query, spark=None):
+        if not spark:
+            spark = SparkSession.builder.appName("AIPS").getOrCreate()
         opts = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
                 "gen_uniq_key": "true", "commit_within": "5000"}
         spark.sql(query).write.format("solr").options(**opts).mode("overwrite").save()
