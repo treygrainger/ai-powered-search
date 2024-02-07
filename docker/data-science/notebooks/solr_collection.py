@@ -1,7 +1,6 @@
 import requests
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
-import os
 from env import *
 
 class SolrCollection:
