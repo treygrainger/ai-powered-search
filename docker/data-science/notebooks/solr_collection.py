@@ -55,12 +55,10 @@ class SolrCollection:
     def add_documents(self, docs, commit=True):
         print(f"\nAdding Documents to '{self.name}' collection")
         response = requests.post(f"{SOLR_URL}/{self.name}/update?commit=true", json=docs).json()
-        self.commit()
+        if commit:
+            self.commit()
         return response
     
-    def commit(self):
-        requests.post(f"{SOLR_URL}/{self.name}/update?commit=true").json()
-        
     def write(self, docs):
         return self.add_documents(docs)
     
