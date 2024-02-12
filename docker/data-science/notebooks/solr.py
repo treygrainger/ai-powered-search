@@ -93,8 +93,8 @@ class SolrEngine:
                 self.upsert_text_field(collection, "shortDescription")
                 self.upsert_text_field(collection, "longDescription")
                 if collection.name == "products_with_signals_boosts":
-                    self.upsert_boosts_field_type(self, "boosts")
-                    self.upsert_boosts_field(self, "signals_boosts")
+                    self.upsert_boosts_field_type(collection, "boosts")
+                    self.upsert_boosts_field(collection, "signals_boosts")
             case "jobs":
                 self.upsert_text_field(collection, "company_country")
                 self.upsert_text_field(collection, "job_description")

@@ -33,7 +33,7 @@ def num2str(number):
     return str(round(number,4)) #round to 4 decimal places for readibility
 
 def vec2str(vector):
-  return "[" + ", ".join(map(num2str,vector)) + "]"
+    return "[" + ", ".join(map(num2str,vector)) + "]"
 
 def tokenize(text):
     return text.replace(".","").replace(",","").lower().split()
