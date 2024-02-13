@@ -3,84 +3,79 @@ sys.path.append('..')
 from aips import *
 import json
 from webserver.semantic_search.query_tree import *
+from webserver.semantic_search.engine.text_tagger import TextTagger
 
-def process_semantic_query(collection, query_bytes):
-    text = query_bytes.decode('UTF-8')
-    engine = get_engine()
-    tagger_data = engine.tag_query("entities", query_bytes)
-    
-    query_tree, tagged_query, enriched_query = generate_query_representations(text, tagger_data)
+def generate_tagged_query(query, tagger_data):
+    last_end = 0
+    tagged_query = ""
+    for tag in tagger_data["tags"]:
+        next_text = query[last_end:tag["startOffset"]].strip()
+        if len(next_text) > 0:
+            tagged_query += " " + next_text
+        tagged_query += " {" + tag["matchText"] + "}"
+        last_end = tag["endOffset"]
+    if last_end < len(query):
+        final_text = query[last_end:len(query)].strip()
+        if len(final_text):
+            tagged_query += " " + final_text
+    return tagged_query            
+                
+def generate_query_tree(query, tagger_data):
+    query_tree = []    
+    last_end = 0
+    doc_map =  {}
+    for doc in tagger_data["response"]["docs"]:
+        doc_map[doc["id"]] = doc
         
-    enriched_query_tree = enrich(collection, query_tree)
-    transformed = transform_query(enriched_query_tree)
-    query_string = to_query_string(transformed)      
+    for tag in tagger_data["tags"]:
+        best_doc_id = None
+        for doc_id in tag["ids"]:
+            if best_doc_id:
+                if (doc_map[doc_id]["popularity"] > 
+                    doc_map[best_doc_id]["popularity"]):
+                    best_doc_id = doc_id
+            else:
+                best_doc_id = doc_id
+        best_doc = doc_map[best_doc_id]
+        
+        next_text = query[last_end:tag["startOffset"]].strip()
+        if len(next_text) > 0:
+            query_tree.append({
+                "type": "keyword", "known": False,
+                "surface_form": next_text,
+                "canonical_form": next_text})
+        query_tree.append(best_doc)
+        last_end = tag["endOffset"]
 
-    response = {
-        "tagged_query": tagged_query,
-        "enriched_query": enriched_query, 
-        "transformed_query": query_string,
-        "tagger_data": tagger_data
-    }
-
-    return response
-
-def generate_query_tree(text, tagger_data):
-    query_tree, _, _ = generate_query_representations(text, tagger_data)
+    if last_end < len(query):
+        final_text = query[last_end:len(query)].strip()
+        if len(final_text) > 0:
+            query_tree.append({ 
+                "type": "keyword", "known": False, 
+                "surface_form": final_text,
+                "canonical_form": final_text})
     return query_tree
 
-def generate_query_representations(text, tagger_data):
-    query_tree, tagged_query, enriched_query, doc_map = [], "", "", {}
-
-    if (tagger_data['response'] and tagger_data['response']['docs']):
-        for doc in tagger_data['response']['docs']:
-            doc_map[doc['id']] = doc
-
-    if (tagger_data['tags'] is not None):
-        tags, lastEnd, metaData = tagger_data['tags'], 0, {}
-
-        for tag in tags:
-            matchText, doc_ids, best_doc_id = \
-              tag['matchText'], tag['ids'], None
-
-            for doc_id in doc_ids:
-                if (best_doc_id):
-                    if (doc_map[doc_id]['popularity'] >
-                        doc_map[best_doc_id]['popularity']):
-                        best_doc_id = doc_id
-                else: #2
-                    best_doc_id = doc_id
-            best_doc = doc_map[best_doc_id]
-
-            nextText = text[lastEnd:tag['startOffset']].strip()
-            if (len(nextText) > 0):
-                query_tree.append({ 
-                  "type":"keyword", "known":False, 
-                  "surface_form":nextText, "canonical_form":nextText })
-                tagged_query += " " + nextText
-                enriched_query += " { type:keyword, known: false," \
-                             + " surface_form: \"" + nextText + "\"}"
-            query_tree.append(best_doc)
-
-            tagged_query += " {" + matchText + "}"
-            enriched_query += json.dumps(best_doc)
-            lastEnd = tag['endOffset']
-
-        if (lastEnd < len(text)):
-            finalText = text[lastEnd:len(text)].strip()
-            if (len(finalText) > 0):
-                query_tree.append({ 
-                  "type":"keyword", "known":False, 
-                  "surface_form":finalText,
-                  "canonical_form":finalText })
-                tagged_query += " " + finalText
-                enriched_query += " { type:keyword, known: false," \
-                             + " surface_form: \"" + finalText + "\"}"
-
-    return query_tree, tagged_query, enriched_query
-
+def process_semantic_query(collection, query):
+    query_bytes = bytes(query, "UTF-8")
+    tagger_data = TextTagger("entities").tag_query(query_bytes)
+    
+    tagged_query = generate_tagged_query(query, tagger_data)
+    query_tree = generate_query_tree(query, tagger_data)
+    parsed_query = json.dumps(query_tree)
+    enriched_query_tree = enrich(collection, query_tree)
+    transformed = transform_query(enriched_query_tree)
+    
+    return {
+        "tagged_query": tagged_query,
+        "parsed_query": parsed_query, 
+        "transformed_query": to_query_string(transformed),
+        "tagger_data": tagger_data
+    }
+    
 def process_basic_query(query_bytes):
-    text = query_bytes.decode('UTF-8')
+    query = query_bytes.decode('UTF-8')
     response = {
-        "transformed_query": '+{!edismax mm=100% v="' + escape_quotes_in_query(text) + '"}'
+        "transformed_query": '+{!edismax mm=100% v="' + escape_quotes_in_query(query) + '"}'
     }
     return response
