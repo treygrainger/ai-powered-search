@@ -1,4 +1,4 @@
-import glob 
+
 from IPython.display import display,HTML
 import os
 import pandas as pd
@@ -23,11 +23,6 @@ def healthcheck():
 
 def print_status(solr_response):
       print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
-
-def all_sessions():
-    sessions = pd.concat([pd.read_csv(f, compression='gzip')
-                          for f in glob.glob('data/*_sessions.gz')])
-    return sessions.rename(columns={'clicked_doc_id': 'doc_id'})
 
 def num2str(number):
     return str(round(number,4)) #round to 4 decimal places for readibility
