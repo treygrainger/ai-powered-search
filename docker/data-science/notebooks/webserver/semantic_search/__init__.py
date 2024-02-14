@@ -1,29 +1,32 @@
 import sys
 sys.path.append('..')
 from aips import *
-import requests, json
-from semantic_search.engine.tag_query import *
-from semantic_search.process_query_tree import *
-from semantic_search.query_tree.query_tree_to_transformed_query import *
+import json
+from webserver.semantic_search.query_tree import *
 
-def process_semantic_query(query_bytes):
+def process_semantic_query(collection, query_bytes):
     text = query_bytes.decode('UTF-8')
-    tagger_data = json.loads(tag_query(query_bytes))
+    engine = get_engine()
+    tagger_data = engine.tag_query("entities", query_bytes)
     
     query_tree, tagged_query, enriched_query = generate_query_representations(text, tagger_data)
         
-    final_query = process_query_tree(query_tree)
-    transformed_query = query_tree_to_transformed_query(query_tree)      
+    enriched_query_tree = enrich(collection, query_tree)
+    transformed = transform_query(enriched_query_tree)
+    query_string = to_query_string(transformed)      
 
     response = {
         "tagged_query": tagged_query,
         "enriched_query": enriched_query, 
-        "transformed_query": transformed_query,
+        "transformed_query": query_string,
         "tagger_data": tagger_data
     }
 
     return response
 
+def generate_query_tree(text, tagger_data):
+    query_tree, _, _ = generate_query_representations(text, tagger_data)
+    return query_tree
 
 def generate_query_representations(text, tagger_data):
     query_tree, tagged_query, enriched_query, doc_map = [], "", "", {}
@@ -74,3 +77,10 @@ def generate_query_representations(text, tagger_data):
                              + " surface_form: \"" + finalText + "\"}"
 
     return query_tree, tagged_query, enriched_query
+
+def process_basic_query(query_bytes):
+    text = query_bytes.decode('UTF-8')
+    response = {
+        "transformed_query": '+{!edismax mm=100% v="' + escape_quotes_in_query(text) + '"}'
+    }
+    return response

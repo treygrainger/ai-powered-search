@@ -1,7 +1,8 @@
-FROM solr:8.11.2
+FROM solr:9.4.1
 
 USER root
 
+ADD solr.xml ./server/solr/solr.xml
 ADD run_solr_w_ltr.sh ./run_solr_w_ltr.sh
 RUN chown solr:solr run_solr_w_ltr.sh
 RUN sed -i -e 's/\r$//' run_solr_w_ltr.sh
