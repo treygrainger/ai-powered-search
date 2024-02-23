@@ -44,8 +44,11 @@ def img_path_for_upc(upc):
     unavailable_jpg_path = "../data/retrotech/images/unavailable.jpg"
     return expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
 
+def remove_new_lines(data):
+    return str(data).replace('\\n', '').replace('\\N', '')
+
 def as_html(data):
-    return str(data).replace('\\n', '').replace(", '", ",<br/>'")
+    return remove_new_lines(data).replace(", '", ",<br/>'")
 
 def display_search(query, documents):
     doc_html = as_html(documents)
@@ -73,7 +76,7 @@ def display_product_search(query, documents):
         for result in documents:
             rendered += results_template.replace("${NAME}", result['name'] if 'name' in result else "UNKNOWN") \
                 .replace("${MANUFACTURER}", result['manufacturer'] if 'manufacturer' in result else "UNKNOWN") \
-                .replace("${DESCRIPTION}", result['shortDescription'] if 'shortDescription' in result else "") \
+                .replace("${DESCRIPTION}", remove_new_lines(result['shortDescription']) if 'shortDescription' in result else "") \
                 .replace("${IMAGE_URL}", "../data/retrotech/images/" + \
                          (result['upc'] if \
                           ('upc' in result and os.path.exists(file_path + "/data/retrotech/images/" + result['upc'] + ".jpg") \
