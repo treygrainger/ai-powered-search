@@ -103,7 +103,7 @@ class SolrClient(BaseClient):
         resp_msg(msg=f'Created {name} feature store under {index}:', resp=resp)
 
 
-    def log_query(self, index, featureset, ids, options={}, id_field='id'):
+    def log_query(self, index, featureset, ids, options={}, id_field='id', log=True):
         efi_options = []
         for key, val in options.items():
             efi_options.append(f'efi.{key}="{val}"')
@@ -114,7 +114,8 @@ class SolrClient(BaseClient):
             query = "*:*"
         else:
             query = "{{!terms f={}}}{}".format(id_field, ','.join(ids))
-            print(query)
+            if log:
+                print(query)
 
         params = {
             'fl': f"{id_field},[features store={featureset} {efi_str}]",
@@ -122,8 +123,10 @@ class SolrClient(BaseClient):
             'rows': 1000,
             'wt': 'json'
         }
+        
         resp = requests.post(f'{self.solr_base_ep}/{index}/select', data=params)
-        resp_msg(msg=f'Searching {index}', resp=resp)
+        if log:
+            resp_msg(msg=f'Searching {index}', resp=resp)
         resp = resp.json()
 
         def parseFeatures(features):
