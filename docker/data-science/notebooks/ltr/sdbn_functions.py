@@ -6,6 +6,10 @@ def all_sessions():
                           for f in glob.glob("data/*_sessions.gz")])
     return sessions.rename(columns={"clicked_doc_id": "doc_id"})
 
+def get_sessions(query=""):
+    sessions = all_sessions()    
+    return sessions[sessions["query"] == query]
+
 def calculate_ctr(sessions):
     click_counts = sessions.groupby("doc_id")["clicked"].sum()
     sess_counts = sessions.groupby("doc_id")["sess_id"].nunique()
@@ -38,7 +42,7 @@ def calculate_prior(sessions, prior_grade, prior_weight):
     sessions["prior_b"] = (1 - prior_grade) * prior_weight
     return sessions
 
-def calculate_sdbn(sessions, prior_grade, prior_weight):
+def calculate_sdbn(sessions, prior_grade=0.3, prior_weight=100):
     sessions = calculate_prior(sessions, prior_grade, prior_weight)
     sessions["posterior_a"] = (sessions["prior_a"] + 
                                sessions["clicked"])
