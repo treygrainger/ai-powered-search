@@ -30,8 +30,7 @@ field of biology."
 [1] ""A large language model, or LLM, is a deep learning algorithm that 
 can recognize, summarize, translate, predict and generate text and other 
 content based on knowledge gained from massive datasets.""
-URL: https://blogs.nvidia.com/blog/2023/01/26/
-[CA]what-are-large-language-models-used-for/
+URL: https://blogs.nvidia.com/blog/2023/01/26/what-are-large-language-models-used-for/
 
 [2] A large language model (LLM) is a language model consisting of a 
 neural network with many parameters (typically billions of weights or 
@@ -60,8 +59,7 @@ answers for each subject.
 
 Query: What is a large language model?","A large language model (LLM) is a deep learning algorithm that can 
 recognize, summarize, translate, predict, and generate text and other 
-content based on knowledge gained from massive datasets [[1](https://blogs.
-[CA]nvidia.com/blog/2023/01/26/what-are-large-language-models-used-for/)]. 
+content based on knowledge gained from massive datasets [[1](https://blogs.nvidia.com/blog/2023/01/26/what-are-large-language-models-used-for/)]. 
 It consists of a neural network with many parameters (typically billions 
 of weights or more) and is trained on large quantities of unlabeled text 
 using self-supervised learning 
@@ -78,8 +76,7 @@ called ""Reinforcement Learning from Human Feedback (RLHF)""
 [1] ""A large language model, or LLM, is a deep learning algorithm that 
 can recognize, summarize, translate, predict and generate text and other 
 content based on knowledge gained from massive datasets.""
-URL: https://blogs.nvidia.com/blog/2023/01/26/
-[CA]what-are-large-language-models-used-for/
+URL: https://blogs.nvidia.com/blog/2023/01/26/what-are-large-language-models-used-for/
 
 [2] A large language model (LLM) is a language model consisting of a 
 neural network with many parameters (typically billions of weights or 
