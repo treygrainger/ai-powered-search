@@ -49,7 +49,7 @@ def transform_query(query_tree):
         item = query_tree[i]
         additional_query = ""
         match item["type"]:
-            case "solr":
+            case "transformed":
                 pass
             case "skg_enriched":
                 enrichments = item["enrichments"]
@@ -74,5 +74,5 @@ def transform_query(query_tree):
             case _:
                 additional_query = "+{!edismax v=\"" + escape_quotes_in_query(item["surface_form"]) + "\"}"
         if additional_query:
-            query_tree[i] = {"type": "solr", "query": additional_query}                    
+            query_tree[i] = {"type": "transformed", "syntax": "solr", "query": additional_query}
     return query_tree
