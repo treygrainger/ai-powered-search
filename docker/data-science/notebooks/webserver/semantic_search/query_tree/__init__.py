@@ -6,6 +6,20 @@ def escape_quotes_in_query(query):
 def to_query_string(query_tree):
     return " ".join([node["query"] for node in query_tree])
 
+def process_semantic_functions_new(query_tree):
+    position = 0
+    while position < len(query_tree):
+        node = query_tree[position]
+        if node["type"] == "semantic_function":
+            commaned_is_resolved = False
+            if node["semantic_function"]:
+                query = {"query_tree": query_tree}
+                commaned_is_resolved = eval(node["semantic_function"])
+            if not commaned_is_resolved:
+                query_tree.pop(position)
+        position += 1
+    return query_tree 
+ 
 def process_semantic_functions(query_tree):
     position = 0
     while position < len(query_tree):

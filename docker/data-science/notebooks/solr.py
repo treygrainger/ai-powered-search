@@ -11,44 +11,13 @@ def product_search_request(query):
         "query": query,
         "fields": ["upc", "name", "manufacturer", "score"],
         "limit": 5,
+        "sort": "score desc, upc asc",
         "params": {
             "qf": "name manufacturer longDescription",
             "defType": "edismax",
             "indent": "true",
-            "sort": "score desc, upc asc"
         }
     }
-    
-def skg_request(query):
-    return {
-        "query": query,
-        "params": {
-            "qf": "title body",
-            "fore": "{!type=$defType qf=$qf v=$q}",
-            "back": "*:*",
-            "defType": "edismax",
-            "rows": 0,
-            "echoParams": "none",
-            "omitHeader": "true"
-        },
-        "facet": {
-            "body": {
-                "type": "terms",
-                "field": "body",
-                "sort": { "relatedness": "desc"},
-                "mincount": 2,
-                "limit": 8,
-                "facet": {
-                    "relatedness": {
-                        "type": "func",
-                        "func": "relatedness($fore,$back)"
-                        #"min_popularity": 0.0005
-                    }
-                }  
-            }
-        }
-    }
-
 class SolrEngine:
     def __init__(self):
         pass
@@ -129,12 +98,16 @@ class SolrEngine:
                 self.add_tag_field_type(collection)
                 self.upsert_string_field(collection, "surface_form")
                 self.upsert_string_field(collection, "canonical_form")
+                self.upsert_string_field(collection, "admin_area")
+                self.upsert_string_field(collection, "country")
                 self.upsert_field(collection, "name", "text_general")
                 self.upsert_integer_field(collection, "popularity")
                 self.upsert_field(collection, "name_tag", "tag", {"stored": "false"})
                 self.add_copy_field(collection, "name", ["surface_form", "name_tag", "canonical_form"])
                 self.add_copy_field(collection, "population_i", ["popularity"]) #what is the source field here?
                 self.add_copy_field(collection, "surface_form", ["name_tag"])
+                self.add_copy_field(collection, "country", "countrycode_s")
+                self.add_copy_field(collection, "admin_code_1_s", "admin_area")
                 self.add_tag_request_handler(collection, "/tag", "name_tag")
             case _:
                 pass
@@ -270,7 +243,13 @@ class SolrEngine:
             "add-requesthandler" : {
                 "name": request_name,
                 "class": "solr.TaggerRequestHandler",
-                "defaults": {"field": field}
+                "defaults": {
+                    "field": field,
+                    "json.nl": "map",
+                    "sort": "popularity desc",
+                    "matchText": "true",
+                    "fl": "id,canonical_form,type,semantic_function,popularity,country,admin_area,*_p"
+                }
             }
         }
         return requests.post(f"{SOLR_URL}/{collection.name}/config", json=request)
@@ -302,8 +281,7 @@ class SolrEngine:
                     ]}
                 }
             }
-        print(f"{SOLR_URL}/{collection.name}/schema")
-        print(requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request).text)
+        return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request).text
     
     def add_delimited_field_type(self, collection, field_name, pattern):
         request = {
@@ -377,8 +355,18 @@ class SolrEngine:
 
         return docs
     
-    def spell_check(self, collection, request):
-        return requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request).json()
+    def spell_check(self, collection, query):
+        request = {
+            "params": {
+                "q.op": "and",
+                "rows": 0
+            },
+            "query": query
+        }
+        response = requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request).json()
+        return {r["collationQuery"]: r["hits"]
+                for r in response["spellcheck"]["collations"]
+                if r != "collation"}
 
     def print_status(self, solr_response):
         print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )

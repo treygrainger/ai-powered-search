@@ -8,10 +8,11 @@ import requests
 from solr import SolrEngine
 from env import SOLR_URL, AIPS_ZK_HOST
 ENGINE = SolrEngine()
+#SKG_ENGINE = SolrSKGEngine()
 
 def get_engine():
     return ENGINE
-
+  
 def healthcheck():
     try:
         if (get_engine().health_check()):
