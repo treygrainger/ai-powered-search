@@ -11,21 +11,21 @@ def generate_request_root():
         "facet": {}
     }
 
-def generate_facets(name=None, values=None, field=None, min_occurrence=None, limit=None):
+def generate_facets(name=None, values=None, field=None, min_ocurrences=None, limit=None):
     base_facet = {"type": "query" if values else "terms",
-                  "mincount": min_occurrence if min_occurrence else 2,
+                  "mincount": min_ocurrences if min_ocurrences else 2,
                   "limit": limit if limit else 8,
-                  "sort": { f"_relatedness_": "desc" },
+                  "sort": { f"relatedness": "desc" },
                   "facet": {
-                      f"_relatedness_": {
+                      f"relatedness": {
                           "type": "func",
                           "func": "relatedness($fore,$back)"}}}
     if field:
         base_facet["field"] = field
     facets = []
     if values:
-        if not min_occurrence: base_facet.pop("mincount")
-        if not min_occurrence: base_facet.pop("limit")
+        if not min_ocurrences: base_facet.pop("mincount")
+        if not min_ocurrences: base_facet.pop("limit")
         for i, _ in enumerate(values):
             facets.append(base_facet.copy())
             facets[i]["query"] = "{" + f'!edismax mm=100% qf={field} v=${name}_{i}_query' + "}"
@@ -78,7 +78,7 @@ def generate_skg_request(*multi_nodes):
     return request
 
 def transform_node(node, response_params):
-    relatedness = node["_relatedness_"]["relatedness"] if node["count"] > 0 else 0.0
+    relatedness = node["relatedness"]["relatedness"] if node["count"] > 0 else 0.0
     value_node = {"relatedness": relatedness}
     sub_traversals = transform_response_facet(node, response_params)
     if sub_traversals:
@@ -86,7 +86,7 @@ def transform_node(node, response_params):
     return value_node
 
 def transform_response_facet(node, response_params):
-    ignored_keys = ["count", "_relatedness_", "val"]
+    ignored_keys = ["count", "relatedness", "val"]
     traversals = {}
     for full_name, data in node.items():
         if full_name in ignored_keys:
@@ -102,10 +102,10 @@ def transform_response_facet(node, response_params):
             value_name = response_params[f"{full_name}_query"]            
             traversals[name]["values"][value_name] = transform_node(data, response_params)
     for k in traversals.keys():
-        traversals[k]["values"] = sort_by_relatedness_desc(traversals[k]["values"])
+        traversals[k]["values"] = sort_byrelatednessdesc(traversals[k]["values"])
     return list(traversals.values())
 
-def sort_by_relatedness_desc(d):
+def sort_byrelatednessdesc(d):
     return {k: v for k, v in sorted(d.items(), key=lambda item: item[1]["relatedness"], reverse=True)}
 
 def traverse(collection, *nodes):
