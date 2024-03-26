@@ -1,14 +1,20 @@
+from env import SOLR_URL, AIPS_ZK_HOST
+from solr import SolrEngine
+from engine.solr.ltr import SolrLTR
 
-from IPython.display import display,HTML
 import os
+from IPython.display import display,HTML
 import pandas as pd
 from pyspark.sql import SparkSession
 import re
 import requests
-from solr import SolrEngine
-from env import SOLR_URL, AIPS_ZK_HOST
-ENGINE = SolrEngine()
 
+ENGINE = SolrEngine()
+LTR = SolrLTR()
+
+def get_ltr_helper():
+    return LTR
+  
 def get_engine():
     return ENGINE
 
