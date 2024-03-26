@@ -73,9 +73,5 @@ def process_semantic_query(collection, query):
         "tagger_data": tagger_data
     }
     
-def process_basic_query(query_bytes):
-    query = query_bytes.decode('UTF-8')
-    response = {
-        "transformed_query": '+{!edismax mm=100% v="' + escape_quotes_in_query(query) + '"}'
-    }
-    return response
+def process_basic_query(query):
+    return {"transformed_query": '+{!edismax mm=100% v="' + escape_quotes_in_query(query) + '"}'}

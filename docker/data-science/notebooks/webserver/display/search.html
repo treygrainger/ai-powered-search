@@ -432,13 +432,13 @@
         if (nextEntity.type == "city"){
         
             query.query_tree.splice(position + 1,1); //remove command
-            query.query_tree[position] = {type:"solr", query: create_geo_filter(nextEntity.location_p,
+            query.query_tree[position] = {type: "transformed", syntax: "solr", query: create_geo_filter(nextEntity.location_p,
                                                      "location_p", 50) };
             return true;
          }
          else if (nextEntity.coordinates_pt != null){
             query.query_tree.splice(position + 1,1); //remove command
-            query.query_tree[position] = {type:"solr", query: create_geo_filter(nextEntity.coordinates_pt,
+            query.query_tree[position] = {type: "transformed", syntax: "solr", query: create_geo_filter(nextEntity.coordinates_pt,
                                                      "coordinates_pt", 50) };
             return true;
          }else if (nextEntity.type == "event"){ 
@@ -459,7 +459,7 @@
            if (attemptedGraphLookup.response 
                && attemptedGraphLookup.response.docs
                && attemptedGraphLookup.response.docs.length > 0){
-                query.query_tree[position] = {type:"solr", query: create_geo_filter(
+                query.query_tree[position] = {type: "transformed", syntax: "solr", query: create_geo_filter(
                   attemptedGraphLookup.response.docs[0].coordinates_s, "coordinates_pt", 50
                 )};
                 return true;
@@ -504,7 +504,7 @@
     async function cmd_popularity(query,position){
       if (query.query_tree.length -1 > position){
         var nextEntity = query.query_tree[position + 1];
-        query.query_tree[position] = {type:"solr", query: '{!func}mul(min(popularity,1),100)'};
+        query.query_tree[position] = {type: "transformed", syntax: "solr", query: '{!func}mul(min(popularity,1),100)'};
         return true;
       }
       return false;
@@ -543,7 +543,7 @@
         //Now process everything that is not yet resolved
         for (let position=0;position<query.query_tree.length;position++){
          let item = query.query_tree[position];         
-         if (item.type != "solr"){ //already resolved
+         if (item.type != "transformed"){ //already resolved
             if (item.type == "keyword"){  
               //TODO: this currently looks up ALL unknown keywords in the SKG, which isn't very smart
               //need to switch to looking up meaningful phrases in next pass. This is mostly for testing
@@ -569,19 +569,19 @@
               if (queryString.length == 0){
                 queryString = item.surface_form; //just keep the input as a keyword
               }
-             query.query_tree[position] = {type:"solr", query: queryString};              
+             query.query_tree[position] = {type: "transformed", syntax: "solr", query: queryString};              
            }else if (item.type == "color"){
              let solrQuery = "colors_s:\"" + item.canonical_form + "\"";
-             query.query_tree[position] = {type:"solr", query: solrQuery};
+             query.query_tree[position] = {type: "transformed", syntax: "solr", query: solrQuery};
            }else if (item.type == "known_item" || item.type == "city" || item.type == "event"){
              let solrQuery = "name_s:\"" + item.canonical_form + "\"";
-             query.query_tree[position] = {type:"solr", query: solrQuery};
+             query.query_tree[position] = {type: "transformed", syntax: "solr", query: solrQuery};
            } else if (item.type == "brand"){
              let solrQuery = "brand_s:\"" + item.canonical_form + "\"";
-             query.query_tree[position] = {type:"solr", query: solrQuery};
+             query.query_tree[position] = {type: "transformed", syntax: "solr", query: solrQuery};
            }
            else {
-             query.query_tree[position] = {type:"solr", query: item.surface_form};
+             query.query_tree[position] = {type: "transformed", syntax: "solr", query: item.surface_form};
            }       
          }    
        }
