@@ -30,6 +30,3 @@ class SolrCollection:
     
     def search(self, request=None, data=None):
         return requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
-    
-    def delete_feature_store(self, store_name):
-        return requests.delete(f"{SOLR_URL}/{self.name}/schema/feature-store/{store_name}")
