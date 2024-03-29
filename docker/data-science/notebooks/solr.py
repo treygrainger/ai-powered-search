@@ -46,9 +46,6 @@ class SolrEngine:
         self.apply_schema_for_collection(self.get_collection(name))
         self.print_status(response)
         return SolrCollection(name)
-
-    def reload_collection(self, name):
-        return requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={name}&wt=xml")
     
     def get_collection(self, name):
         return SolrCollection(name)
@@ -332,18 +329,6 @@ class SolrEngine:
         response = requests.post(collection_config_url, json=add_transformer)
         self.print_status(response.json())
     
-    def delete_feature_store(self, collection, name):
-        return requests.delete(f"{SOLR_URL}/{collection.name}/schema/feature-store/{name}").json()
-
-    def upload_features(self, collection, features):
-        return requests.put(f"{SOLR_URL}/{collection.name}/schema/feature-store", json=features).json()
-
-    def delete_model_store(self, collection, model_name):
-        return requests.delete(f"{SOLR_URL}/{collection.name}/schema/model-store/{model_name}").json()
-    
-    def upload_model(self, collection, model):
-        return requests.put(f"{SOLR_URL}/{collection.name}/schema/model-store", json=model).json()
-    
     def random_document_request(self, query):
         draw = random.random()
         return {
@@ -352,13 +337,8 @@ class SolrEngine:
         }
     
     def spell_check(self, collection, query):
-        request = {
-            "params": {
-                "q.op": "and",
-                "rows": 0
-            },
-            "query": query
-        }
+        request = {"query": query,
+                   "params": {"q.op": "and", "indent": "on"}}
         response = requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request).json()
         return {r["collationQuery"]: r["hits"]
                 for r in response["spellcheck"]["collations"]

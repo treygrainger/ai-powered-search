@@ -86,9 +86,9 @@ def enrich(collection, query_tree):
 def transform_query(query_tree):
     for i in range(len(query_tree)):
         item = query_tree[i]
-        additional_query = ""
+        transformed_query = ""
         match item["type"]:
-            case "engine":
+            case "transformed":
                 pass
             case "skg_enriched":
                 enrichments = item["enrichments"]
@@ -101,19 +101,19 @@ def transform_query(query_tree):
                 if (len(query_string) == 0):
                     query_string = item["surface_form"]
                     
-                additional_query = '{!edismax v="' + escape_quotes_in_query(query_string) + '"}'
+                transformed_query = '{!edismax v="' + escape_quotes_in_query(query_string) + '"}'
             case "color":
-                additional_query = f'+colors_s:"{item["canonical_form"]}"'
+                transformed_query = f'+colors_s:"{item["canonical_form"]}"'
             case "known_item" | "event":
-                additional_query = f'+name_s:"{item["canonical_form"]}"'
+                transformed_query = f'+name_s:"{item["canonical_form"]}"'
             case "city":
-                additional_query = f'+city_t:"{str(item["name"])}"'
+                transformed_query = f'+city_t:"{str(item["name"])}"'
             case "brand":
-                additional_query = f'+brand_s:"{item["canonical_form"]}"'
+                transformed_query = f'+brand_s:"{item["canonical_form"]}"'
             case _:
-                additional_query = "+{!edismax v=\"" + escape_quotes_in_query(item["surface_form"]) + "\"}"
-        if additional_query:
+                transformed_query = "+{!edismax v=\"" + escape_quotes_in_query(item["surface_form"]) + "\"}"
+        if transformed_query:
             query_tree[i] = {"type": "transformed",
                              "syntax": "solr",
-                             "query": additional_query}                 
+                             "query": transformed_query}                 
     return query_tree

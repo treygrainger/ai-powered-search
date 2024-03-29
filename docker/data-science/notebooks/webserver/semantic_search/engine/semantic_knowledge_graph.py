@@ -1,3 +1,4 @@
+# %load -s generate_request_root,generate_facets,default_node_name,validate_skg_request_input,generate_skg_request,transform_node,transform_response_facet,sort_by_relatedness_desc,traverse webserver/semantic_search/engine/semantic_knowledge_graph
 def generate_request_root():
     return {
         "limit": 0,
@@ -10,24 +11,26 @@ def generate_request_root():
         "facet": {}
     }
 
-def generate_facets(name=None, values=None, field=None, min_ocurrences=None, limit=None):
+def generate_facets(name=None, values=None, field=None, min_occurrences=None, limit=None, operator="or"):
     base_facet = {"type": "query" if values else "terms",
-                  "mincount": min_ocurrences if min_ocurrences else 2,
-                  "limit": limit if limit else 8,
+                  "limit": limit if limit else 10,
                   "sort": { f"relatedness": "desc" },
                   "facet": {
                       f"relatedness": {
                           "type": "func",
                           "func": "relatedness($fore,$back)"}}}
+    if min_occurrences:
+        base_facet["mincount"] = min_occurrences
     if field:
         base_facet["field"] = field
     facets = []
     if values:
-        if not min_ocurrences: base_facet.pop("mincount")
-        if not min_ocurrences: base_facet.pop("limit")
+        if min_occurrences: base_facet.pop("mincount")
+        if not limit: base_facet.pop("limit")
         for i, _ in enumerate(values):
             facets.append(base_facet.copy())
-            facets[i]["query"] = "{" + f'!edismax mm=100% qf={field} v=${name}_{i}_query' + "}"
+            mm = f"mm={min_occurrences} " if min_occurrences else ""
+            facets[i]["query"] = "{" + f'!edismax {mm}qf={field} v=${name}_{i}_query' + "}"
     else:
         facets = [base_facet]
     return facets

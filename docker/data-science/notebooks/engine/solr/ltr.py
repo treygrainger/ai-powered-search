@@ -53,7 +53,21 @@ class SolrLTR:
             features = list(map(lambda f : float(f.split("=")[1]), d["[features]"].split(",")))
             d["ltr_features"] = features
 
-        return docs
+        return docs    
+    
+    def delete_feature_store(self, collection, name):
+        return requests.delete(f"{SOLR_URL}/{collection.name}/schema/feature-store/{name}").json()
+
+    def upload_features(self, collection, features):
+        return requests.put(f"{SOLR_URL}/{collection.name}/schema/feature-store", json=features).json()
+
+    def delete_model_store(self, collection, model_name):
+        return requests.delete(f"{SOLR_URL}/{collection.name}/schema/model-store/{model_name}").json()
+    
+    def upload_model(self, collection, model):
+        response = requests.put(f"{SOLR_URL}/{collection.name}/schema/model-store", json=model).json()
+        requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={collection.name}&wt=xml")
+        return response    
     
     def generate_ltr_model(self, feature_store, model_name, feature_names, means, std_devs, weights):
         linear_model = {

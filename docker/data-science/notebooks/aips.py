@@ -12,7 +12,7 @@ import requests
 ENGINE = SolrEngine()
 LTR = SolrLTR()
 
-def get_ltr_helper():
+def get_ltr_engine():
     return LTR
   
 def get_engine():
