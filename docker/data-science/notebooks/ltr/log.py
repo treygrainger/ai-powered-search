@@ -62,8 +62,10 @@ class FeatureLogger:
 
             ids = [str(doc_id) for doc_id in ids]
             #collection = self.engine.get_collection(self.index)
-            res = get_ltr_engine().log_query(self.index, self.feature_set, ids,
-                                        params, self.id_field)
+            collection = get_engine().get_collection(self.index)
+            res = get_ltr_helper().log_query(collection, self.feature_set, ids,
+                                             params, id_field=self.id_field, log=True)
+
 
             # Add feature back to each judgment
             for doc in res:
