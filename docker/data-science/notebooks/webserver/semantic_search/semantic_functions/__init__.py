@@ -7,7 +7,8 @@ def location_distance(query, position):
         if (next_entity["type"] == "city"):
             query["query_tree"].pop(position + 1)
             query["query_tree"][position] = {
-                "type": "solr",
+                "type": "transformed",
+                "syntax": "solr",
                 "query": create_geo_filter(next_entity['location_p'],
                 "location_p", 50)}
             return True
@@ -16,7 +17,8 @@ def location_distance(query, position):
 def popularity(query, position):
     if (len(query["query_tree"]) -1 > position):
         query["query_tree"][position] = {
-            "type": "solr",
+            "type": "transformed",
+            "syntax": "solr",
             "query": '+{!func v="mul(if(stars_i,stars_i,0),20)"}'}
         return True
     else:

@@ -1,11 +1,26 @@
-from semantic_search.engine.semantic_knowledge_graph import *
-from semantic_search.semantic_functions import *
+import webserver.semantic_search.engine.semantic_knowledge_graph as skg
+from webserver.semantic_search.semantic_functions import *
+
 def escape_quotes_in_query(query):
     return query.replace('"', '\\"')
 
 def to_query_string(query_tree):
     return " ".join([node["query"] for node in query_tree])
 
+def process_semantic_functions_new(query_tree):
+    position = 0
+    while position < len(query_tree):
+        node = query_tree[position]
+        if node["type"] == "semantic_function":
+            commaned_is_resolved = False
+            if node["semantic_function"]:
+                query = {"query_tree": query_tree}
+                commaned_is_resolved = eval(node["semantic_function"])
+            if not commaned_is_resolved:
+                query_tree.pop(position)
+        position += 1
+    return query_tree 
+ 
 def process_semantic_functions(query_tree):
     position = 0
     while position < len(query_tree):
@@ -33,13 +48,37 @@ def process_semantic_functions(query_tree):
 
     return query_tree 
 
+def get_enrichments(collection, keyword):
+    enrichments = {}
+    nodes_to_traverse = [{"field": "text_t", "values": [keyword]},
+                         [{"name": "related_terms", "field":
+                           "text_t", "limit": 3},
+                          {"name": "doc_type", "field": "doc_type",
+                           "limit": 1}]]
+    traversals = skg.traverse(collection, *nodes_to_traverse)
+    nested_traversals = traversals["graph"][0]["values"][keyword]["traversals"]
+    
+    doc_types = list(filter(lambda t: t["name"] == "doc_type",
+                            nested_traversals))
+    if doc_types:
+        enrichments["category"] = next(iter(doc_types[0]["values"]))
+        
+    term_vector = ""
+    related_terms = list(filter(lambda t: t["name"] == "related_terms",
+                                nested_traversals))
+    if related_terms:
+        for term, data in related_terms[0]["values"].items():
+            term_vector += f'{term}^{round(data["relatedness"], 4)} '
+    enrichments["term_vector"] = term_vector.strip()
+    
+    return enrichments
+
 def enrich(collection, query_tree):
     query_tree = process_semantic_functions(query_tree)    
     for i in range(len(query_tree)):
         item = query_tree[i]
         if item["type"] == "keyword":
-            skg_response = traverse_skg(collection, item["surface_form"])
-            enrichments = parse_skg_response(skg_response)
+            enrichments = get_enrichments(collection, item["surface_form"])
             query_tree[i] = {"type": "skg_enriched", 
                              "enrichments": enrichments}                    
     return query_tree
@@ -47,9 +86,9 @@ def enrich(collection, query_tree):
 def transform_query(query_tree):
     for i in range(len(query_tree)):
         item = query_tree[i]
-        additional_query = ""
+        transformed_query = ""
         match item["type"]:
-            case "solr":
+            case "transformed":
                 pass
             case "skg_enriched":
                 enrichments = item["enrichments"]
@@ -62,17 +101,19 @@ def transform_query(query_tree):
                 if (len(query_string) == 0):
                     query_string = item["surface_form"]
                     
-                additional_query = '{!edismax v="' + escape_quotes_in_query(query_string) + '"}'
+                transformed_query = '{!edismax v="' + escape_quotes_in_query(query_string) + '"}'
             case "color":
-                additional_query = f'+colors_s:"{item["canonical_form"]}"'
+                transformed_query = f'+colors_s:"{item["canonical_form"]}"'
             case "known_item" | "event":
-                additional_query = f'+name_s:"{item["canonical_form"]}"'
+                transformed_query = f'+name_s:"{item["canonical_form"]}"'
             case "city":
-                additional_query = f'+city_t:"{str(item["name"])}"'
+                transformed_query = f'+city_t:"{str(item["name"])}"'
             case "brand":
-                additional_query = f'+brand_s:"{item["canonical_form"]}"'
+                transformed_query = f'+brand_s:"{item["canonical_form"]}"'
             case _:
-                additional_query = "+{!edismax v=\"" + escape_quotes_in_query(item["surface_form"]) + "\"}"
-        if additional_query:
-            query_tree[i] = {"type": "solr", "query": additional_query}                    
+                transformed_query = "+{!edismax v=\"" + escape_quotes_in_query(item["surface_form"]) + "\"}"
+        if transformed_query:
+            query_tree[i] = {"type": "transformed",
+                             "syntax": "solr",
+                             "query": transformed_query}                 
     return query_tree

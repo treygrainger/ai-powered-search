@@ -40,7 +40,7 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         content_len = int(self.headers.get("Content-Length"), 0)
-        post_body = self.rfile.read(content_len)
+        post_body = self.rfile.read(content_len).decode('UTF-8')
 
         if (self.path.startswith("/tag_query")):
             self.sendResponse(get_engine().tag_query("entities", post_body))
@@ -51,9 +51,8 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith("/process_basic_query"):
             self.sendResponse(process_basic_query(post_body))
         elif self.path.startswith("/run_search"):
-            text = post_body.decode('UTF-8')
-            results = json.loads(keyword_search(text))
-            highlight_terms = post_body.decode('UTF-8').split(' ')
+            results = json.loads(keyword_search(post_body))
+            highlight_terms = post_body.split(' ')
             rendered_results = render_search_results(results, highlight_terms)
             self.sendResponse(rendered_results)
     
