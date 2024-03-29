@@ -6,19 +6,6 @@ import random
 import requests
 from solr_collection import SolrCollection
 
-def product_search_request(query):
-    return {
-        "query": query,
-        "fields": ["upc", "name", "manufacturer", "score"],
-        "limit": 5,
-        "sort": "score desc, upc asc",
-        "params": {
-            "qf": "name manufacturer longDescription",
-            "defType": "edismax",
-            "indent": "true",
-        }
-    }
-    
 class SolrEngine:
     def __init__(self):
         pass
@@ -248,7 +235,7 @@ class SolrEngine:
                     "json.nl": "map",
                     "sort": "popularity desc",
                     "matchText": "true",
-                    "fl": "id,canonical_form,type,semantic_function,popularity,country,admin_area,*_p"
+                    "fl": "id,canonical_form,surface_form,type,semantic_function,popularity,country,admin_area,*_p"
                 }
             }
         }
@@ -332,8 +319,9 @@ class SolrEngine:
     def random_document_request(self, query):
         draw = random.random()
         return {
+            "query": query,
             "limit": 1,
-            "params": {"q": query, "sort": f"random_{draw} DESC"}
+            "order_by": [(f"random_{draw}", "DESC")]
         }
     
     def spell_check(self, collection, query):
@@ -344,12 +332,12 @@ class SolrEngine:
                 for r in response["spellcheck"]["collations"]
                 if r != "collation"}
 
+    def generate_query_time_boost(query):
+        return f"sum(1,query({query})"
+    
     def print_status(self, solr_response):
         print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
-    def docs_from_response(self, response):
-        return response["response"]["docs"]
-    
     def tag_query(self, collection_name, query):
         url_params = "json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,surface_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,semantic_function"
         return requests.post(f"{SOLR_URL}/{collection_name}/tag?{url_params}", query).json()

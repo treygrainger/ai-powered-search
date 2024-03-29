@@ -1,4 +1,5 @@
 from env import SOLR_URL
+import json
 import requests
 
 class SolrLTR:
@@ -33,28 +34,6 @@ class SolrLTR:
         return self.generate_feature(feature_name, store_name, params,
                                      feature_type="org.apache.solr.ltr.feature.FieldLengthFeature")
     
-    def log_query(self, collection, featureset, ids, options={}, id_field="id", fields=None, log=False):
-        efi = " ".join(f'efi.{k}="{v}"' for k, v in options.items())
-        if not fields:
-            fields = id_field
-        params = {
-            "fl": f"{fields},[features store={featureset} {efi}]",
-            "q": "{{!terms f={}}}{}".format(id_field, ",".join(ids)) if ids else "*:*",
-            "rows": 1000,
-            "wt": "json"
-        }
-        if log:
-            print("Search Request:")
-            print(params)
-        resp = collection.search(data=params)
-        docs = resp["response"]["docs"]
-        # Clean up features to consistent format
-        for d in docs:
-            features = list(map(lambda f : float(f.split("=")[1]), d["[features]"].split(",")))
-            d["ltr_features"] = features
-
-        return docs    
-    
     def delete_feature_store(self, collection, name):
         return requests.delete(f"{SOLR_URL}/{collection.name}/schema/feature-store/{name}").json()
 
@@ -69,7 +48,30 @@ class SolrLTR:
         requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={collection.name}&wt=xml")
         return response    
     
-    def generate_ltr_model(self, feature_store, model_name, feature_names, means, std_devs, weights):
+    def log_query(self, collection, featureset, ids, options={}, id_field="id", fields=None, log=False):
+        efi = " ".join(f'efi.{k}="{v}"' for k, v in options.items())
+        if not fields:
+            fields = [id_field]
+        fields.append(f"[features store={featureset} {efi}]")
+        request = {
+            "query": "{{!terms f={}}}{}".format(id_field, ",".join(ids)) if ids else "*:*",
+            "return_fields": fields,
+            "limit": 1000,
+            "query_parser": "default"
+        }
+        if log:
+            print("Search Request:")
+            print(json.dumps(collection.transform_request(**request), indent="  "))
+        resp = collection.search(**request)
+        docs = resp["docs"]
+        # Clean up features to consistent format
+        for d in docs:
+            features = list(map(lambda f : float(f.split("=")[1]), d["[features]"].split(",")))
+            d["ltr_features"] = features
+
+        return docs
+    
+    def generate_model(self, feature_store, model_name, feature_names, means, std_devs, weights):
         linear_model = {
             "store": "movies",
             "class": "org.apache.solr.ltr.model.LinearModel",
@@ -92,24 +94,17 @@ class SolrLTR:
             linear_model["params"]["weights"][name] =  weights[i]         
         return linear_model
     
-    def basic_ltr_query(self, model_name, query, fields):
-        return {
-            "fields": fields,
-            "limit": 5,
-            "params": {
-                "q": "{" + f'!ltr reRankDocs=60000 model={model_name} efi.keywords="{query}"' + "}"
-            }
-        }
-        
-    def ltr_query(self, model_name, query, fields, qf="title overview", rerank=500):
-        return {
-            "fields": fields,
-            "limit": 5,
-            "params": {
-                "rq": "{" + f'!ltr reRankDocs={rerank} model={model_name} efi.keywords="{query}"' + "}",
-                "qf": qf,
-                "defType": "edismax",
-                "q": "harry potter"
-            }
-        }
-    
+    def generate_query(self, model_name, query, fields,
+                       query_fields=["title", "overview"], rerank=None, log=False):
+        request = {"return_fields": fields, "limit": 5}
+        if log:
+            request["log"] = True
+        rerank_query = "{" + f'!ltr reRankDocs={rerank if rerank else 60000} model={model_name} efi.keywords="{query}"' + "}"
+        if rerank:
+            request["query"] = query
+            request["rerank_query"] = rerank_query
+            request["query_fields"] = query_fields
+        else:
+            request["query"] = rerank_query
+            request["query_parser"] = "default"
+        return request
