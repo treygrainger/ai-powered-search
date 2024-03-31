@@ -32,9 +32,7 @@ class SolrCollection:
         request = {
             "query": "*:*",
             "limit": 10,
-            "params": {"defType": "edismax",
-                       "ident": "true",
-                       "omitHeader": "true"}     
+            "params": {}     
         }
         
         for name, value in search_args.items():
@@ -45,15 +43,12 @@ class SolrCollection:
                 case "query":
                     request["query"] = value if value else "*:*"
                 case "query_parser":
-                    if value == "default":
-                        request["params"].pop("defType")
-                    else:
-                        request["params"]["defType"] = value
+                    request["params"]["defType"] = value
                 case "query_fields":
                     request["params"]["qf"] = value
                 case "return_fields":
                     request["fields"] = value
-                case "filter":
+                case "filters":
                     request["filter"] = []
                     for f in value:
                         filter_value = f'({" ".join(f[1])})' if type(f[1]) is list else f[1] 

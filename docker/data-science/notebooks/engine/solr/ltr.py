@@ -54,10 +54,9 @@ class SolrLTR:
             fields = [id_field]
         fields.append(f"[features store={featureset} {efi}]")
         request = {
-            "query": "{{!terms f={}}}{}".format(id_field, ",".join(ids)) if ids else "*:*",
+            "query": f"upc:({' '.join(ids)})" if ids else "*", 
             "return_fields": fields,
-            "limit": 1000,
-            "query_parser": "default"
+            "limit": 1000
         }
         if log:
             print("Search Request:")

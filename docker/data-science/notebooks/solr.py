@@ -1,10 +1,13 @@
+import json
+import random
+
+import requests
 from env import *
-from IPython.display import display,HTML
+from IPython.display import HTML, display
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
-import random
-import requests
 from solr_collection import SolrCollection
+
 
 class SolrEngine:
     def __init__(self):
@@ -40,9 +43,11 @@ class SolrEngine:
     def apply_schema_for_collection(self, collection):
         match collection.name:
             case "cat_in_the_hat":
+                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
             case "products" | "products_with_signals_boosts":
+                self.set_search_defaults(collection)
                 self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
                 self.upsert_text_field(collection, "name")
@@ -53,28 +58,32 @@ class SolrEngine:
                     self.upsert_boosts_field_type(collection, "boosts")
                     self.upsert_boosts_field(collection, "signals_boosts")
             case "jobs":
+                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "company_country")
                 self.upsert_text_field(collection, "job_description")
                 self.upsert_text_field(collection, "company_description")
             case "stackexchange" | "health" | "cooking" | "scifi" | "travel" | "devops":
+                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "body")
             case "tmdb" :
+                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "overview")
                 self.upsert_double_field(collection, "release_year")
             case "outdoors":
+                self.set_search_defaults(collection)
                 self.upsert_string_field(collection,"url")
-                self.upsert_integer_field(collection,"post_type_id")
-                self.upsert_integer_field(collection,"accepted_answer_id")
-                self.upsert_integer_field(collection,"parent_id")
-                self.upsert_integer_field(collection,"score")
-                self.upsert_integer_field(collection,"view_count")
-                self.upsert_text_field(collection,"body")
-                self.upsert_text_field(collection,"title")
-                self.upsert_keyword_field(collection,"tags")
-                self.upsert_integer_field(collection,"answer_count")
-                self.upsert_integer_field(collection,"owner_user_id")
+                self.upsert_integer_field(collection, "post_type_id")
+                self.upsert_integer_field(collection, "accepted_answer_id")
+                self.upsert_integer_field(collection, "parent_id")
+                self.upsert_integer_field(collection, "score")
+                self.upsert_integer_field(collection, "view_count")
+                self.upsert_text_field(collection, "body")
+                self.upsert_text_field(collection, "title")
+                self.upsert_keyword_field(collection, "tags")
+                self.upsert_integer_field(collection, "answer_count")
+                self.upsert_integer_field(collection, "owner_user_id")
             case "reviews":
                 self.add_delimited_field_type(collection, "commaDelimited", ",\s*")
                 self.add_delimited_field_type(collection, "pipeDelimited", "\|\s*") #necessary? is this used
@@ -224,7 +233,21 @@ class SolrEngine:
             delete_copy_field = {"delete-copy-field": rule}
             response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_copy_field).json()
             self.print_status(response)
-        
+    
+    def set_search_defaults(self, collection):
+        request = {
+            "add-requesthandler": {
+                "name": "/select",
+                "class": "solr.SearchHandler",
+                "defaults": {
+                    "defType": "edismax",
+                    "indent": True,
+                    "echoParams": False
+                }
+            }
+        }
+        return requests.post(f"{SOLR_URL}/{collection.name}/config", json=request)
+    
     def add_tag_request_handler(self, collection, request_name, field):
         request = {
             "add-requesthandler" : {
@@ -324,9 +347,12 @@ class SolrEngine:
             "order_by": [(f"random_{draw}", "DESC")]
         }
     
-    def spell_check(self, collection, query):
+    def spell_check(self, collection, query, log=True):
         request = {"query": query,
                    "params": {"q.op": "and", "indent": "on"}}
+        if log:
+            print("Solr spellcheck basic request syntax: ")
+            print(json.dumps(request, indent="  "))
         response = requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request).json()
         return {r["collationQuery"]: r["hits"]
                 for r in response["spellcheck"]["collations"]
