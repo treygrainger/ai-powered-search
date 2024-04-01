@@ -11,7 +11,8 @@ def generate_request_root():
         "facet": {}
     }
 
-def generate_facets(name=None, values=None, field=None, min_occurrences=None, limit=None, operator="or"):
+def generate_facets(name=None, values=None, field=None,
+                    min_occurrences=None, limit=None, min_popularity=None):
     base_facet = {"type": "query" if values else "terms",
                   "limit": limit if limit else 10,
                   "sort": { f"relatedness": "desc" },
@@ -21,6 +22,8 @@ def generate_facets(name=None, values=None, field=None, min_occurrences=None, li
                           "func": "relatedness($fore,$back)"}}}
     if min_occurrences:
         base_facet["mincount"] = min_occurrences
+    if min_popularity:
+        base_facet["facet"]["relatedness"]["min_popularity"] = min_popularity
     if field:
         base_facet["field"] = field
     facets = []
@@ -111,5 +114,5 @@ def sort_by_relatedness_desc(d):
 
 def traverse(collection, *nodes):
     request = generate_skg_request(*nodes)
-    response = collection.search(request)
+    response = collection.native_search(request)
     return {"graph": transform_response_facet(response["facets"], request["params"])}

@@ -18,7 +18,7 @@ class FeatureLogger:
     def clear(self):
         self.logged=[]
 
-    def log_for_qid(self, judgments, qid=None, keywords=None):
+    def log_for_qid(self, judgments, qid=None, keywords=None, log=False):
         """ Log a set of judgments associated with a single qid
             judgments will be modified, a training set also returned, discarding
             any judgments we could not log features for (because the doc was missing)
@@ -61,10 +61,8 @@ class FeatureLogger:
             }
 
             ids = [str(doc_id) for doc_id in ids]
-            #collection = self.engine.get_collection(self.index)
-            collection = get_engine().get_collection(self.index)
-            res = get_ltr_helper().log_query(collection, self.feature_set, ids,
-                                             params, id_field=self.id_field, log=True)
+            res = get_ltr_engine().log_query(self.index, self.feature_set, ids,
+                                             params, id_field=self.id_field, log=log)
 
 
             # Add feature back to each judgment

@@ -117,7 +117,7 @@ def render_search_results(query, results):
 
         return rendered
 
-def create_view(collection, view_name, spark=None):
+def create_view_from_collection(collection, view_name, spark=None):
     if not spark:
         spark = SparkSession.builder.appName("AIPS").getOrCreate()
     opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    

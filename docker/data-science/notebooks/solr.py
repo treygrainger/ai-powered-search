@@ -1,24 +1,14 @@
+import json
+import random
+
+import requests
 from env import *
-from IPython.display import display,HTML
+from IPython.display import HTML, display
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
-import random
-import requests
 from solr_collection import SolrCollection
 
-def product_search_request(query):
-    return {
-        "query": query,
-        "fields": ["upc", "name", "manufacturer", "score"],
-        "limit": 5,
-        "sort": "score desc, upc asc",
-        "params": {
-            "qf": "name manufacturer longDescription",
-            "defType": "edismax",
-            "indent": "true",
-        }
-    }
-    
+
 class SolrEngine:
     def __init__(self):
         pass
@@ -53,9 +43,11 @@ class SolrEngine:
     def apply_schema_for_collection(self, collection):
         match collection.name:
             case "cat_in_the_hat":
+                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
             case "products" | "products_with_signals_boosts":
+                self.set_search_defaults(collection)
                 self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
                 self.upsert_text_field(collection, "name")
@@ -66,28 +58,32 @@ class SolrEngine:
                     self.upsert_boosts_field_type(collection, "boosts")
                     self.upsert_boosts_field(collection, "signals_boosts")
             case "jobs":
+                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "company_country")
                 self.upsert_text_field(collection, "job_description")
                 self.upsert_text_field(collection, "company_description")
             case "stackexchange" | "health" | "cooking" | "scifi" | "travel" | "devops":
+                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "body")
             case "tmdb" :
+                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "overview")
                 self.upsert_double_field(collection, "release_year")
             case "outdoors":
+                self.set_search_defaults(collection)
                 self.upsert_string_field(collection,"url")
-                self.upsert_integer_field(collection,"post_type_id")
-                self.upsert_integer_field(collection,"accepted_answer_id")
-                self.upsert_integer_field(collection,"parent_id")
-                self.upsert_integer_field(collection,"score")
-                self.upsert_integer_field(collection,"view_count")
-                self.upsert_text_field(collection,"body")
-                self.upsert_text_field(collection,"title")
-                self.upsert_keyword_field(collection,"tags")
-                self.upsert_integer_field(collection,"answer_count")
-                self.upsert_integer_field(collection,"owner_user_id")
+                self.upsert_integer_field(collection, "post_type_id")
+                self.upsert_integer_field(collection, "accepted_answer_id")
+                self.upsert_integer_field(collection, "parent_id")
+                self.upsert_integer_field(collection, "score")
+                self.upsert_integer_field(collection, "view_count")
+                self.upsert_text_field(collection, "body")
+                self.upsert_text_field(collection, "title")
+                self.upsert_keyword_field(collection, "tags")
+                self.upsert_integer_field(collection, "answer_count")
+                self.upsert_integer_field(collection, "owner_user_id")
             case "reviews":
                 self.add_delimited_field_type(collection, "commaDelimited", ",\s*")
                 self.add_delimited_field_type(collection, "pipeDelimited", "\|\s*") #necessary? is this used
@@ -111,7 +107,20 @@ class SolrEngine:
                 self.add_copy_field(collection, "admin_code_1_s", "admin_area")
                 self.add_tag_request_handler(collection, "/tag", "name_tag")
             case _:
-                pass
+                self.set_search_defaults(collection)
+    
+    def set_search_defaults(self, collection):
+        request = {
+            "update-requesthandler": {
+                "name": "/select",
+                "class": "solr.SearchHandler",
+                "defaults": {
+                    "defType": "edismax",
+                    "indent": True
+                }
+            }
+        }
+        return requests.post(f"{SOLR_URL}/{collection.name}/config", json=request)
     
     def apply_additional_schema(self, collection):
         self.delete_copy_fields(collection)
@@ -237,7 +246,7 @@ class SolrEngine:
             delete_copy_field = {"delete-copy-field": rule}
             response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_copy_field).json()
             self.print_status(response)
-        
+    
     def add_tag_request_handler(self, collection, request_name, field):
         request = {
             "add-requesthandler" : {
@@ -248,7 +257,7 @@ class SolrEngine:
                     "json.nl": "map",
                     "sort": "popularity desc",
                     "matchText": "true",
-                    "fl": "id,canonical_form,type,semantic_function,popularity,country,admin_area,*_p"
+                    "fl": "id,canonical_form,surface_form,type,semantic_function,popularity,country,admin_area,*_p"
                 }
             }
         }
@@ -332,24 +341,28 @@ class SolrEngine:
     def random_document_request(self, query):
         draw = random.random()
         return {
+            "query": query,
             "limit": 1,
-            "params": {"q": query, "sort": f"random_{draw} DESC"}
+            "order_by": [(f"random_{draw}", "DESC")]
         }
     
-    def spell_check(self, collection, query):
+    def spell_check(self, collection, query, log=True):
         request = {"query": query,
                    "params": {"q.op": "and", "indent": "on"}}
+        if log:
+            print("Solr spellcheck basic request syntax: ")
+            print(json.dumps(request, indent="  "))
         response = requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request).json()
         return {r["collationQuery"]: r["hits"]
                 for r in response["spellcheck"]["collations"]
                 if r != "collation"}
 
+    def generate_query_time_boost(query):
+        return f"sum(1,query({query})"
+    
     def print_status(self, solr_response):
         print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
-    def docs_from_response(self, response):
-        return response["response"]["docs"]
-    
     def tag_query(self, collection_name, query):
         url_params = "json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,surface_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,semantic_function"
         return requests.post(f"{SOLR_URL}/{collection_name}/tag?{url_params}", query).json()

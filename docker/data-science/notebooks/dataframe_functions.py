@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
 
 def from_csv(file, more_opts=False):
-    print(f"Loading file")
+    print(f"Loading {file}")
     spark = SparkSession.builder.appName("AIPS").getOrCreate()
     reader = spark.read.format("csv").option("header", "true").option("inferSchema", "true")
     if more_opts:
