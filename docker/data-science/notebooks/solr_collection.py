@@ -13,7 +13,8 @@ class SolrCollection:
         self.name = name
         
     def commit(self):
-        return requests.post(f"{SOLR_URL}/{self.name}/update?commit=true&waitSearcher=true")
+        requests.post(f"{SOLR_URL}/{self.name}/update?commit=true&waitSearcher=true")
+        time.sleep(2)
 
     def write(self, dataframe):
         opts = {"zkhost": AIPS_ZK_HOST, "collection": self.name,

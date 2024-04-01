@@ -107,7 +107,20 @@ class SolrEngine:
                 self.add_copy_field(collection, "admin_code_1_s", "admin_area")
                 self.add_tag_request_handler(collection, "/tag", "name_tag")
             case _:
-                pass
+                self.set_search_defaults(collection)
+    
+    def set_search_defaults(self, collection):
+        request = {
+            "update-requesthandler": {
+                "name": "/select",
+                "class": "solr.SearchHandler",
+                "defaults": {
+                    "defType": "edismax",
+                    "indent": True
+                }
+            }
+        }
+        return requests.post(f"{SOLR_URL}/{collection.name}/config", json=request)
     
     def apply_additional_schema(self, collection):
         self.delete_copy_fields(collection)
@@ -233,20 +246,6 @@ class SolrEngine:
             delete_copy_field = {"delete-copy-field": rule}
             response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_copy_field).json()
             self.print_status(response)
-    
-    def set_search_defaults(self, collection):
-        request = {
-            "add-requesthandler": {
-                "name": "/select",
-                "class": "solr.SearchHandler",
-                "defaults": {
-                    "defType": "edismax",
-                    "indent": True,
-                    "echoParams": False
-                }
-            }
-        }
-        return requests.post(f"{SOLR_URL}/{collection.name}/config", json=request)
     
     def add_tag_request_handler(self, collection, request_name, field):
         request = {
