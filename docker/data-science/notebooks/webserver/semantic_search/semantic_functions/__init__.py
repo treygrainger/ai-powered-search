@@ -2,9 +2,9 @@ def create_geo_filter(coordinates, field, distance_in_KM):
     return "+{!geofilt d=" + str(distance_in_KM) + ' sfield="' + field + '" pt="' + coordinates + '"}'
 
 def location_distance(query, position):
-    if (len(query["query_tree"]) -1 > position):
+    if len(query["query_tree"]) -1 > position:
         next_entity = query["query_tree"][position + 1]
-        if (next_entity["type"] == "city"):
+        if next_entity["type"] == "city":
             query["query_tree"].pop(position + 1)
             query["query_tree"][position] = {
                 "type": "transformed",
@@ -15,7 +15,7 @@ def location_distance(query, position):
     return False
 
 def popularity(query, position):
-    if (len(query["query_tree"]) -1 > position):
+    if len(query["query_tree"]) -1 > position:
         query["query_tree"][position] = {
             "type": "transformed",
             "syntax": "solr",
