@@ -243,14 +243,14 @@ def judgments_to_nparray(judgments):
         - features - num samples x num features
         - predictors - num samples x grade, qid
     """
-    import numpy as np
+    import numpy
     predictors = []
     features = []
     for idx, judg in enumerate(judgments):
         predictors.append([judg.grade, judg.qid])
         features.append(judg.features)
-    features = np.array(features)
-    predictors = np.array(predictors)
+    features = numpy.array(features)
+    predictors = numpy.array(predictors)
     return features, predictors
 
 def duplicateJudgmentsByWeight(judgmentsByQid):

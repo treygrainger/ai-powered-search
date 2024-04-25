@@ -4,7 +4,6 @@ import random
 import requests
 from env import *
 from IPython.display import HTML, display
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
 from solr_collection import SolrCollection
 
@@ -47,13 +46,34 @@ class SolrEngine:
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
             case "products" | "products_with_signals_boosts":
+                self.delete_copy_fields(collection)
+                
                 self.set_search_defaults(collection)
                 self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
                 self.upsert_text_field(collection, "name")
-                self.upsert_text_field(collection, "manufacturer")
+                self.upsert_text_field(collection, "manufacturer")                
+                self.upsert_text_field(collection, "collectionName")
+                
+                self.add_ngram_field_type(collection)
+                self.add_copy_field(collection, "name", "name_ngram")
+                
+                self.add_omit_norms_field_type(collection)
+                self.add_copy_field(collection, "name", "name_omit_norms")
+                
+                self.add_copy_field(collection, "name", "name_txt_en_split")
+                
+                self.upsert_field(collection, "promotion_b", "boolean")
+                self.upsert_field(collection, "has_promotion", "boolean")
+                self.add_copy_field(collection, "promotion_b", "has_promotion") #Alter csv and remove
+                
                 self.upsert_text_field(collection, "shortDescription")
+                self.upsert_text_field(collection, "short_description")
+                self.add_copy_field(collection, "shortDescription", "short_description") #Alter csv and remove
+                
                 self.upsert_text_field(collection, "longDescription")
+                self.upsert_text_field(collection, "long_description")
+                self.add_copy_field(collection, "longDescription", "long_description") #Alter csv and remove
                 if collection.name == "products_with_signals_boosts":
                     self.upsert_boosts_field_type(collection, "boosts")
                     self.upsert_boosts_field(collection, "signals_boosts")
@@ -84,6 +104,9 @@ class SolrEngine:
                 self.upsert_keyword_field(collection, "tags")
                 self.upsert_integer_field(collection, "answer_count")
                 self.upsert_integer_field(collection, "owner_user_id")
+            case "outdoors_with_embeddings":
+                self.upsert_text_field(collection, "title")
+                self.add_vector_field(collection, "title", 768, "dot_product")
             case "reviews":
                 self.add_delimited_field_type(collection, "commaDelimited", ",\s*")
                 self.add_delimited_field_type(collection, "pipeDelimited", "\|\s*") #necessary? is this used
@@ -108,32 +131,46 @@ class SolrEngine:
                 self.add_tag_request_handler(collection, "/tag", "name_tag")
             case _:
                 self.set_search_defaults(collection)
-    
-    def set_search_defaults(self, collection):
+              
+    def add_vector_field(self, collection, field_name, dimensions, similarity_function,
+                         vector_encoding_sizes=None):    
+        field_type_name = f"{field_name}_vector"
+        delete_field = {"delete-field": {"name": f"{field_name}_embeddings"}}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
+        
+        delete_field_type = {"delete-field-type": {"name": field_type_name}}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type)
+        
+        add_field_type = {
+            "add-field-type": {
+                "name": field_type_name,
+                "class": "solr.DenseVectorField",
+                "vectorDimension": dimensions,
+                "vectorEncoding": "FLOAT32",
+                "similarityFunction": similarity_function
+            }
+        }
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type)
+        
+        add_field = {"add-field": {"name": f"{field_name}_embeddings", "type": field_type_name, "stored": "true", "indexed": "true"}}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field)
+
+    def set_search_defaults(self, collection, default_parser="edismax"):
         request = {
             "update-requesthandler": {
                 "name": "/select",
                 "class": "solr.SearchHandler",
                 "defaults": {
-                    "defType": "edismax",
+                    "defType": default_parser,
                     "indent": True
                 }
             }
         }
         return requests.post(f"{SOLR_URL}/{collection.name}/config", json=request)
-    
-    def apply_additional_schema(self, collection):
-        self.delete_copy_fields(collection)
-        self.upsert_text_field(collection, "collectionName")
-        self.add_copy_field(collection, "name", "name_ngram")
-        self.add_copy_field(collection, "name", "name_omit_norms")
-        self.add_copy_field(collection, "name", "name_txt_en_split")
-        self.add_ngram_field_type(collection)
-        self.add_omit_norms_field_type(collection)
         
     def add_copy_field(self, collection, source, dest):
         request = {"add-copy-field": {"source": source, "dest": dest}}
-        return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
+        print(requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request).json())
 
     def upsert_text_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "text_general")
@@ -154,7 +191,7 @@ class SolrEngine:
         self.upsert_field(collection, field_name, field_type_name, {"multiValued":"true"})
            
     def upsert_field(self, collection, field_name, type, additional_schema={}):
-        delete_field = {"delete-field":{"name": field_name}}
+        delete_field = {"delete-field": {"name": field_name}}
         response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
         field = {"name": field_name, "type": type, "stored": "true", "indexed": "true", "multiValued": "false"}
         field.update(additional_schema)
@@ -183,37 +220,61 @@ class SolrEngine:
 
     def add_ngram_field_type(self, collection):
         ngram_analyzer = {
-            "tokenizer": {"class": "solr.StandardTokenizerFactory"},
-            "filters":
-                [{"class": "solr.LowerCaseFilterFactory"},
-                {"class": "solr.NGramFilterFactory",
-                "minGramSize": "3",
-                #"preserveOriginal": "true",
-                "maxGramSize": "6"}]
-        }
+                "tokenizer": {
+                    "class": "solr.StandardTokenizerFactory"
+                },
+                "filters":
+                    [{"class": "solr.LowerCaseFilterFactory"},
+                     {"class": "solr.NGramFilterFactory",
+                      "minGramSize": "3",
+                      "maxGramSize": "6",
+                      #"preserveOriginal": "true"
+                      }
+                    ]
+            }
         self.add_text_field_type(collection, "ngram", ngram_analyzer,
                                  omitTermFreqAndPositions=True)
 
     def add_omit_norms_field_type(self, collection):
         text_general_analyzer = {
-            "tokenizer": {"class": "solr.StandardTokenizerFactory"},
-            "filters":[{"class": "solr.LowerCaseFilterFactory"}]
-        }
+                "tokenizer": {
+                    "class": "solr.StandardTokenizerFactory"
+                },
+                "filters":
+                    [{"class": "solr.LowerCaseFilterFactory"}
+                    ]
+            }
+
         self.add_text_field_type(collection, "omit_norms", text_general_analyzer,
                                  omitNorms=True)
 
     def add_text_field_type(self, collection, name, analyzer, 
                             omitTermFreqAndPositions=False,
-                            omitNorms=False):
+                            omitNorms=False):       
         """Create a field type and a corresponding dynamic field."""
-        
-        dynamic_field_name = f"*_{name}"
-        delete_dynamic_field = {"delete-dynamic-field": {"name": dynamic_field_name}}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_dynamic_field)
-        
-        field_type_name = f"text_{name}"
-        delete_field_type = {"delete-field-type": {"name": field_type_name}}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type)
+        collection_name = collection.name
+        field_type_name = "text_" + name
+        dynamic_field_name = "*_" + name
+        print(f"Creating Field Type {field_type_name}")
+        print(f" with Dynamic Field {dynamic_field_name}")
+
+        delete_dynamic_field = {
+            "delete-dynamic-field": {
+                "name": dynamic_field_name
+            }
+        }
+        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_dynamic_field)
+        print("Delete dynamic field")
+        self.print_status(response.json())
+
+        delete_field_type = {
+            "delete-field-type": {
+                "name": field_type_name
+            }
+        }
+        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field_type)
+        print("Delete field type")
+        self.print_status(response.json())
 
         add_field_type = {
             "add-field-type": {
@@ -225,7 +286,9 @@ class SolrEngine:
                 "omitNorms": omitNorms
             }
         }
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type)
+        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field_type)
+        print("Create field type")
+        self.print_status(response.json())
 
         add_dynamic_field = {
             "add-dynamic-field": {
@@ -233,8 +296,13 @@ class SolrEngine:
                 "type": field_type_name,
                 "stored": True
             }
-        }        
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_dynamic_field)
+        }
+        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_dynamic_field)
+        self.print_status(response.json())
+
+        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_dynamic_field)
+        print("Create dynamic field")
+        self.print_status(response.json())
 
     def delete_copy_fields(self, collection):
         copy_fields = requests.get(f"{SOLR_URL}/{collection.name}/schema/copyfields?wt=json").json()

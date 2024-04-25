@@ -1,8 +1,8 @@
-import pandas as pd
+import pandas 
 import glob 
 
 def all_sessions():
-    sessions = pd.concat([pd.read_csv(f, compression="gzip")
+    sessions = pandas.concat([pandas.read_csv(f, compression="gzip")
                           for f in glob.glob("data/*_sessions.gz")])
     return sessions.rename(columns={"clicked_doc_id": "doc_id"})
 

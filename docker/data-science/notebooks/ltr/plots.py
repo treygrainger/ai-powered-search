@@ -1,6 +1,6 @@
 # Crocodile Dundee and Rocky have nice Linear Shapes
 
-import numpy as np
+import numpy
 import pylab as pl
 import matplotlib as mpl
 from ltr.judgments import judgments_to_nparray
@@ -34,13 +34,13 @@ def plot_judgments(qids, xlabel, ylabel, judg_list, focus=None,
                   [0,0,max_c,out_of_focus_alpha]]
 
     qid_col=predictors[:,1]
-    qid_idxs=np.array([])
+    qid_idxs=numpy.array([])
     kws = []
     markers=('.', 'P') # Negative / Positive relevance markers...
     legend_paths=[]
     legend_labels=[]
     for idx, qid in enumerate(qids):
-        qid_idxs=np.argwhere(qid_col==qid).ravel().astype(int)
+        qid_idxs=numpy.argwhere(qid_col==qid).ravel().astype(int)
         judgment=judg_list[qid_idxs[-1].item()]
         kws.append(judgment.keywords)
         x_qidA = features[qid_idxs]
@@ -50,7 +50,7 @@ def plot_judgments(qids, xlabel, ylabel, judg_list, focus=None,
         if qid in focus:
             color[3] = in_focus_alpha
         for grade in [1,0]:
-            this_grade=np.argwhere(y_qidA==grade)
+            this_grade=numpy.argwhere(y_qidA==grade)
             path = pl.scatter(x_qidA[this_grade,0],
                               x_qidA[this_grade,1],
                                marker=markers[grade],

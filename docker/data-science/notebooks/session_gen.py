@@ -1,5 +1,5 @@
-import pandas as pd
-import numpy as np
+import pandas
+import numpy
 import random
 
 def popular_query_events(signals, min_query_count):
@@ -42,7 +42,7 @@ def build_ground_truth(signals_path, min_query_count):
          a less accurate search system... then use click  models, etc to
          get closer to that ground truth
     """
-    signals = pd.read_csv(signals_path)
+    signals = pandas.read_csv(signals_path)
 
     # Unique query events, like
     # u_1_1, bluray
@@ -167,7 +167,7 @@ class SessionGenerator:
                 (shuffled['ctr_std_z_score'] * dampen * shuffled['dest_ctr_std'])
                 + (shuffled['dest_ctr_mean'])
         )
-        shuffled['draw'] = np.random.rand(len(shuffled))
+        shuffled['draw'] = numpy.random.rand(len(shuffled))
         if not use_median:
             shuffled['clicked'] = shuffled['draw'] < shuffled['dest_ctr_median_based']
         else:

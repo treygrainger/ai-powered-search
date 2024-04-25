@@ -21,7 +21,10 @@ class SolrLTR:
             query += "^=1"
         return self.generate_feature(feature_name, store_name, {"q": query})
     
-    def generate_advanced_query_feature(self, feature_name, store_name, field):
+    def generate_fuzzy_query_feature(self, feature_name, store_name, field_name):
+        return self.generate_query_feature(feature_name, store_name, f"{field_name}_ngram")
+    
+    def generate_bigram_query_feature(self, feature_name, store_name, field):
         query = "{" + f"!edismax qf={field} pf2={field}" +"}(${keywords})"
         return self.generate_feature(feature_name, store_name, {"q": query})
         
@@ -48,13 +51,13 @@ class SolrLTR:
         requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={collection.name}&wt=xml")
         return response    
     
-    def log_query(self, collection, featureset, ids, options={}, id_field="id", fields=None, log=False):
+    def log_query(self, collection, featureset, doc_ids, options={}, id_field="id", fields=None, log=False):
         efi = " ".join(f'efi.{k}="{v}"' for k, v in options.items())
         if not fields:
             fields = [id_field]
         fields.append(f"[features store={featureset} {efi}]")
         request = {
-            "query": f"upc:({' '.join(ids)})" if ids else "*", 
+            "query": f"id:({' '.join(doc_ids)})" if doc_ids else "*", 
             "return_fields": fields,
             "limit": 1000
         }
@@ -72,9 +75,9 @@ class SolrLTR:
     
     def generate_model(self, feature_store, model_name, feature_names, means, std_devs, weights):
         linear_model = {
-            "store": "movies",
+            "store": feature_store,
             "class": "org.apache.solr.ltr.model.LinearModel",
-            "name": "movie_model",
+            "name": model_name,
             "features": [],
             "params": { "weights": {} }
         }        
@@ -93,9 +96,9 @@ class SolrLTR:
             linear_model["params"]["weights"][name] =  weights[i]         
         return linear_model
     
-    def generate_query(self, model_name, query, fields,
+    def generate_query(self, model_name, query, return_fields,
                        query_fields=["title", "overview"], rerank=None, log=False):
-        request = {"return_fields": fields, "limit": 5}
+        request = {"return_fields": return_fields, "limit": 5}
         if log:
             request["log"] = True
         rerank_query = "{" + f'!ltr reRankDocs={rerank if rerank else 60000} model={model_name} efi.keywords="{query}"' + "}"
@@ -105,5 +108,5 @@ class SolrLTR:
             request["query_fields"] = query_fields
         else:
             request["query"] = rerank_query
-            request["query_parser"] = "default"
+            request["query_parser"] = "lucene"
         return request

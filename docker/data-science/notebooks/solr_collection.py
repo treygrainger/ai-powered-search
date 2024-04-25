@@ -2,6 +2,7 @@ import requests
 from env import *
 import time
 import json
+from pyspark.sql import SparkSession
 
 class SolrCollection:
     def __init__(self, name):
@@ -99,3 +100,22 @@ class SolrCollection:
         request = self.transform_request(**search_args)
         search_response = self.native_search(request=request)
         return self.transform_response(search_response)
+    
+    def vector_search(self, **search_args):
+        field = search_args["query_field"]
+        k = search_args["k"] if "k" in search_args else 10
+        query_vector = search_args["query_vector"]
+        request = {
+            "query": "{!knn " + f'topK={k} f={field}' + "}" + str(query_vector),
+            "limit": 5,
+            "fields": ["id", "score", "title"]
+        }        
+        for name, value in search_args.items():
+            match name:
+                case "limit":
+                    request["limit"] = value
+                case "rerank_query":
+                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
+                    request["params"]["rq"] = rq
+                    request["params"]["rq_query"] = "{!knn f=" + value["query_field"] + " topK=10}" + value["query_vector"]
+        return self.native_search(request=request)["response"]["docs"]
