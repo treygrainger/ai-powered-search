@@ -1,4 +1,4 @@
-from env import SOLR_URL
+from aips.environment import SOLR_URL
 import json
 import requests
 

@@ -1,11 +1,10 @@
-from env import SOLR_URL, AIPS_ZK_HOST
+from aips.environment import SOLR_URL
 from engine.solr import SolrEngine
 from engine.solr.ltr import SolrLTR
 
 import os
 from IPython.display import display,HTML
 import pandas
-from pyspark.sql import SparkSession
 import re
 import requests
 
@@ -20,12 +19,12 @@ def get_engine():
 
 def healthcheck():
     try:
-        if (get_engine().health_check()):
-            print ("Solr is up and responding.")
-            print ("Zookeeper is up and responding.\n")
-            print ("All Systems are ready. Happy Searching!")
+        if get_engine().health_check():
+            print("Solr is up and responding.")
+            print("Zookeeper is up and responding.\n")
+            print("All Systems are ready. Happy Searching!")
     except:
-        print ("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
+        print("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
 
 def print_status(solr_response):
       print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
@@ -57,38 +56,12 @@ def display_search(query, documents):
     display(HTML(doc_html))
    
 def display_product_search(query, documents):
-    file_path = os.path.dirname(os.path.abspath(__file__))
-    search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
-    with open(search_results_template_file) as file:
-        file_content = file.read()
-
-        template_syntax = "<!-- BEGIN_TEMPLATE[^>]*-->(.*)<!-- END_TEMPLATE[^>]*-->"
-        header_template = re.sub(template_syntax, "", file_content, flags=re.S)
-
-        results_template_syntax = "<!-- BEGIN_TEMPLATE: SEARCH_RESULTS -->(.*)<!-- END_TEMPLATE: SEARCH_RESULTS[^>]*-->"
-        x = re.search(results_template_syntax, file_content, flags=re.S)
-        results_template = x.group(1)
-
-        separator_template_syntax = "<!-- BEGIN_TEMPLATE: SEPARATOR -->(.*)<!-- END_TEMPLATE: SEPARATOR[^>]*-->"
-        x = re.search(separator_template_syntax, file_content, flags=re.S)
-        separator_template = x.group(1)
-
-        rendered = header_template.replace("${QUERY}", query)
-        for result in documents:
-            rendered += results_template.replace("${NAME}", result['name'] if 'name' in result else "UNKNOWN") \
-                .replace("${MANUFACTURER}", result['manufacturer'] if 'manufacturer' in result else "UNKNOWN") \
-                .replace("${DESCRIPTION}", remove_new_lines(result['short_description']) if 'short_description' in result else "") \
-                .replace("${IMAGE_URL}", "../data/retrotech/images/" + \
-                         (result['upc'] if \
-                          ('upc' in result and os.path.exists(file_path + "/data/retrotech/images/" + result['upc'] + ".jpg") \
-                         ) else "unavailable") + ".jpg")
-
-            rendered += separator_template
-    display(HTML((rendered)))
+    rendered_html = render_search_results(query, documents)
+    display(HTML((rendered_html)))
     
 def render_search_results(query, results):
     file_path = os.path.dirname(os.path.abspath(__file__))
-    search_results_template_file = os.path.join(file_path + "/data/retrotech/templates/", "search-results.html")
+    search_results_template_file = os.path.join(file_path + "/../data/retrotech/templates/", "search-results.html")
     with open(search_results_template_file) as file:
         file_content = file.read()
 
@@ -105,24 +78,17 @@ def render_search_results(query, results):
 
         rendered = header_template.replace("${QUERY}", query)
         for result in results:
-            rendered += results_template.replace("${NAME}", result['name'] if 'name' in result else "UNKNOWN") \
-                .replace("${MANUFACTURER}", result['manufacturer'] if 'manufacturer' in result else "UNKNOWN") \
-                .replace("${DESCRIPTION}", result['short_description'] if 'short_description' in result else "") \
+            rendered += results_template.replace("${NAME}", result.get("name", "UNKNOWN")) \
+                .replace("${MANUFACTURER}", result.get("manufacturer", "UNKNOWN")) \
+                .replace("${DESCRIPTION}", remove_new_lines(result.get("short_description", ""))) \
                 .replace("${IMAGE_URL}", "../data/retrotech/images/" + \
                          (result['upc'] if \
-                          ('upc' in result and os.path.exists(file_path + "/data/retrotech/images/" + result['upc'] + ".jpg") \
+                          ('upc' in result and os.path.exists(file_path + "/../data/retrotech/images/" + result['upc'] + ".jpg") \
                          ) else "unavailable") + ".jpg")
 
             rendered += separator_template
+    return rendered
 
-        return rendered
-
-def create_view_from_collection(collection, view_name, spark=None):
-    if not spark:
-        spark = SparkSession.builder.appName("AIPS").getOrCreate()
-    opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    
-    spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
-  
 def fetch_products(doc_ids):
     doc_ids = ["%s" % doc_id for doc_id in doc_ids]
     query = "upc:( " + " OR ".join(doc_ids) + " )"

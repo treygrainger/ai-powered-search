@@ -1,22 +1,22 @@
+from webserver.display.render_search_results import *
+from webserver.semantic_search import process_basic_query, process_semantic_query
+from webserver.semantic_search.engine import keyword_search, tag_places
+
 import sys
+
 sys.path.append('..')
-from aips import *
+import http.server
+import io
+import json
 import threading
 import webbrowser
-import http.server
-import requests
-import json
-import urllib
-import os
-from staticmap import StaticMap, CircleMarker
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
-FILE = 'semantic-search'
-AIPS_WEBSERVER_PORT = os.getenv('WEBSERVER_PORT') or 2345
+from aips import get_engine
+from aips.environment import AIPS_WEBSERVER_HOST, AIPS_WEBSERVER_PORT, WEBSERVER_URL
+from staticmap import CircleMarker, StaticMap
 
-from semantic_search.engine import tag_places, keyword_search
-from semantic_search import process_basic_query, process_semantic_query
-from display.render_search_results import *
+engine = get_engine()
 
 class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
     """Semantic Search Handler (AI-Powered Search)"""
@@ -43,11 +43,11 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
         post_body = self.rfile.read(content_len).decode('UTF-8')
 
         if (self.path.startswith("/tag_query")):
-            self.sendResponse(get_engine().tag_query("entities", post_body))
+            self.sendResponse(engine.tag_query("entities", post_body))
         elif self.path.startswith("/tag_places"):
             self.sendResponse(tag_places(post_body))
         elif self.path.startswith("/process_semantic_query"):
-            self.sendResponse(process_semantic_query(get_engine().get_collection("reviews"), post_body))
+            self.sendResponse(process_semantic_query(engine.get_collection("reviews"), post_body))
         elif self.path.startswith("/process_basic_query"):
             self.sendResponse(process_basic_query(post_body))
         elif self.path.startswith("/run_search"):
@@ -88,10 +88,9 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(image.read())
             image.close()
 
-
-
 def open_browser():
     """Start a browser after waiting for half a second."""
+    FILE = "semantic-search"
     def _open_browser():
         if AIPS_WEBSERVER_HOST == "localhost":
             webbrowser.open(WEBSERVER_URL + '/%s' % FILE)

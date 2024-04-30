@@ -13,7 +13,7 @@ def from_csv(file, more_opts=False):
         # If we do it, comment out previous line
         # .withColumn("id", concat(col("category"), lit("_") col("id")))
         dataframe = dataframe.withColumn("category", lit(more_opts.get("category"))).drop("id")
-    print(f"Schema: ")
+    print("Schema: ")
     dataframe.printSchema()
     return dataframe
 

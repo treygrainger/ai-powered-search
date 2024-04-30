@@ -1,5 +1,5 @@
 import requests
-from env import *
+from aips.environment import *
 import time
 import json
 from pyspark.sql import SparkSession

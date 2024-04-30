@@ -4,8 +4,7 @@ import re
 from bs4 import BeautifulSoup
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import coalesce, col, lit, udf
-from pyspark.sql.types import ArrayType, StringType
-
+from pyspark.sql.types import ArrayType, StringType 
 
 def strip_HTML(ascii_html):
     text = html.unescape(ascii_html or "")
@@ -21,9 +20,9 @@ strip_html_udf = udf(strip_HTML)
 generate_url_udf = udf(lambda id: f"https://outdoors.stackexchange.com/questions/{id}", StringType())
 post_type_udf = udf(lambda type_id: "question" if type_id == 1 else "answer", StringType())
 
-def load_outdoors_data(csv_filename):
+def load_dataframe(csv_file):
     spark = SparkSession.builder.appName("AIPS").getOrCreate()
-    dataframe = spark.read.csv(csv_filename, header=True, inferSchema=True)
+    dataframe = spark.read.csv(csv_file, header=True, inferSchema=True)
     dataframe = dataframe.filter((dataframe.post_type_id == 1) | (dataframe.post_type_id == 2))
     dataframe = dataframe.withColumn("post_type", post_type_udf(col("post_type_id")))
     dataframe = dataframe.withColumn("view_count", coalesce(col("view_count"), lit(0))) 

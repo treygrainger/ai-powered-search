@@ -2,7 +2,7 @@ import json
 import random
 
 import requests
-from env import *
+from aips.environment import *
 from engine.solr.collection import SolrCollection
 
 class SolrEngine:
@@ -17,7 +17,6 @@ class SolrEngine:
         wipe_collection_params = [("action", "delete"),
                                   ("name", name)]
         print(f'Wiping "{name}" collection')
-        self.delete_copy_fields(collection)
         response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
         requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
 
@@ -41,7 +40,8 @@ class SolrEngine:
                 self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
-            case "products" | "products_with_signals_boosts":      
+            case "products" | "products_with_signals_boosts":
+                self.delete_copy_fields(collection) 
                 self.set_search_defaults(collection)
                 self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
@@ -183,9 +183,9 @@ class SolrEngine:
         self.delete_field(collection, field_name)
         return self.add_field(collection, field_name, type, additional_schema)
     
-    def add_field(self, collection, field_name, type, additional_schema):        
+    def add_field(self, collection, field_name, type, additional_schema={}):        
         field = {"name": field_name, "type": type,
-                 "stored": "true", "indexed": "true"}
+                 "stored": "true", "indexed": "true", "multiValued": "false"}
         field.update(additional_schema)
         add_field = {"add-field": field}
         return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field)
