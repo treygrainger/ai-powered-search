@@ -1,5 +1,5 @@
 from env import SOLR_URL, AIPS_ZK_HOST
-from solr import SolrEngine
+from engine.solr import SolrEngine
 from engine.solr.ltr import SolrLTR
 
 import os

@@ -3,10 +3,7 @@ import random
 
 import requests
 from env import *
-from IPython.display import HTML, display
-from pyspark.sql.functions import lit
-from solr_collection import SolrCollection
-
+from engine.solr.collection import SolrCollection
 
 class SolrEngine:
     def __init__(self):
@@ -16,25 +13,24 @@ class SolrEngine:
         return requests.get(STATUS_URL).json()["responseHeader"]["status"] == 0
 
     def create_collection(self, name):
-        wipe_collection_params = [
-            ("action", "delete"),
-            ("name", name)
-        ]
+        collection = self.get_collection(name)
+        wipe_collection_params = [("action", "delete"),
+                                  ("name", name)]
         print(f'Wiping "{name}" collection')
+        self.delete_copy_fields(collection)
         response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
         requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
 
-        create_collection_params = [
-            ("action", "CREATE"),
-            ("name", name),
-            ("numShards", 1),
-            ("replicationFactor", 1) ]
+        create_collection_params = [("action", "CREATE"),
+                                    ("name", name),
+                                    ("numShards", 1),
+                                    ("replicationFactor", 1)]
         print(f'Creating "{name}" collection')
         response = requests.post(SOLR_COLLECTIONS_URL + "?commit=true", data=create_collection_params).json()
         
-        self.apply_schema_for_collection(self.get_collection(name))
+        self.apply_schema_for_collection(collection)
         self.print_status(response)
-        return SolrCollection(name)
+        return collection
     
     def get_collection(self, name):
         return SolrCollection(name)
@@ -45,14 +41,12 @@ class SolrEngine:
                 self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
-            case "products" | "products_with_signals_boosts":
-                self.delete_copy_fields(collection)
-                
+            case "products" | "products_with_signals_boosts":      
                 self.set_search_defaults(collection)
                 self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
                 self.upsert_text_field(collection, "name")
-                self.upsert_text_field(collection, "manufacturer")                
+                self.upsert_text_field(collection, "manufacturer")
                 self.upsert_text_field(collection, "collectionName")
                 
                 self.add_ngram_field_type(collection)
@@ -93,17 +87,18 @@ class SolrEngine:
                 self.upsert_double_field(collection, "release_year")
             case "outdoors":
                 self.set_search_defaults(collection)
-                self.upsert_string_field(collection,"url")
-                self.upsert_integer_field(collection, "post_type_id")
+                self.upsert_string_field(collection, "post_type")
                 self.upsert_integer_field(collection, "accepted_answer_id")
                 self.upsert_integer_field(collection, "parent_id")
+                self.upsert_string_field(collection, "creation_date")
                 self.upsert_integer_field(collection, "score")
                 self.upsert_integer_field(collection, "view_count")
                 self.upsert_text_field(collection, "body")
+                self.upsert_text_field(collection, "owner_user_id")
                 self.upsert_text_field(collection, "title")
                 self.upsert_keyword_field(collection, "tags")
+                self.upsert_string_field(collection,"url")
                 self.upsert_integer_field(collection, "answer_count")
-                self.upsert_integer_field(collection, "owner_user_id")
             case "outdoors_with_embeddings":
                 self.upsert_text_field(collection, "title")
                 self.add_vector_field(collection, "title", 768, "dot_product")
@@ -133,44 +128,38 @@ class SolrEngine:
                 self.set_search_defaults(collection)
               
     def add_vector_field(self, collection, field_name, dimensions, similarity_function,
-                         vector_encoding_sizes=None):    
-        field_type_name = f"{field_name}_vector"
-        delete_field = {"delete-field": {"name": f"{field_name}_embeddings"}}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
-        
-        delete_field_type = {"delete-field-type": {"name": field_type_name}}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type)
+                         vector_encoding_size="FLOAT32"):    
+        field_type = f"{field_name}_vector"
+        field_name = f"{field_name}_embeddings"
+        self.delete_field(collection, field_name)
+        self.delete_field_type(collection, field_type)
         
         add_field_type = {
             "add-field-type": {
-                "name": field_type_name,
+                "name": field_type,
                 "class": "solr.DenseVectorField",
                 "vectorDimension": dimensions,
-                "vectorEncoding": "FLOAT32",
+                "vectorEncoding": vector_encoding_size,
                 "similarityFunction": similarity_function
             }
         }
         response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type)
-        
-        add_field = {"add-field": {"name": f"{field_name}_embeddings", "type": field_type_name, "stored": "true", "indexed": "true"}}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field)
+        self.add_field(collection, field_name, field_type)
 
     def set_search_defaults(self, collection, default_parser="edismax"):
         request = {
             "update-requesthandler": {
                 "name": "/select",
                 "class": "solr.SearchHandler",
-                "defaults": {
-                    "defType": default_parser,
-                    "indent": True
-                }
+                "defaults": {"defType": default_parser,
+                             "indent": True}
             }
         }
         return requests.post(f"{SOLR_URL}/{collection.name}/config", json=request)
         
     def add_copy_field(self, collection, source, dest):
         request = {"add-copy-field": {"source": source, "dest": dest}}
-        print(requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request).json())
+        requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
 
     def upsert_text_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "text_general")
@@ -191,90 +180,72 @@ class SolrEngine:
         self.upsert_field(collection, field_name, field_type_name, {"multiValued":"true"})
            
     def upsert_field(self, collection, field_name, type, additional_schema={}):
-        delete_field = {"delete-field": {"name": field_name}}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
-        field = {"name": field_name, "type": type, "stored": "true", "indexed": "true", "multiValued": "false"}
+        self.delete_field(collection, field_name)
+        return self.add_field(collection, field_name, type, additional_schema)
+    
+    def add_field(self, collection, field_name, type, additional_schema):        
+        field = {"name": field_name, "type": type,
+                 "stored": "true", "indexed": "true"}
         field.update(additional_schema)
         add_field = {"add-field": field}
         return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field)
+    
+    def delete_field(self, collection, field_name):
+        delete_field = {"delete-field": {"name": field_name}}
+        return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
+    
+    def delete_field_type(self, collection, field_type_name):
+        delete_field_type = {"delete-field-type": {"name": field_type_name}}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type).json()
         
     def upsert_boosts_field_type(self, collection, field_type_name):
-        delete_field_type = {"delete-field-type":{ "name":field_type_name }}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type).json()
 
         print(f'Adding "{field_type_name}" field type to collection')
         add_field_type = { 
-            "add-field-type" : {
+            "add-field-type": {
                 "name": field_type_name,
-                "class":"solr.TextField",
-                "positionIncrementGap":"100",
-                "analyzer" : {
-                    "tokenizer": {
-                        "class":"solr.PatternTokenizerFactory",
-                        "pattern": "," },
-                    "filters":[
-                        { "class":"solr.LowerCaseFilterFactory" },
-                        { "class":"solr.DelimitedPayloadFilterFactory", "delimiter": "|", "encoder": "float" }]}}}
+                "class": "solr.TextField",
+                "positionIncrementGap": "100",
+                "analyzer": {
+                    "tokenizer": {"class": "solr.PatternTokenizerFactory",
+                                  "pattern": ","},
+                    "filters": [{"class": "solr.LowerCaseFilterFactory"},
+                                {"class": "solr.DelimitedPayloadFilterFactory",
+                                 "delimiter": "|", "encoder": "float"}]}}}
 
         return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type).json()
 
     def add_ngram_field_type(self, collection):
         ngram_analyzer = {
-                "tokenizer": {
-                    "class": "solr.StandardTokenizerFactory"
-                },
-                "filters":
-                    [{"class": "solr.LowerCaseFilterFactory"},
-                     {"class": "solr.NGramFilterFactory",
-                      "minGramSize": "3",
-                      "maxGramSize": "6",
-                      #"preserveOriginal": "true"
-                      }
-                    ]
+            "tokenizer": {"class": "solr.StandardTokenizerFactory"},
+            "filters": [{"class": "solr.LowerCaseFilterFactory"},
+                        {"class": "solr.NGramFilterFactory",
+                         #"preserveOriginal": "true",
+                         "minGramSize": "3",
+                         "maxGramSize": "6"}]
             }
         self.add_text_field_type(collection, "ngram", ngram_analyzer,
-                                 omitTermFreqAndPositions=True)
+                                 omit_frequencies_and_positions=True)
 
     def add_omit_norms_field_type(self, collection):
         text_general_analyzer = {
-                "tokenizer": {
-                    "class": "solr.StandardTokenizerFactory"
-                },
-                "filters":
-                    [{"class": "solr.LowerCaseFilterFactory"}
-                    ]
+            "tokenizer": {"class": "solr.StandardTokenizerFactory"},
+            "filters": [{"class": "solr.LowerCaseFilterFactory"}]
             }
 
         self.add_text_field_type(collection, "omit_norms", text_general_analyzer,
-                                 omitNorms=True)
+                                 omit_norms=True)
 
     def add_text_field_type(self, collection, name, analyzer, 
-                            omitTermFreqAndPositions=False,
-                            omitNorms=False):       
+                            omit_frequencies_and_positions=False,
+                            omit_norms=False):       
         """Create a field type and a corresponding dynamic field."""
-        collection_name = collection.name
         field_type_name = "text_" + name
         dynamic_field_name = "*_" + name
-        print(f"Creating Field Type {field_type_name}")
-        print(f" with Dynamic Field {dynamic_field_name}")
-
-        delete_dynamic_field = {
-            "delete-dynamic-field": {
-                "name": dynamic_field_name
-            }
-        }
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_dynamic_field)
-        print("Delete dynamic field")
-        self.print_status(response.json())
-
-        delete_field_type = {
-            "delete-field-type": {
-                "name": field_type_name
-            }
-        }
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_field_type)
-        print("Delete field type")
-        self.print_status(response.json())
+        
+        delete_dynamic_field = {"delete-dynamic-field": {"name": dynamic_field_name}}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_dynamic_field)
+        self.delete_field_type(collection, field_type_name)
 
         add_field_type = {
             "add-field-type": {
@@ -282,13 +253,11 @@ class SolrEngine:
                 "class":"solr.TextField",
                 "positionIncrementGap":"100",
                 "analyzer": analyzer,
-                "omitTermFreqAndPositions": omitTermFreqAndPositions,
-                "omitNorms": omitNorms
+                "omitTermFreqAndPositions": omit_frequencies_and_positions,
+                "omitNorms": omit_norms
             }
         }
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_field_type)
-        print("Create field type")
-        self.print_status(response.json())
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field_type)
 
         add_dynamic_field = {
             "add-dynamic-field": {
@@ -296,24 +265,15 @@ class SolrEngine:
                 "type": field_type_name,
                 "stored": True
             }
-        }
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=delete_dynamic_field)
-        self.print_status(response.json())
-
-        response = requests.post(f"{SOLR_URL}/{collection_name}/schema", json=add_dynamic_field)
-        print("Create dynamic field")
-        self.print_status(response.json())
+        }      
+        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_dynamic_field)
 
     def delete_copy_fields(self, collection):
         copy_fields = requests.get(f"{SOLR_URL}/{collection.name}/schema/copyfields?wt=json").json()
-        print("Deleting all copy fields")
         for field in copy_fields["copyFields"]:
-            source = field["source"]
-            dest = field["dest"]
-            rule = {"source": source, "dest": dest}
-            delete_copy_field = {"delete-copy-field": rule}
+            delete_copy_field = {"delete-copy-field": {"source": field["source"],
+                                                       "dest": field["dest"]}}
             response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_copy_field).json()
-            self.print_status(response)
     
     def add_tag_request_handler(self, collection, request_name, field):
         request = {
@@ -378,43 +338,38 @@ class SolrEngine:
         return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
     
     def enable_ltr(self, collection):
-        collection_config_url = f"{SOLR_URL}/{collection.name}/config"
+        delete_parser = {"delete-queryparser": "ltr"}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_parser)
 
-        del_ltr_query_parser = { "delete-queryparser": "ltr" }
-        add_ltr_q_parser = {
-        "add-queryparser": {
-            "name": "ltr",
-                "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
-            }
-        }
-
+        delete_transformer = {"delete-transformer": "features"}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_transformer)
+        
         print(f"Adding LTR QParser for {collection.name} collection")
-        response = requests.post(collection_config_url, json=del_ltr_query_parser)
-        response = requests.post(collection_config_url, json=add_ltr_q_parser)
-        self.print_status(response.json())
-
-        del_ltr_transformer = { "delete-transformer": "features" }
-        add_transformer =  {
-        "add-transformer": {
-            "name": "features",
-            "class": "org.apache.solr.ltr.response.transform.LTRFeatureLoggerTransformerFactory",
-            "fvCacheName": "QUERY_DOC_FV"
-        }}
+        add_parser = {
+            "add-queryparser": {
+                "name": "ltr",
+                "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
+                }
+            }
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_parser)        
 
         print(f"Adding LTR Doc Transformer for {collection.name} collection")
-        response = requests.post(collection_config_url, json=del_ltr_transformer)
-        response = requests.post(collection_config_url, json=add_transformer)
-        self.print_status(response.json())
+        add_transformer =  {
+            "add-transformer": {
+                "name": "features",
+                "class": "org.apache.solr.ltr.response.transform.LTRFeatureLoggerTransformerFactory",
+                "fvCacheName": "QUERY_DOC_FV"
+                }
+            }
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_transformer)
     
     def random_document_request(self, query):
         draw = random.random()
-        return {
-            "query": query,
-            "limit": 1,
-            "order_by": [(f"random_{draw}", "DESC")]
-        }
+        return {"query": query,
+                "limit": 1,
+                "order_by": [(f"random_{draw}", "DESC")]}
     
-    def spell_check(self, collection, query, log=True):
+    def spell_check(self, collection, query, log=False):
         request = {"query": query,
                    "params": {"q.op": "and", "indent": "on"}}
         if log:
