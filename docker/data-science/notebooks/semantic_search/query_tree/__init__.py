@@ -1,8 +1,16 @@
-import webserver.semantic_search.engine.semantic_knowledge_graph as skg
-from webserver.semantic_search.semantic_functions import *
+from aips import get_semantic_knowledge_graph, get_semantic_functions
 
-def escape_quotes_in_query(query):
-    return query.replace('"', '\\"')
+skg = get_semantic_knowledge_graph()
+semantic_functions = get_semantic_functions()
+
+def create_geo_filter(coordinates, field, distance_in_KM):
+    return semantic_functions.create_geo_filter(coordinates, field, distance_in_KM)
+
+def popularity(query, position):
+    return semantic_functions.popularity(query, position)
+
+def location_distance(query, position):
+    return semantic_functions.location_distance(query, position)
 
 def to_query_string(query_tree):
     return " ".join([node["query"] for node in query_tree])
@@ -34,7 +42,7 @@ def process_semantic_functions(query_tree):
 
             if (command):
                 query = {"query_tree": query_tree} #pass by-ref
-                commandIsResolved = eval(item['semantic_function']); #Careful... there is code in the docs that is being eval'd. 
+                commandIsResolved = eval(item['semantic_function']) #Careful... there is code in the docs that is being eval'd. 
                 #MUST ENSURE THESE DOCS ARE SECURE, OTHERWISE THIS WILL INTRODUCE A POTENTIAL SECURITY THREAT (CODE INJECTION)
             
             #else:
@@ -50,10 +58,13 @@ def process_semantic_functions(query_tree):
 
 def get_enrichments(collection, keyword):
     enrichments = {}
-    nodes_to_traverse = [{"field": "text_t", "values": [keyword]},
-                         [{"name": "related_terms", "field":
-                           "text_t", "limit": 3},
-                          {"name": "doc_type", "field": "doc_type",
+    nodes_to_traverse = [{"field": "content",
+                          "values": [keyword]},
+                         [{"name": "related_terms",
+                           "field": "content",
+                           "limit": 3},
+                          {"name": "doc_type",
+                           "field": "doc_type",
                            "limit": 1}]]
     traversals = skg.traverse(collection, *nodes_to_traverse)
     nested_traversals = traversals["graph"][0]["values"][keyword]["traversals"]
@@ -81,39 +92,4 @@ def enrich(collection, query_tree):
             enrichments = get_enrichments(collection, item["surface_form"])
             query_tree[i] = {"type": "skg_enriched", 
                              "enrichments": enrichments}                    
-    return query_tree
-
-def transform_query(query_tree):
-    for i in range(len(query_tree)):
-        item = query_tree[i]
-        transformed_query = ""
-        match item["type"]:
-            case "transformed":
-                pass
-            case "skg_enriched":
-                enrichments = item["enrichments"]
-                query_string = ""
-                
-                if "term_vector" in enrichments:
-                    query_string = enrichments["term_vector"]
-                if "category" in enrichments and len(query_string) > 0:
-                    query_string += f' +doc_type:"{enrichments["category"]}"'
-                if (len(query_string) == 0):
-                    query_string = item["surface_form"]
-                    
-                transformed_query = '{!edismax v="' + escape_quotes_in_query(query_string) + '"}'
-            case "color":
-                transformed_query = f'+colors_s:"{item["canonical_form"]}"'
-            case "known_item" | "event":
-                transformed_query = f'+name_s:"{item["canonical_form"]}"'
-            case "city":
-                transformed_query = f'+city_t:"{str(item["name"])}"'
-            case "brand":
-                transformed_query = f'+brand_s:"{item["canonical_form"]}"'
-            case _:
-                transformed_query = "+{!edismax v=\"" + escape_quotes_in_query(item["surface_form"]) + "\"}"
-        if transformed_query:
-            query_tree[i] = {"type": "transformed",
-                             "syntax": "solr",
-                             "query": transformed_query}                 
     return query_tree

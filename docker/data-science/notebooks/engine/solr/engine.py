@@ -2,7 +2,7 @@ import json
 import random
 
 import requests
-from aips.environment import *
+from aips.environment import STATUS_URL, SOLR_COLLECTIONS_URL, SOLR_URL
 from engine.solr.collection import SolrCollection
 
 class SolrEngine:
@@ -103,12 +103,12 @@ class SolrEngine:
                 self.upsert_text_field(collection, "title")
                 self.add_vector_field(collection, "title", 768, "dot_product")
             case "reviews":
+                self.upsert_text_field(collection, "content")
                 self.add_delimited_field_type(collection, "commaDelimited", ",\s*")
-                self.add_delimited_field_type(collection, "pipeDelimited", "\|\s*") #necessary? is this used
-                self.upsert_field(collection, "doc_type", "commaDelimited", {"multiValued": "true"})
-                self.add_copy_field(collection, "categories_t", ["doc_type"])
-                self.upsert_field(collection, "location_p", "location")
-                self.add_copy_field(collection, "location_pt_s", ["location_p"])
+                self.upsert_text_field(collection, "categories")
+                self.upsert_field(collection, "doc_type", "commaDelimited")
+                self.add_copy_field(collection, "categories", ["doc_type"])
+                self.upsert_field(collection, "location_coordinates", "location")
             case "entities":
                 self.add_tag_field_type(collection)
                 self.upsert_string_field(collection, "surface_form")
@@ -119,10 +119,7 @@ class SolrEngine:
                 self.upsert_integer_field(collection, "popularity")
                 self.upsert_field(collection, "name_tag", "tag", {"stored": "false"})
                 self.add_copy_field(collection, "name", ["surface_form", "name_tag", "canonical_form"])
-                self.add_copy_field(collection, "population_i", ["popularity"]) #what is the source field here?
                 self.add_copy_field(collection, "surface_form", ["name_tag"])
-                self.add_copy_field(collection, "country", "countrycode_s")
-                self.add_copy_field(collection, "admin_code_1_s", "admin_area")
                 self.add_tag_request_handler(collection, "/tag", "name_tag")
             case _:
                 self.set_search_defaults(collection)
@@ -159,7 +156,7 @@ class SolrEngine:
         
     def add_copy_field(self, collection, source, dest):
         request = {"add-copy-field": {"source": source, "dest": dest}}
-        requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
+        return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
 
     def upsert_text_field(self, collection, field_name):
         self.upsert_field(collection, field_name, "text_general")
@@ -285,7 +282,7 @@ class SolrEngine:
                     "json.nl": "map",
                     "sort": "popularity desc",
                     "matchText": "true",
-                    "fl": "id,canonical_form,surface_form,type,semantic_function,popularity,country,admin_area,*_p"
+                    "fl": "id,canonical_form,surface_form,type,semantic_function,popularity,country,admin_area,location_coordinates"
                 }
             }
         }
@@ -387,5 +384,5 @@ class SolrEngine:
         print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
 
     def tag_query(self, collection_name, query):
-        url_params = "json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,surface_form,name,country:countrycode_s,admin_area:admin_code_1_s,popularity,*_p,semantic_function"
+        url_params = "json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,surface_form,name,country,admin_area,popularity,*_p,semantic_function"
         return requests.post(f"{SOLR_URL}/{collection_name}/tag?{url_params}", query).json()

@@ -1,7 +1,3 @@
-from webserver.display.render_search_results import *
-from webserver.semantic_search import process_basic_query, process_semantic_query
-from webserver.semantic_search.engine import keyword_search, tag_places
-
 import sys
 
 sys.path.append('..')
@@ -10,13 +6,31 @@ import io
 import json
 import threading
 import webbrowser
+
+import sys
+sys.path.append('..')
+import urllib.parse
+import json
+import requests
+
 from urllib.parse import parse_qs, urlparse
 
-from aips import get_engine
+from aips import get_engine, get_semantic_knowledge_graph, get_semantic_functions
 from aips.environment import AIPS_WEBSERVER_HOST, AIPS_WEBSERVER_PORT, WEBSERVER_URL
 from staticmap import CircleMarker, StaticMap
 
+from webserver.display.render_search_results import render_search_results
+from semantic_search import process_semantic_query, process_basic_query
+
 engine = get_engine()
+skg = get_semantic_knowledge_graph()
+query_transformer = get_semantic_functions()
+reviews_collection = engine.get_collection("reviews")
+
+def keyword_search(text):
+    request = {"query": text,
+               "query_fields": ["content"]}
+    return reviews_collection.search(**request)
 
 class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
     """Semantic Search Handler (AI-Powered Search)"""
@@ -45,13 +59,17 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
         if (self.path.startswith("/tag_query")):
             self.sendResponse(engine.tag_query("entities", post_body))
         elif self.path.startswith("/tag_places"):
-            self.sendResponse(tag_places(post_body))
+            request = {"query": post_body,
+                       "query_fields": ["city", "state", "location_coordinates"]}
+            response = reviews_collection.search(**request)
+            self.sendResponse(response)
         elif self.path.startswith("/process_semantic_query"):
-            self.sendResponse(process_semantic_query(engine.get_collection("reviews"), post_body))
+            self.sendResponse(process_semantic_query(engine.get_collection("reviews"),
+                                                     post_body))
         elif self.path.startswith("/process_basic_query"):
             self.sendResponse(process_basic_query(post_body))
         elif self.path.startswith("/run_search"):
-            results = json.loads(keyword_search(post_body))
+            results = keyword_search(post_body)
             highlight_terms = post_body.split(' ')
             rendered_results = render_search_results(results, highlight_terms)
             self.sendResponse(rendered_results)

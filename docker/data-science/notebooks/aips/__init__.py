@@ -1,6 +1,5 @@
 from aips.environment import SOLR_URL
-from engine.solr import SolrEngine
-from engine.solr.ltr import SolrLTR
+from engine.solr import SolrEngine, SolrLTR, SolrSemanticKnowledgeGraph, TextTagger, SemanticQueryTransformer
 
 import os
 from IPython.display import display,HTML
@@ -10,12 +9,22 @@ import requests
 
 ENGINE = SolrEngine()
 LTR = SolrLTR()
+SKG = SolrSemanticKnowledgeGraph()
 
 def get_ltr_engine():
     return LTR
   
 def get_engine():
     return ENGINE
+
+def get_semantic_knowledge_graph():
+    return SKG
+
+def get_knowledge_graph(collection_name):
+    return TextTagger(collection_name)
+
+def get_semantic_functions():
+    return SemanticQueryTransformer()
 
 def healthcheck():
     try:

@@ -1,8 +1,7 @@
 import requests
-from aips.environment import *
+from aips.environment import SOLR_URL, AIPS_ZK_HOST
 import time
 import json
-from pyspark.sql import SparkSession
 
 class SolrCollection:
     def __init__(self, name):
@@ -53,7 +52,7 @@ class SolrCollection:
                 case "filters":
                     request["filter"] = []
                     for f in value:
-                        filter_value = f'({" ".join(f[1])})' if type(f[1]) is list else f[1] 
+                        filter_value = f'({" ".join(f[1])})' if isinstance(f[1], list) else f[1] 
                         request["filter"].append(f"{f[0]}:{filter_value}")
                 case "limit":
                     request["limit"] = value
@@ -69,7 +68,7 @@ class SolrCollection:
                     request["params"]["mm"] = value
                 case "query_boosts":
                     request["params"]["boost"] = "sum(1,query($boost_query))"
-                    if type(value) is tuple:
+                    if isinstance(value, tuple):
                         value = f"{value[0]}:({value[1]})"
                     request["params"]["boost_query"] = value
                 case "index_time_boost":

@@ -1,8 +1,7 @@
 import sys
 sys.path.append('../..')
 from aips import *
-import requests
-import os, re, io
+import os, re
 
 def render_search_results(results, keywords_to_highlight):
     file_path = os.path.dirname(os.path.abspath(__file__))
@@ -22,15 +21,14 @@ def render_search_results(results, keywords_to_highlight):
         separator_template = x.group(1)
 
         rendered = ""
-        for result in results['response']['docs']:
+        for result in results["docs"]:
             #todo: add highlighting
-            rendered += results_template.replace("${NAME}", result['name_t'] if 'name_t' in result else "UNKNOWN") \
-                .replace("${CITY}", result['city_t'] + ", " + result['state_t'] if 'city_t' in result and 'state_t' in result else "UNKNOWN") \
-                .replace("${DESCRIPTION}", result['text_t'] if 'text_t' in result else "") \
-                .replace("${IMAGE_URL}", "/map?lat=" + str(result['latitude_d']) + "&lon=" + str(result['longitude_d'])) \
-                .replace("${STARS}", "★" * int(result['stars_i']) if 'stars_i' in result else "")
-
-
+            coordinates = result["location_coordinates"].split(",")
+            rendered += results_template.replace("${NAME}", result.get("business_name", "UNKNOWN")) \
+                .replace("${CITY}", result.get("city", "Anywhere") + ", " + result.get("state", "USA"))\
+                .replace("${DESCRIPTION}", result.get("content", "")) \
+                .replace("${IMAGE_URL}", "/map?lat=" + coordinates[0] + "&lon=" + coordinates[1]) \
+                .replace("${STARS}", "★" * int(result.get("stars_rating", 0)))
             rendered += separator_template
 
         if rendered == "":
