@@ -61,15 +61,15 @@ def process_semantic_query(collection, query):
     knowledge_graph = get_knowledge_graph("entities")
     semantic_functions = get_semantic_functions()
     entities = knowledge_graph.extract_entities(query)
-    
     tagged_query = generate_tagged_query(entities)
     query_tree = generate_query_tree(entities)
+    enriched_query = " ".join([str(q) for q in query_tree])
     enriched_query_tree = enrich(collection, query_tree)
     transformed = semantic_functions.transform_query(enriched_query_tree)
     
     return {
         "tagged_query": tagged_query,
-        "parsed_query": " ".join([str(q) for q in query_tree]),
+        "parsed_query": enriched_query,
         "transformed_query": to_query_string(transformed),
         "tagger_data": entities
     }
