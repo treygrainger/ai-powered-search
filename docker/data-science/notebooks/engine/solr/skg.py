@@ -12,7 +12,8 @@ def generate_request_root():
     }
 
 def generate_facets(name=None, values=None, field=None,
-                    min_occurrences=None, limit=None, min_popularity=None):
+                    min_occurrences=None, limit=None,
+                    min_popularity=None, default_operator=None):
     base_facet = {"type": "query" if values else "terms",
                  "limit": limit if limit else 10,
                  "sort": { "relatedness": "desc" },
@@ -32,7 +33,8 @@ def generate_facets(name=None, values=None, field=None,
         if not limit: base_facet.pop("limit")
         for i, _ in enumerate(values):
             facets.append(base_facet.copy())
-            facets[i]["query"] = "{" + f'!edismax q.op=AND qf={field} v=${name}_{i}_query' + "}"
+            op = f"q.op={default_operator} " if default_operator else ""  
+            facets[i]["query"] = "{" + f'!edismax {op}qf={field} v=${name}_{i}_query' + "}"
     else:
         facets = [base_facet]
     return facets
