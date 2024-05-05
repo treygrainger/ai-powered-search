@@ -49,7 +49,7 @@ class SemanticQueryTransformer:
                     if (len(query_string) == 0):
                         query_string = item["surface_form"]
                         
-                    transformed_query = '{!edismax v="' + escape_quotes(query_string) + '"}'
+                    transformed_query = '+{!edismax v="' + escape_quotes(query_string) + '"}'
                 case "color":
                     transformed_query = f'+colors_s:"{item["canonical_form"]}"'
                 case "known_item" | "event":
