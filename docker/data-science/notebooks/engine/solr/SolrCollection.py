@@ -1,16 +1,17 @@
 import requests
+from engine.Collection import Collection
 from aips.environment import SOLR_URL, AIPS_ZK_HOST
 import time
 import json
 
-class SolrCollection:
+class SolrCollection(Collection):
     def __init__(self, name):
         #response = requests.get(f"{SOLR_COLLECTIONS_URL}/?action=LIST")
         #print(response)
         #collections = response.json()["collections"]
         #if name.lower() not in [s.lower() for s in collections]:
         #    raise ValueError(f"Collection name invalid. '{name}' does not exists.")
-        self.name = name
+        super().__init__(name)
         
     def commit(self):
         requests.post(f"{SOLR_URL}/{self.name}/update?commit=true&waitSearcher=true")
@@ -21,13 +22,6 @@ class SolrCollection:
                 "gen_uniq_key": "true", "commit_within": "5000"}
         dataframe.write.format("solr").options(**opts).mode("overwrite").save()
         self.commit()
-    
-    def add_documents(self, docs, commit=True):
-        print(f"\nAdding Documents to '{self.name}' collection")
-        response = requests.post(f"{SOLR_URL}/{self.name}/update?commit=true", json=docs).json()
-        if commit:
-            self.commit()
-        return response
     
     def transform_request(self, **search_args):
         request = {

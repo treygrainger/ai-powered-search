@@ -1,4 +1,6 @@
 from aips.environment import SOLR_URL
+from engine.solr.SolrEngine import SolrEngine
+
 import json
 import requests
 
@@ -110,3 +112,42 @@ class SolrLTR:
             request["query"] = rerank_query
             request["query_parser"] = "lucene"
         return request
+    
+    def search_with_model(query, model_name, rows=10, log=False):
+        """ Search using test_model LTR model (see rq to and qf params below). """
+        fuzzy_kws = "~" + " ~".join(query.split())
+        squeezed_kws = "".join(query.split())
+        
+        rq = \
+            "{!ltr reRankDocs=60000 reRankWeight=10.0 model=" + model_name \
+            + " efi.fuzzy_keywords=\"" + fuzzy_kws + "\" " \
+            + "efi.squeezed_keywords=\"" + squeezed_kws +"\" " \
+            + "efi.keywords=\"" + query + "\"}"
+
+        request = {
+                "fields": ["upc", "name", "manufacturer", "score"],
+                "limit": rows,
+                "params": {
+                "rq": rq,
+                "qf": "name name_ngram upc manufacturer short_description long_description",
+                "defType": "edismax",
+                "q": query
+                }
+            }
+        
+        if log:
+            print("search_with_model: search request:")
+            print(request)
+
+        resp = SolrEngine().get_collection("products").native_search(request)
+            
+        if log:
+            print("search_with_model: search response:")
+            print(resp)
+            
+        search_results = resp["response"]["docs"]
+
+        for rank, result in enumerate(search_results):
+            result["rank"] = rank
+            
+        return search_results

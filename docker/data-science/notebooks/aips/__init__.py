@@ -1,7 +1,7 @@
 import aips.environment as environment
 from aips.environment import SOLR_URL
-from engine.solr import SolrEngine, SolrLTR, SolrSemanticKnowledgeGraph, TextTagger, SemanticQueryTransformer
-from engine.test.engine import TestEngine
+from engine.solr import SolrLTR, SolrSemanticKnowledgeGraph, TextTagger, SemanticQueryTransformer
+from engine.solr.SolrEngine import SolrEngine
 
 import os
 from IPython.display import display,HTML

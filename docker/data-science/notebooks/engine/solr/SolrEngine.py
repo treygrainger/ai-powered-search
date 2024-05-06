@@ -1,11 +1,11 @@
 import json
 import random
-
 import requests
 from aips.environment import STATUS_URL, SOLR_COLLECTIONS_URL, SOLR_URL
-from engine.solr.collection import SolrCollection
+from engine import SearchEngine
+from engine.solr.SolrCollection import SolrCollection
 
-class SolrEngine:
+class SolrEngine(SearchEngine.SearchEngine):
     def __init__(self):
         pass
 

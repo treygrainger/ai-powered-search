@@ -15,7 +15,7 @@ import requests
 
 from urllib.parse import parse_qs, urlparse
 
-from aips import get_engine, get_semantic_knowledge_graph, get_semantic_functions
+from aips import get_engine, get_knowledge_graph, get_semantic_knowledge_graph, get_semantic_functions
 from aips.environment import AIPS_WEBSERVER_HOST, AIPS_WEBSERVER_PORT, WEBSERVER_URL
 from staticmap import CircleMarker, StaticMap
 
@@ -24,6 +24,7 @@ from semantic_search import process_semantic_query, process_basic_query
 
 engine = get_engine()
 skg = get_semantic_knowledge_graph()
+kg = get_knowledge_graph("entities")
 query_transformer = get_semantic_functions()
 reviews_collection = engine.get_collection("reviews")
 
@@ -57,7 +58,7 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
         post_body = self.rfile.read(content_len).decode('UTF-8')
 
         if (self.path.startswith("/tag_query")):
-            self.sendResponse(engine.tag_query("entities", post_body))
+            self.sendResponse(kg.extract_entities(post_body))
         elif self.path.startswith("/tag_places"):
             request = {"query": post_body,
                        "query_fields": ["city", "state", "location_coordinates"]}
