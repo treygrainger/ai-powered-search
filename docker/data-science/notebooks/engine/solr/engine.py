@@ -60,14 +60,8 @@ class SolrEngine:
                 self.upsert_field(collection, "promotion_b", "boolean")
                 self.upsert_field(collection, "has_promotion", "boolean")
                 self.add_copy_field(collection, "promotion_b", "has_promotion") #Alter csv and remove
-                
-                self.upsert_text_field(collection, "shortDescription")
                 self.upsert_text_field(collection, "short_description")
-                self.add_copy_field(collection, "shortDescription", "short_description") #Alter csv and remove
-                
-                self.upsert_text_field(collection, "longDescription")
                 self.upsert_text_field(collection, "long_description")
-                self.add_copy_field(collection, "longDescription", "long_description") #Alter csv and remove
                 if collection.name == "products_with_signals_boosts":
                     self.upsert_boosts_field_type(collection, "boosts")
                     self.upsert_boosts_field(collection, "signals_boosts")
