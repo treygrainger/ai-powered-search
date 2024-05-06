@@ -85,6 +85,9 @@ class SolrEngine:
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "overview")
                 self.upsert_double_field(collection, "release_year")
+            case "tmdb_with_embeddings":
+                self.upsert_text_field(collection, "title")
+                self.add_vector_field(collection, "movie", 768, "dot_product")
             case "outdoors":
                 self.set_search_defaults(collection)
                 self.upsert_string_field(collection, "post_type")

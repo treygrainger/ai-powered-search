@@ -1,26 +1,26 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import coalesce, col, lit, udf
+from pyspark.sql.types import ArrayType, StringType 
 import html
 import re
 
 from bs4 import BeautifulSoup
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import coalesce, col, lit, udf
-from pyspark.sql.types import ArrayType, StringType 
-
-def strip_HTML(ascii_html):
-    text = html.unescape(ascii_html or "")
-    text = BeautifulSoup(text, "lxml").get_text(separator=" ")
-    return re.sub(r"\s+", " ", text.strip())
-
-def split_tags(ascii_html):
-    tags = re.compile("[\<\>]").split(html.unescape(ascii_html or ""))
-    return [t.replace("-", " ") for t in tags if len(t)]
-    
-split_tags_udf = udf(split_tags, ArrayType(StringType()))
-strip_html_udf = udf(strip_HTML)
-generate_url_udf = udf(lambda id: f"https://outdoors.stackexchange.com/questions/{id}", StringType())
-post_type_udf = udf(lambda type_id: "question" if type_id == 1 else "answer", StringType())
 
 def load_dataframe(csv_file):
+    def split_tags(ascii_html):
+        tags = re.compile("[\<\>]").split(html.unescape(ascii_html or ""))
+        return [t.replace("-", " ") for t in tags if len(t)]
+    
+    def strip_HTML(ascii_html):
+        text = html.unescape(ascii_html or "")
+        text = BeautifulSoup(text, "lxml").get_text(separator=" ")
+        return re.sub(r"\s+", " ", text.strip())
+    
+    split_tags_udf = udf(split_tags, ArrayType(StringType()))
+    strip_html_udf = udf(strip_HTML)
+    generate_url_udf = udf(lambda id: f"https://outdoors.stackexchange.com/questions/{id}", StringType())
+    post_type_udf = udf(lambda type_id: "question" if type_id == 1 else "answer", StringType())
+
     spark = SparkSession.builder.appName("AIPS").getOrCreate()
     dataframe = spark.read.csv(csv_file, header=True, inferSchema=True)
     dataframe = dataframe.filter((dataframe.post_type_id == 1) | (dataframe.post_type_id == 2))

@@ -22,7 +22,7 @@ class SemanticQueryTransformer:
         return False
 
     def popularity(self, query, position):
-        if (len(query["query_tree"]) -1 > position):
+        if len(query["query_tree"]) -1 > position:
             query["query_tree"][position] = {
                 "type": "transformed",
                 "syntax": "solr",
@@ -62,8 +62,8 @@ class SemanticQueryTransformer:
                     transformed_query = "+{!edismax v=\"" + escape_quotes(item["surface_form"]) + "\"}"
             if transformed_query:
                 query_tree[i] = {"type": "transformed",
-                                "syntax": "solr",
-                                "query": transformed_query}                 
+                                 "syntax": "solr",
+                                 "query": transformed_query}                 
         return query_tree
 
     def generate_basic_query(self, query):

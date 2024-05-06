@@ -37,7 +37,7 @@ def healthcheck():
 
 def print_status(solr_response):
       print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
-
+      
 def num2str(number):
     return str(round(number,4)) #round to 4 decimal places for readibility
 
