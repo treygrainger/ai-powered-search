@@ -1,5 +1,7 @@
+import aips.environment as environment
 from aips.environment import SOLR_URL
 from engine.solr import SolrEngine, SolrLTR, SolrSemanticKnowledgeGraph, TextTagger, SemanticQueryTransformer
+from engine.test.engine import TestEngine
 
 import os
 from IPython.display import display,HTML
@@ -7,18 +9,26 @@ import pandas
 import re
 import requests
 
-ENGINE = SolrEngine()
-LTR = SolrLTR()
-SKG = SolrSemanticKnowledgeGraph()
+__LTR = SolrLTR()
+__SKG = SolrSemanticKnowledgeGraph()
+
+engine_type_map = {"SOLR": SolrEngine()}
+
+def get_engine():
+    return engine_type_map[environment.get("AIPS_SEARCH_ENGINE", "SOLR")]
+
+def set_engine(engine_name):    
+    engine_name = engine_name.upper()
+    if engine_name not in engine_type_map:
+        raise ValueError(f"No search engine implementation found for {engine_name}")
+    else:
+        environment.set("AIPS_SEARCH_ENGINE", engine_name)
 
 def get_ltr_engine():
-    return LTR
-  
-def get_engine():
-    return ENGINE
+    return __LTR
 
 def get_semantic_knowledge_graph():
-    return SKG
+    return __SKG
 
 def get_knowledge_graph(collection_name):
     return TextTagger(collection_name)

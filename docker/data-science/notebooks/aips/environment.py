@@ -1,3 +1,4 @@
+import json
 import os
 
 AIPS_NOTEBOOK_HOST = "aips-notebook"
@@ -15,3 +16,25 @@ SOLR_COLLECTIONS_URL = f"{SOLR_URL}/admin/collections"
 AIPS_WEBSERVER_HOST = os.getenv("AIPS_WEBSERVER_HOST") or "localhost"
 AIPS_WEBSERVER_PORT = os.getenv("AIPS_WEBSERVER_PORT") or "2345"
 WEBSERVER_URL = f"http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}"
+DEFAULT_CONFIG = {"AIPS_SEARCH_ENGINE": "SOLR"}
+
+def load_config():
+    if not os.path.isfile("config.json"):
+        with open("config.json", "w") as config_file:
+            json.dump(DEFAULT_CONFIG, config_file)
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    return config
+
+def set(key, value):
+    config = load_config()
+    config[key] = value
+    with open("config.json", "w") as config_file:
+        json.dump(config, config_file)
+
+def get(key, default=None):
+    config = load_config()
+    if default:
+        return config.get(key, default)
+    else:
+        return config[key]
