@@ -25,7 +25,8 @@ class Collection(ABC):
         pass
 
     @abstractmethod
-    def native_search(self, request=None, data=None):
+    def native_search(self, request=None):
+        ""
         pass
     
     @abstractmethod

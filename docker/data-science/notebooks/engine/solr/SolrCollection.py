@@ -23,6 +23,13 @@ class SolrCollection(Collection):
         dataframe.write.format("solr").options(**opts).mode("overwrite").save()
         self.commit()
     
+    def add_documents(self, docs, commit=True):
+        print(f"\nAdding Documents to '{self.name}' collection")
+        response = requests.post(f"{SOLR_URL}/{self.name}/update?commit=true", json=docs).json()
+        if commit:
+            self.commit()
+        return response
+    
     def transform_request(self, **search_args):
         request = {
             "query": "*:*",
