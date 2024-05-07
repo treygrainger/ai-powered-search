@@ -13,14 +13,14 @@ def generate_request_root():
 
 def generate_facets(name=None, values=None, field=None,
                     min_occurrences=None, limit=None,
-                    min_popularity=None, default_operator=None):
+                    min_popularity=None, default_operator="AND"):
     base_facet = {"type": "query" if values else "terms",
-                 "limit": limit if limit else 10,
-                 "sort": { "relatedness": "desc" },
-                 "facet": {
-                    "relatedness": {
-                        "type": "func",
-                        "func": "relatedness($fore,$back)"}}}
+                  "limit": limit if limit else 10,
+                  "sort": { "relatedness": "desc" },
+                  "facet": {
+                      "relatedness": {
+                          "type": "func",
+                          "func": "relatedness($fore,$back)"}}}
     if min_occurrences:
         base_facet["mincount"] = min_occurrences
     if min_popularity:
@@ -121,3 +121,6 @@ class SolrSemanticKnowledgeGraph:
         request = generate_skg_request(*nodes)
         response = collection.native_search(request)
         return {"graph": transform_response_facet(response["facets"], request["params"])}
+    
+    def generate_skg_request(self, *multi_nodes):
+        return generate_skg_request(*multi_nodes)

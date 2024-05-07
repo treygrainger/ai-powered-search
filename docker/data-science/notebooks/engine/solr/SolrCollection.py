@@ -1,3 +1,4 @@
+import random
 import requests
 from engine.Collection import Collection
 from aips.environment import SOLR_URL, AIPS_ZK_HOST
@@ -118,4 +119,22 @@ class SolrCollection(Collection):
                     rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
                     request["params"]["rq"] = rq
                     request["params"]["rq_query"] = "{!knn f=" + value["query_field"] + " topK=10}" + value["query_vector"]
-        return self.native_search(request=request)["response"]["docs"]
+        response = self.native_search(request=request)
+        return self.transform_response(response)
+    
+    def search_for_random_document(self, query):
+        draw = random.random()
+        return self.search({"query": query,
+                            "limit": 1,
+                            "order_by": [(f"random_{draw}", "DESC")]})
+    
+    def spell_check(self, query, log=False):
+        request = {"query": query,
+                   "params": {"q.op": "and", "indent": "on"}}
+        if log:
+            print("Solr spellcheck basic request syntax: ")
+            print(json.dumps(request, indent="  "))
+        response = requests.post(f"{SOLR_URL}/{self.name}/spell", json=request).json()
+        return {r["collationQuery"]: r["hits"]
+                for r in response["spellcheck"]["collations"]
+                if r != "collation"}

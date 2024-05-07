@@ -6,36 +6,30 @@ class SearchEngine(ABC):
     
     @abstractmethod
     def health_check(self):
+        "Checks the state of the search engine returning a boolean"
         pass
     
     @abstractmethod
-    def print_status(self, solr_response):
+    def print_status(self, response):
+        "Prints the resulting status of a search engine request"
         pass
 
     @abstractmethod
     def create_collection(self, name):
+        "Create and initialize the schema for a collection, returns the initialized collection"
         pass
 
     @abstractmethod
     def get_collection(self, name):
+        "Returns initialized object for a given collection"
         pass
     
     @abstractmethod
     def apply_schema_for_collection(self, collection):
+        "Applies the appriorate schema for a given collection"
         pass
 
     @abstractmethod
     def enable_ltr(self, collection):
-        pass
-    
-    @abstractmethod
-    def random_document_request(self, query):
-        pass
-
-    @abstractmethod
-    def generate_query_time_boost(query):
-        pass
-    
-    @abstractmethod
-    def spell_check(self, collection, query, log=False):
+        "Initializes LTR dependencies for a given collection"
         pass

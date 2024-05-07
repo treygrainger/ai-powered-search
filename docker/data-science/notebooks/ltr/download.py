@@ -2,7 +2,7 @@ import requests
 from os import path
 from tqdm import tqdm
 
-def download_one(uri, dest='data/', force=False, fancy=False):
+def download_one(uri, dest='../data/', force=False, fancy=False):
     import os
 
     if not os.path.exists(dest):
@@ -40,12 +40,12 @@ def download_one(uri, dest='data/', force=False, fancy=False):
                 size = file.write(data)
                 bar.update(size)
 
-def extract_tgz(fname, dest='data/'):
+def extract_tgz(fname, dest='../data/'):
     import tarfile
     with tarfile.open(fname, 'r:gz') as tar:
         tar.extractall(path=dest)
 
 
-def download(uris, dest='data/', force=False, fancy=False):
+def download(uris, dest='../data/', force=False, fancy=False):
     for uri in uris:
         download_one(uri=uri, dest=dest, force=force, fancy=fancy)

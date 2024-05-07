@@ -1,7 +1,7 @@
 def escape_quotes(text):
     return text.replace('"', '\\"')
 
-class SemanticQueryTransformer:
+class SolrSemanticFunctions:
     def __init__(self):
         pass
 

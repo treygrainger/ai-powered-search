@@ -1,6 +1,6 @@
 import aips.environment as environment
 from aips.environment import SOLR_URL
-from engine.solr import SolrLTR, SolrSemanticKnowledgeGraph, TextTagger, SemanticQueryTransformer
+from engine.solr import SolrLTR, SolrSemanticKnowledgeGraph, TextTagger, SolrSemanticFunctions
 from engine.solr.SolrEngine import SolrEngine
 
 import os
@@ -34,7 +34,7 @@ def get_knowledge_graph(collection_name):
     return TextTagger(collection_name)
 
 def get_semantic_functions():
-    return SemanticQueryTransformer()
+    return SolrSemanticFunctions()
 
 def healthcheck():
     try:

@@ -11,6 +11,10 @@ class SolrEngine(SearchEngine.SearchEngine):
 
     def health_check(self):
         return requests.get(STATUS_URL).json()["responseHeader"]["status"] == 0
+    
+    def print_status(self, response):        
+        print("Status: Success" if response["responseHeader"]["status"] == 0 else
+              f"Status: Failure; Response:[ {response} ]" )
 
     def create_collection(self, name):
         collection = self.get_collection(name)
@@ -356,30 +360,3 @@ class SolrEngine(SearchEngine.SearchEngine):
                 }
             }
         response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_transformer)
-    
-    def random_document_request(self, query):
-        draw = random.random()
-        return {"query": query,
-                "limit": 1,
-                "order_by": [(f"random_{draw}", "DESC")]}
-    
-    def spell_check(self, collection, query, log=False):
-        request = {"query": query,
-                   "params": {"q.op": "and", "indent": "on"}}
-        if log:
-            print("Solr spellcheck basic request syntax: ")
-            print(json.dumps(request, indent="  "))
-        response = requests.post(f"{SOLR_URL}/{collection.name}/spell", json=request).json()
-        return {r["collationQuery"]: r["hits"]
-                for r in response["spellcheck"]["collations"]
-                if r != "collation"}
-
-    def generate_query_time_boost(query):
-        return f"sum(1,query({query})"
-    
-    def print_status(self, solr_response):
-        print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
-
-    def tag_query(self, collection_name, query):
-        url_params = "json.nl=map&sort=popularity%20desc&matchText=true&echoParams=all&fl=id,type,canonical_form,surface_form,name,country,admin_area,popularity,*_p,semantic_function"
-        return requests.post(f"{SOLR_URL}/{collection_name}/tag?{url_params}", query).json()
