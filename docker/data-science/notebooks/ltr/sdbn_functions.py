@@ -3,11 +3,13 @@ import glob
 
 def all_sessions():
     sessions = pandas.concat([pandas.read_csv(f, compression="gzip")
-                          for f in glob.glob("data/*_sessions.gz")])
-    return sessions.rename(columns={"clicked_doc_id": "doc_id"})
+                          for f in glob.glob("../data/*_sessions.gz")])
+    sessions = sessions.sort_values(['query', 'sess_id', 'rank'])
+    sessions = sessions.rename(columns={"clicked_doc_id": "doc_id"})
+    return sessions.set_index("sess_id")
 
 def get_sessions(query=""):
-    sessions = all_sessions()    
+    sessions = all_sessions() 
     return sessions[sessions["query"] == query]
 
 def calculate_ctr(sessions):
