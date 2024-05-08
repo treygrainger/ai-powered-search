@@ -8,6 +8,7 @@ def load_dataframe(csv_file):
     remove_empty = udf(lambda s: s.replace("\\N", " "))
     dataframe = dataframe.withColumn("long_description", remove_empty(col("longDescription"))) 
     dataframe = dataframe.withColumn("short_description", remove_empty(col("shortDescription")))
+    dataframe = dataframe.withColumn("manufacturer", remove_empty(col("manufacturer")))
     dataframe = dataframe.drop("longDescription", "shortDescription")
     print("Schema: ")
     dataframe.printSchema()

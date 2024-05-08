@@ -16,13 +16,14 @@ class SolrCollection(Collection):
         
     def commit(self):
         requests.post(f"{SOLR_URL}/{self.name}/update?commit=true&waitSearcher=true")
-        time.sleep(2)
+        time.sleep(5)
 
     def write(self, dataframe):
         opts = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
                 "gen_uniq_key": "true", "commit_within": "5000"}
         dataframe.write.format("solr").options(**opts).mode("overwrite").save()
         self.commit()
+        print(f"Successfully written {dataframe.count()} documents")
     
     def add_documents(self, docs, commit=True):
         print(f"\nAdding Documents to '{self.name}' collection")
@@ -124,9 +125,10 @@ class SolrCollection(Collection):
     
     def search_for_random_document(self, query):
         draw = random.random()
-        return self.search({"query": query,
-                            "limit": 1,
-                            "order_by": [(f"random_{draw}", "DESC")]})
+        request = {"query": query,
+                   "limit": 1,
+                   "order_by": [(f"random_{draw}", "DESC")]}
+        return self.search(**request)
     
     def spell_check(self, query, log=False):
         request = {"query": query,

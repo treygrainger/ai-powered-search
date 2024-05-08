@@ -8,41 +8,42 @@ class SolrLTR:
     def __init__(self):
         pass    
     
-    def generate_feature(self, feature_name, store_name, params, 
+    def generate_feature(self, feature_name, params, 
                          feature_type="org.apache.solr.ltr.feature.SolrFeature"):
         return {
             "name": feature_name,
-            "store": store_name,
             "class": feature_type,
             "params": params
         }
         
-    def generate_query_feature(self, feature_name, store_name, field_name, constant_score=False, value="(${keywords})"): 
+    def generate_query_feature(self, feature_name, field_name, constant_score=False, value="(${keywords})"): 
         query = f"{field_name}:{value}"
         if constant_score:
             query += "^=1"
-        return self.generate_feature(feature_name, store_name, {"q": query})
+        return self.generate_feature(feature_name, {"q": query})
     
-    def generate_fuzzy_query_feature(self, feature_name, store_name, field_name):
-        return self.generate_query_feature(feature_name, store_name, f"{field_name}_ngram")
+    def generate_fuzzy_query_feature(self, feature_name, field_name):
+        return self.generate_query_feature(feature_name, f"{field_name}_ngram")
     
-    def generate_bigram_query_feature(self, feature_name, store_name, field):
+    def generate_bigram_query_feature(self, feature_name, field):
         query = "{" + f"!edismax qf={field} pf2={field}" +"}(${keywords})"
-        return self.generate_feature(feature_name, store_name, {"q": query})
+        return self.generate_feature(feature_name, {"q": query})
         
-    def generate_field_value_feature(self, feature_name, store_name, field_name):
+    def generate_field_value_feature(self, feature_name, field_name):
         query = "{!func}" + field_name
-        return self.generate_feature(feature_name, store_name, {"q": query})
+        return self.generate_feature(feature_name, {"q": query})
         
-    def generate_field_length_feature(self, feature_name, store_name, field_name):
+    def generate_field_length_feature(self, feature_name, field_name):
         params = {"field": field_name}
-        return self.generate_feature(feature_name, store_name, params,
+        return self.generate_feature(feature_name, params,
                                      feature_type="org.apache.solr.ltr.feature.FieldLengthFeature")
     
     def delete_feature_store(self, collection, name):
         return requests.delete(f"{SOLR_URL}/{collection.name}/schema/feature-store/{name}").json()
 
-    def upload_features(self, collection, features):
+    def upload_features(self, collection, features, model_name):
+        for feature in features:
+            feature["store"] = model_name
         return requests.put(f"{SOLR_URL}/{collection.name}/schema/feature-store", json=features).json()
 
     def delete_model_store(self, collection, model_name):
@@ -59,7 +60,7 @@ class SolrLTR:
             fields = [id_field]
         fields.append(f"[features store={featureset} {efi}]")
         request = {
-            "query": f"id:({' '.join(doc_ids)})" if doc_ids else "*", 
+            "query": f"{id_field}:({' '.join(doc_ids)})" if doc_ids else "*", 
             "return_fields": fields,
             "limit": 1000
         }
@@ -75,9 +76,9 @@ class SolrLTR:
 
         return docs
     
-    def generate_model(self, feature_store, model_name, feature_names, means, std_devs, weights):
+    def generate_model(self, model_name, feature_names, means, std_devs, weights):
         linear_model = {
-            "store": feature_store,
+            "store": model_name,
             "class": "org.apache.solr.ltr.model.LinearModel",
             "name": model_name,
             "features": [],
@@ -113,7 +114,7 @@ class SolrLTR:
             request["query_parser"] = "lucene"
         return request
     
-    def search_with_model(query, model_name, rows=10, log=False):
+    def search_with_model(self, query, model_name, rows=10, log=False):
         """ Search using test_model LTR model (see rq to and qf params below). """
         fuzzy_kws = "~" + " ~".join(query.split())
         squeezed_kws = "".join(query.split())

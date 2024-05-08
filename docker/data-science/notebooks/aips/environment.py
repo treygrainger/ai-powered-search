@@ -19,17 +19,17 @@ WEBSERVER_URL = f"http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}"
 DEFAULT_CONFIG = {"AIPS_SEARCH_ENGINE": "SOLR"}
 
 def load_config():
-    if not os.path.isfile("config.json"):
-        with open("config.json", "w") as config_file:
+    if not os.path.isfile("../config.json"):
+        with open("../config.json", "w") as config_file:
             json.dump(DEFAULT_CONFIG, config_file)
-    with open("config.json", "r") as f:
+    with open("../config.json", "r") as f:
         config = json.load(f)
     return config
 
 def set(key, value):
     config = load_config()
     config[key] = value
-    with open("config.json", "w") as config_file:
+    with open("../config.json", "w") as config_file:
         json.dump(config, config_file)
 
 def get(key, default=None):
