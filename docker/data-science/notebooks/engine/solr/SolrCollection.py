@@ -110,17 +110,24 @@ class SolrCollection(Collection):
         request = {
             "query": "{!knn " + f'topK={k} f={field}' + "}" + str(query_vector),
             "limit": 5,
-            "fields": ["id", "score", "title"]
-        }        
+            "fields": ["*"],
+            "params": {}
+        }
         for name, value in search_args.items():
             match name:
+                case "log":
+                    request["params"]["debugQuery"] = True
                 case "limit":
                     request["limit"] = value
                 case "rerank_query":
                     rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
                     request["params"]["rq"] = rq
                     request["params"]["rq_query"] = "{!knn f=" + value["query_field"] + " topK=10}" + value["query_vector"]
+        if "log" in search_args:
+            print(json.dumps(request, indent=2))
         response = self.native_search(request=request)
+        if "log" in search_args:
+            print(response)
         return self.transform_response(response)
     
     def search_for_random_document(self, query):

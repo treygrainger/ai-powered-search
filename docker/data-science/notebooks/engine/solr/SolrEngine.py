@@ -84,8 +84,10 @@ class SolrEngine(SearchEngine.SearchEngine):
                 self.upsert_text_field(collection, "overview")
                 self.upsert_double_field(collection, "release_year")
             case "tmdb_with_embeddings":
+                self.upsert_text_field(collection, "movie_id")
                 self.upsert_text_field(collection, "title")
-                self.add_vector_field(collection, "movie", 768, "dot_product")
+                self.upsert_text_field(collection, "image_id")
+                self.add_vector_field(collection, "image", 512, "dot_product")
             case "outdoors":
                 self.set_search_defaults(collection)
                 self.upsert_string_field(collection, "post_type")
@@ -190,11 +192,17 @@ class SolrEngine(SearchEngine.SearchEngine):
     
     def delete_field(self, collection, field_name):
         delete_field = {"delete-field": {"name": field_name}}
-        return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
+        try:
+            return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
+        except:
+            return {}
     
     def delete_field_type(self, collection, field_type_name):
         delete_field_type = {"delete-field-type": {"name": field_type_name}}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type).json()
+        try:
+            return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field_type).json()
+        except:
+            return {}
         
     def upsert_boosts_field_type(self, collection, field_type_name):
 

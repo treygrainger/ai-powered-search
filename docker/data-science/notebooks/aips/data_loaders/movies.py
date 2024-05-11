@@ -1,7 +1,7 @@
 import json
 from pyspark.sql import SparkSession, Row
 
-def load_dataframe(movie_file="data/tmdb.json"):
+def load_dataframe(movie_file="data/tmdb.json", movie_image_ids={}):
     movies = []
     for movieId, tmdbMovie in json.load(open(movie_file)).items():
         try:
@@ -15,18 +15,24 @@ def load_dataframe(movie_file="data/tmdb.json"):
                 full_poster_path = "https://image.tmdb.org/t/p/w185" + tmdbMovie["poster_path"]
 
             movie = {"id": movieId,
-                    "title": tmdbMovie["title"],
-                    "overview": tmdbMovie["overview"],
-                    "tagline": tmdbMovie["tagline"],
-                    "directors": [director["name"] for director in tmdbMovie["directors"]],
-                    "cast": " ".join([castMember["name"] for castMember in tmdbMovie["cast"]]),
-                    "genres": [genre["name"] for genre in tmdbMovie["genres"]],
-                    "release_date": releaseDate,
-                    "release_year": releaseYear,
-                    "poster_url": tmdbMovie["poster_path"],
-                    "poster_path": full_poster_path,
-                    "vote_average": float(tmdbMovie["vote_average"]) if "vote_average" in tmdbMovie else None,
-                    "vote_count": int(tmdbMovie["vote_count"]) if "vote_count" in tmdbMovie else 0}
+                     "title": tmdbMovie["title"],
+                     "overview": tmdbMovie["overview"],
+                     "tagline": tmdbMovie["tagline"],
+                     "directors": [director["name"] for director in tmdbMovie["directors"]],
+                     "cast": " ".join([castMember["name"] for castMember in tmdbMovie["cast"]]),
+                     "genres": [genre["name"] for genre in tmdbMovie["genres"]],
+                     "release_date": releaseDate,
+                     "release_year": releaseYear,
+                     "poster_file": (tmdbMovie["poster_path"] or "  ")[1:],
+                     "poster_path": full_poster_path,
+                     "vote_average": float(tmdbMovie["vote_average"]) if "vote_average" in tmdbMovie else None,
+                     "vote_count": int(tmdbMovie["vote_count"]) if "vote_count" in tmdbMovie else 0}
+            if movie["title"].lower() in movie_image_ids:
+                joined_ids = ",".join(movie_image_ids[movie["title"].lower()])
+            else:
+                joined_ids = ""
+            movie["movie_image_ids"] = joined_ids
+                
             movies.append(movie)
         except KeyError as k: # Ignore any movies missing these attributes
             continue
