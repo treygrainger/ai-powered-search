@@ -2,10 +2,10 @@ import json
 import random
 import requests
 from aips.environment import STATUS_URL, SOLR_COLLECTIONS_URL, SOLR_URL
-from engine import SearchEngine
-from engine.solr.SolrCollection import SolrCollection
+from engines.Engine import Engine
+from engines.solr.SolrCollection import SolrCollection
 
-class SolrEngine(SearchEngine.SearchEngine):
+class SolrEngine(Engine):
     def __init__(self):
         pass
 
@@ -130,7 +130,7 @@ class SolrEngine(SearchEngine.SearchEngine):
     def add_vector_field(self, collection, field_name, dimensions, similarity_function,
                          vector_encoding_size="FLOAT32"):    
         field_type = f"{field_name}_vector"
-        field_name = f"{field_name}_embeddings"
+        field_name = f"{field_name}_embedding"
         self.delete_field(collection, field_name)
         self.delete_field_type(collection, field_type)
         

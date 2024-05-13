@@ -1,7 +1,7 @@
 import aips.environment as environment
 from aips.environment import SOLR_URL
-from engine.solr import SolrLTR, SolrSemanticKnowledgeGraph, TextTagger, SolrSemanticFunctions
-from engine.solr.SolrEngine import SolrEngine
+from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
+from engines.solr.SolrEngine import SolrEngine
 
 import os
 from IPython.display import display,HTML
@@ -30,11 +30,11 @@ def get_ltr_engine():
 def get_semantic_knowledge_graph():
     return __SKG
 
-def get_knowledge_graph(collection_name):
-    return TextTagger(collection_name)
+def get_entity_extractor(collection_name):
+    return SolrEntityExtractor(collection_name)
 
-def get_semantic_functions():
-    return SolrSemanticFunctions()
+def get_sparse_semantic_search():
+    return SolrSparseSemanticSearch()
 
 def healthcheck():
     try:

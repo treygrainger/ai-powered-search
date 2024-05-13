@@ -1,7 +1,7 @@
 import sys
 sys.path.append('..')
 import json
-from aips import get_knowledge_graph, get_semantic_functions
+from aips import get_knowledge_graph, get_sparse_semantic_search
 from .query_tree import enrich, to_query_string
 
 def generate_tagged_query(extracted_entities):
@@ -59,7 +59,7 @@ def generate_query_tree(extracted_entities):
 
 def process_semantic_query(collection, query):
     knowledge_graph = get_knowledge_graph("entities")
-    semantic_functions = get_semantic_functions()
+    semantic_functions = get_sparse_semantic_search()
     entities = knowledge_graph.extract_entities(query)
     tagged_query = generate_tagged_query(entities)
     query_tree = generate_query_tree(entities)
@@ -75,5 +75,5 @@ def process_semantic_query(collection, query):
     }
 
 def process_basic_query(query):
-    semantic_functions = get_semantic_functions()
+    semantic_functions = get_sparse_semantic_search()
     return {"transformed_query": semantic_functions.generate_basic_query(query)}

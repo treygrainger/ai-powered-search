@@ -1,6 +1,6 @@
 import random
 import requests
-from engine.Collection import Collection
+from engines.Collection import Collection
 from aips.environment import SOLR_URL, AIPS_ZK_HOST
 import time
 import json
@@ -123,8 +123,6 @@ class SolrCollection(Collection):
                     rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
                     request["params"]["rq"] = rq
                     request["params"]["rq_query"] = "{!knn f=" + value["query_field"] + " topK=10}" + value["query_vector"]
-        if "log" in search_args:
-            print(json.dumps(request, indent=2))
         response = self.native_search(request=request)
         if "log" in search_args:
             print(response)

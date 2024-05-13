@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class SearchEngine(ABC):
+class Engine(ABC):
     def __init__(self):
         pass
     

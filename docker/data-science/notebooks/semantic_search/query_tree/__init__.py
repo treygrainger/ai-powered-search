@@ -1,7 +1,7 @@
-from aips import get_semantic_knowledge_graph, get_semantic_functions
+from aips import get_semantic_knowledge_graph, get_sparse_semantic_search
 
 skg = get_semantic_knowledge_graph()
-semantic_functions = get_semantic_functions()
+semantic_functions = get_sparse_semantic_search()
 
 def create_geo_filter(coordinates, field, distance_in_KM):
     return semantic_functions.create_geo_filter(coordinates, field, distance_in_KM)

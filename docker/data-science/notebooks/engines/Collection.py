@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+import aips.environment as env
+import json
 
 class Collection(ABC):
     def __init__(self, name):
@@ -51,6 +53,10 @@ class Collection(ABC):
     
     def search(self, **search_args):
         request = self.transform_request(**search_args)
+        if "log" in search_args or env.get("PRINT_REQUESTS", False):
+            print(json.dumps(request, indent=2))
         search_response = self.native_search(request=request)
+        if "log" in search_args:
+            print(json.dumps(search_response, indent=2))
         return self.transform_response(search_response)
     

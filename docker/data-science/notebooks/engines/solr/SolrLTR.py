@@ -1,5 +1,5 @@
 from aips.environment import SOLR_URL
-from engine.solr.SolrEngine import SolrEngine
+from engines.solr.SolrEngine import SolrEngine
 
 import json
 import requests

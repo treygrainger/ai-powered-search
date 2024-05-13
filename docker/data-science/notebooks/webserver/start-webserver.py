@@ -15,7 +15,7 @@ import requests
 
 from urllib.parse import parse_qs, urlparse
 
-from aips import get_engine, get_knowledge_graph, get_semantic_knowledge_graph, get_semantic_functions
+from aips import get_engine, get_entity_extractor, get_semantic_knowledge_graph, get_sparse_semantic_search
 from aips.environment import AIPS_WEBSERVER_HOST, AIPS_WEBSERVER_PORT, WEBSERVER_URL
 from staticmap import CircleMarker, StaticMap
 
@@ -24,8 +24,8 @@ from semantic_search import process_semantic_query, process_basic_query
 
 engine = get_engine()
 skg = get_semantic_knowledge_graph()
-kg = get_knowledge_graph("entities")
-query_transformer = get_semantic_functions()
+kg = get_entity_extractor("entities")
+query_transformer = get_sparse_semantic_search()
 reviews_collection = engine.get_collection("reviews")
 
 def keyword_search(text):

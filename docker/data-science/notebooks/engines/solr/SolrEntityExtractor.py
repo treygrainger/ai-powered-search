@@ -6,7 +6,7 @@ def transform_response(query, response):
             "tags": response["tags"],
             "entities": response["response"]["docs"]}
     
-class TextTagger:
+class SolrEntityExtractor:
     def __init__(self, collection_name):
         self.collection_name = collection_name
     

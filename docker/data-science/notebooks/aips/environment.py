@@ -16,8 +16,8 @@ SOLR_COLLECTIONS_URL = f"{SOLR_URL}/admin/collections"
 AIPS_WEBSERVER_HOST = os.getenv("AIPS_WEBSERVER_HOST") or "localhost"
 AIPS_WEBSERVER_PORT = os.getenv("AIPS_WEBSERVER_PORT") or "2345"
 WEBSERVER_URL = f"http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}"
-DEFAULT_CONFIG = {"AIPS_SEARCH_ENGINE": "SOLR"}
-
+DEFAULT_CONFIG = {"AIPS_SEARCH_ENGINE": "SOLR",
+                  "PRINT_REQUESTS": False}
 
 def write_config(config):
     with open("../config.json", "w") as config_file:
