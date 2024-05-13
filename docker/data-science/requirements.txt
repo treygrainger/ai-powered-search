@@ -24,3 +24,4 @@ spacy-experimental==0.6.1
 staticmap==0.5.7
 spacy==3.4.4
 transformers==4.30.2
+openai-clip==1.0.1
