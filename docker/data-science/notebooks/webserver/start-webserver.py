@@ -1,22 +1,37 @@
 import sys
+
 sys.path.append('..')
-from aips import *
+import http.server
+import io
+import json
 import threading
 import webbrowser
-import http.server
-import requests
+
+import sys
+sys.path.append('..')
+import urllib.parse
 import json
-import urllib
-import os
-from staticmap import StaticMap, CircleMarker
-from urllib.parse import urlparse, parse_qs
+import requests
 
-FILE = 'semantic-search'
-AIPS_WEBSERVER_PORT = os.getenv('WEBSERVER_PORT') or 2345
+from urllib.parse import parse_qs, urlparse
 
-from semantic_search.engine import tag_places, keyword_search
-from semantic_search import process_basic_query, process_semantic_query
-from display.render_search_results import *
+from aips import get_engine, get_entity_extractor, get_semantic_knowledge_graph, get_sparse_semantic_search
+from aips.environment import AIPS_WEBSERVER_HOST, AIPS_WEBSERVER_PORT, WEBSERVER_URL
+from staticmap import CircleMarker, StaticMap
+
+from webserver.display.render_search_results import render_search_results
+from semantic_search import process_semantic_query, process_basic_query
+
+engine = get_engine()
+skg = get_semantic_knowledge_graph()
+kg = get_entity_extractor("entities")
+query_transformer = get_sparse_semantic_search()
+reviews_collection = engine.get_collection("reviews")
+
+def keyword_search(text):
+    request = {"query": text,
+               "query_fields": ["content"]}
+    return reviews_collection.search(**request)
 
 class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
     """Semantic Search Handler (AI-Powered Search)"""
@@ -43,15 +58,19 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
         post_body = self.rfile.read(content_len).decode('UTF-8')
 
         if (self.path.startswith("/tag_query")):
-            self.sendResponse(get_engine().tag_query("entities", post_body))
+            self.sendResponse(kg.extract_entities(post_body))
         elif self.path.startswith("/tag_places"):
-            self.sendResponse(tag_places(post_body))
+            request = {"query": post_body,
+                       "query_fields": ["city", "state", "location_coordinates"]}
+            response = reviews_collection.search(**request)
+            self.sendResponse(response)
         elif self.path.startswith("/process_semantic_query"):
-            self.sendResponse(process_semantic_query(get_engine().get_collection("reviews"), post_body))
+            self.sendResponse(process_semantic_query(engine.get_collection("reviews"),
+                                                     post_body))
         elif self.path.startswith("/process_basic_query"):
             self.sendResponse(process_basic_query(post_body))
         elif self.path.startswith("/run_search"):
-            results = json.loads(keyword_search(post_body))
+            results = keyword_search(post_body)
             highlight_terms = post_body.split(' ')
             rendered_results = render_search_results(results, highlight_terms)
             self.sendResponse(rendered_results)
@@ -88,10 +107,9 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(image.read())
             image.close()
 
-
-
 def open_browser():
     """Start a browser after waiting for half a second."""
+    FILE = "semantic-search"
     def _open_browser():
         if AIPS_WEBSERVER_HOST == "localhost":
             webbrowser.open(WEBSERVER_URL + '/%s' % FILE)

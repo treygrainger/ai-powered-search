@@ -104,7 +104,7 @@
       /* UI Stuff */
       var UI = function(){
 
-        async function process_user_query(userQuery, submitSearch ){
+        async function process_user_query(userQuery, submitSearch){
                 latestAsyncRequestID = Math.random();
                 UI.updateSearchResults(""); //Blank out last search
                 
@@ -116,7 +116,7 @@
                   if (processed_query && processed_query.asyncRequestID === latestAsyncRequestID) {
                     UI.updateTaggerResponse(processed_query.tagger_data);
                     UI.updateTaggedQuery(processed_query.tagged_query);
-                    UI.updateEnrichedQuery(processed_query.enriched_query);    
+                    UI.updateEnrichedQuery(processed_query.parsed_query);    
                     UI.updateTransformedQuery(processed_query.transformed_query);
                     UI.showDebug();
                   }
@@ -245,7 +245,7 @@
     async function find_location_coordinates(keyword){      
       query =  {
          "params": {
-           "qf": "name_t",
+           "qf": "business_name",
            "keywords": keyword
          },
          "query": "{!graph from=name_s to=venue_s returnOnlyLeaf=true}{!edismax v=$keywords}"
@@ -260,7 +260,7 @@
         params: {
           fore: keyword,
           back: "*:*",  
-          qf: "text_t",
+          qf: "content",
           defType: "edismax",
           echoParams: "none"
         },
@@ -273,7 +273,7 @@
               facet: {
                   related_terms : {
                     type : "terms",
-                    field : "text_t",
+                    field : "content",
                     limit: 3,
                     sort: { "r1": "desc" },
                     facet : {
@@ -282,7 +282,7 @@
                   },
                   doc_type : {
                     type : "terms",
-                    field : "type_s",
+                    field : "category",
                     limit: 1,
                     sort: { "r2": "desc" },
                     facet : {
@@ -364,7 +364,7 @@
             dataType: 'text',
             contentType: 'plain'          
           });   
-
+        
         let searchResults = JSON.parse(response);
         searchResults.asyncRequestID = asyncRequestID; 
         return searchResults;
@@ -408,7 +408,6 @@
             dataType: 'text',
             contentType: 'plain'          
           });   
-
         let processedQuery = JSON.parse(response);
         processedQuery.asyncRequestID = asyncRequestID; 
         return processedQuery;
@@ -432,14 +431,14 @@
         if (nextEntity.type == "city"){
         
             query.query_tree.splice(position + 1,1); //remove command
-            query.query_tree[position] = {type: "transformed", syntax: "solr", query: create_geo_filter(nextEntity.location_p,
-                                                     "location_p", 50) };
+            query.query_tree[position] = {type: "transformed", syntax: "solr", query: create_geo_filter(nextEntity.location_coordinates,
+                                                     "location_coordinates", 50) };
             return true;
          }
-         else if (nextEntity.coordinates_pt != null){
+         else if (nextEntity.location_coordinates != null){
             query.query_tree.splice(position + 1,1); //remove command
             query.query_tree[position] = {type: "transformed", syntax: "solr", query: create_geo_filter(nextEntity.coordinates_pt,
-                                                     "coordinates_pt", 50) };
+                                                     "location_coordinates", 50) };
             return true;
          }else if (nextEntity.type == "event"){ 
            //nextEntity doesn't have coordinates on it, so try traversing to find coordinates on a parent node (i.e. a venue)
@@ -460,7 +459,7 @@
                && attemptedGraphLookup.response.docs
                && attemptedGraphLookup.response.docs.length > 0){
                 query.query_tree[position] = {type: "transformed", syntax: "solr", query: create_geo_filter(
-                  attemptedGraphLookup.response.docs[0].coordinates_s, "coordinates_pt", 50
+                  attemptedGraphLookup.response.docs[0].location_coordinates, "location_coordinates", 50
                 )};
                 return true;
                }
@@ -491,7 +490,7 @@
       if (query_tree.length -1 > position){
         var nextEntity = query_tree[position + 1];
         if (nextEntity.hasLocation){
-          if (nextEntity.location_p == null){
+          if (nextEntity.location_coordinates == null){
             alert("do graph lookup cwd");
             return true; 
           }

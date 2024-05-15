@@ -1,14 +1,17 @@
-import pandas as pd
+import pandas 
 import glob 
 
 def all_sessions():
-    sessions = pd.concat([pd.read_csv(f, compression="gzip")
-                          for f in glob.glob("data/*_sessions.gz")])
-    return sessions.rename(columns={"clicked_doc_id": "doc_id"})
+    sessions = pandas.concat([pandas.read_csv(f, compression="gzip")
+                          for f in glob.glob("../data/*_sessions.gz")])
+    sessions = sessions.sort_values(['query', 'sess_id', 'rank'])
+    sessions = sessions.rename(columns={"clicked_doc_id": "doc_id"})
+    return sessions
 
-def get_sessions(query=""):
-    sessions = all_sessions()    
-    return sessions[sessions["query"] == query]
+def get_sessions(query="", index=True):
+    sessions = all_sessions() 
+    sessions = sessions[sessions["query"] == query]
+    return sessions if not index else sessions.set_index("sess_id")
 
 def calculate_ctr(sessions):
     click_counts = sessions.groupby("doc_id")["clicked"].sum()

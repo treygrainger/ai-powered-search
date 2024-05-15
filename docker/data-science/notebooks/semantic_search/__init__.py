@@ -1,14 +1,14 @@
 import sys
 sys.path.append('..')
-from aips import *
 import json
-from webserver.semantic_search.query_tree import *
-from webserver.semantic_search.engine.text_tagger import TextTagger
+from aips import get_knowledge_graph, get_sparse_semantic_search
+from .query_tree import enrich, to_query_string
 
-def generate_tagged_query(query, tagger_data):
+def generate_tagged_query(extracted_entities):
+    query = extracted_entities["query"]
     last_end = 0
     tagged_query = ""
-    for tag in tagger_data["tags"]:
+    for tag in extracted_entities["tags"]:
         next_text = query[last_end:tag["startOffset"]].strip()
         if len(next_text) > 0:
             tagged_query += " " + next_text
@@ -18,16 +18,17 @@ def generate_tagged_query(query, tagger_data):
         final_text = query[last_end:len(query)].strip()
         if len(final_text):
             tagged_query += " " + final_text
-    return tagged_query            
+    return tagged_query         
                 
-def generate_query_tree(query, tagger_data):
+def generate_query_tree(extracted_entities):
+    query = extracted_entities["query"]
     query_tree = []    
     last_end = 0
     doc_map =  {}
-    for doc in tagger_data["response"]["docs"]:
+    for doc in extracted_entities["entities"]:
         doc_map[doc["id"]] = doc
         
-    for tag in tagger_data["tags"]:
+    for tag in extracted_entities["tags"]:
         best_doc_id = None
         for doc_id in tag["ids"]:
             if best_doc_id:
@@ -57,21 +58,22 @@ def generate_query_tree(query, tagger_data):
     return query_tree
 
 def process_semantic_query(collection, query):
-    query_bytes = bytes(query, "UTF-8")
-    tagger_data = TextTagger("entities").tag_query(query_bytes)
-    
-    tagged_query = generate_tagged_query(query, tagger_data)
-    query_tree = generate_query_tree(query, tagger_data)
-    parsed_query = json.dumps(query_tree)
+    knowledge_graph = get_knowledge_graph("entities")
+    semantic_functions = get_sparse_semantic_search()
+    entities = knowledge_graph.extract_entities(query)
+    tagged_query = generate_tagged_query(entities)
+    query_tree = generate_query_tree(entities)
+    enriched_query = " ".join([str(q) for q in query_tree])
     enriched_query_tree = enrich(collection, query_tree)
-    transformed = transform_query(enriched_query_tree)
+    transformed = semantic_functions.transform_query(enriched_query_tree)
     
     return {
         "tagged_query": tagged_query,
-        "parsed_query": parsed_query, 
+        "parsed_query": enriched_query,
         "transformed_query": to_query_string(transformed),
-        "tagger_data": tagger_data
+        "tagger_data": entities
     }
-    
+
 def process_basic_query(query):
-    return {"transformed_query": '+{!edismax mm=100% v="' + escape_quotes_in_query(query) + '"}'}
+    semantic_functions = get_sparse_semantic_search()
+    return {"transformed_query": semantic_functions.generate_basic_query(query)}
