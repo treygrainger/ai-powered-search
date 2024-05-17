@@ -142,7 +142,8 @@ class SolrClient(BaseClient):
 
         # Clean up features to consistent format
         for doc in resp['response']['docs']:
-            doc['ltr_features'] = parseFeatures(doc['[features]'])
+            doc['[features]'] = {f.split("=")[0] : float(f.split("=")[1])
+                                 for f in doc["[features]"].split(",")}
 
         return resp['response']['docs']
 

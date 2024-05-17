@@ -98,11 +98,6 @@ class SolrCollection(Collection):
     def native_search(self, request=None, data=None):
         return requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
     
-    def search(self, **search_args):
-        request = self.transform_request(**search_args)
-        search_response = self.native_search(request=request)
-        return self.transform_response(search_response)
-    
     def vector_search(self, **search_args):
         field = search_args["query_field"]
         k = search_args["k"] if "k" in search_args else 10

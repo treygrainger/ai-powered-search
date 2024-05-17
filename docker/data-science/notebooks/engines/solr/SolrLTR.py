@@ -38,18 +38,21 @@ class SolrLTR:
         return self.generate_feature(feature_name, params,
                                      feature_type="org.apache.solr.ltr.feature.FieldLengthFeature")
     
-    def delete_feature_store(self, collection, name):
+    def delete_feature_store(self, collection, name, log=False):
         return requests.delete(f"{SOLR_URL}/{collection.name}/schema/feature-store/{name}").json()
 
-    def upload_features(self, collection, features, model_name):
+    def upload_features(self, collection, features, model_name, log=False):
+        if log: print(f"Uploading {model_name} features to {collection.name} collection.")        
         for feature in features:
             feature["store"] = model_name
-        return requests.put(f"{SOLR_URL}/{collection.name}/schema/feature-store", json=features).json()
+        response = requests.put(f"{SOLR_URL}/{collection.name}/schema/feature-store", json=features).json()
+        if log: print(json.dumps(response, indent=2))
+        return response
 
-    def delete_model_store(self, collection, model_name):
+    def delete_model_store(self, collection, model_name, log=False):
         return requests.delete(f"{SOLR_URL}/{collection.name}/schema/model-store/{model_name}").json()
     
-    def upload_model(self, collection, model):
+    def upload_model(self, collection, model, log=False):
         response = requests.put(f"{SOLR_URL}/{collection.name}/schema/model-store", json=model).json()
         requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={collection.name}&wt=xml")
         return response    
@@ -65,15 +68,12 @@ class SolrLTR:
             "limit": 1000
         }
         if log:
-            print("Search Request:")
-            print(json.dumps(collection.transform_request(**request), indent="  "))
-        resp = collection.search(**request)
-        docs = resp["docs"]
+            request["log"] = True
+        docs = collection.search(**request)["docs"]
         # Clean up features to consistent format
         for d in docs:
-            features = list(map(lambda f : float(f.split("=")[1]), d["[features]"].split(",")))
-            d["ltr_features"] = features
-
+            d["[features]"] = {f.split("=")[0] : float(f.split("=")[1])
+                               for f in d["[features]"].split(",")}
         return docs
     
     def generate_model(self, model_name, feature_names, means, std_devs, weights):
