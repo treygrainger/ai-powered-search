@@ -38,7 +38,7 @@ AI-Powered Search teaches many modern search techniques leveraging machine learn
 
 Throughout the book, all code examples are in Python, with PySpark (the Python interface to Apache Spark) being utilized heavily for data processing tasks. The default search engine leveraged by the book's examples is Apache Solr, but most examples are abstracted away from the particular search engine, and swappable implementation will be soon available for the most popular search engines and vector databases.
 
-[ *Note*: if you work for a search engine / vector database company or project and want to work with us on getting your engine supported, please reach out to trey@searchkernel.com ]
+[ *Note*: if you work for a search engine / vector database company, project, or hosting provider and want to work with us on getting your engine supported, please reach out to trey@searchkernel.com ]
 
 ## Questions and help
 Your purchase of _AI-Powered Search_ includes online access to Manning's [LiveBook forum](https://livebook.manning.com/forum?product=graingert). This allows you to provide comments and ask questions about any parts of the book. Additionally, feel free to submit pull requests, Github issues, or comments on the project's official Github repo at https://github.com/treygrainger/ai-powered-search.

@@ -9,9 +9,6 @@ import pandas
 import re
 import requests
 
-__LTR = SolrLTR()
-__SKG = SolrSemanticKnowledgeGraph()
-
 engine_type_map = {"SOLR": SolrEngine()}
 
 def get_engine():
@@ -24,14 +21,14 @@ def set_engine(engine_name):
     else:
         environment.set("AIPS_SEARCH_ENGINE", engine_name)
 
-def get_ltr_engine():
-    return __LTR
+def get_ltr_engine(collection):
+    return SolrLTR(collection)
 
-def get_semantic_knowledge_graph():
-    return __SKG
+def get_semantic_knowledge_graph(collection):
+    return SolrSemanticKnowledgeGraph(collection)
 
-def get_entity_extractor(collection_name):
-    return SolrEntityExtractor(collection_name)
+def get_entity_extractor(collection):
+    return SolrEntityExtractor(collection)
 
 def get_sparse_semantic_search():
     return SolrSparseSemanticSearch()

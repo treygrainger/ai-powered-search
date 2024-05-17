@@ -1,4 +1,6 @@
-# %load -s generate_request_root,generate_facets,default_node_name,validate_skg_request_input,generate_skg_request,transform_node,transform_response_facet,sort_by_relatedness_desc,traverse webserver/semantic_search/engine/semantic_knowledge_graph
+from engines.SemanticKnowledgeGraph import SemanticKnowledgeGraph
+from engines.solr.SolrCollection import SolrCollection
+
 def generate_request_root():
     return {
         "limit": 0,
@@ -33,8 +35,7 @@ def generate_facets(name=None, values=None, field=None,
         if not limit: base_facet.pop("limit")
         for i, _ in enumerate(values):
             facets.append(base_facet.copy())
-            op = f"q.op={default_operator} " if default_operator else ""  
-            facets[i]["query"] = "{" + f'!edismax {op}qf={field} v=${name}_{i}_query' + "}"
+            facets[i]["query"] = "{" + f'!edismax q.op={default_operator} qf={field} v=${name}_{i}_query' + "}"
     else:
         facets = [base_facet]
     return facets
@@ -51,7 +52,7 @@ def validate_skg_request_input(multi_node):
     if "field" not in multi_node: # and "values" in multi_node
         raise ValueError("'field' must be provided")
 
-def generate_skg_request(*multi_nodes):
+def generate_request(*multi_nodes):
     """Generates a faceted Solr SKG request from a set of multi-nodes. 
     A multi-node can be a single node or a collection of nodes.
     A node can contain the following params: `name`, `values`, `field`, `min_occurance` and `limit`.
@@ -113,14 +114,16 @@ def transform_response_facet(node, response_params):
 def sort_by_relatedness_desc(d):
     return {k: v for k, v in sorted(d.items(), key=lambda item: item[1]["relatedness"], reverse=True)}
 
-class SolrSemanticKnowledgeGraph:
-    def __init__(self):
-        pass
+class SolrSemanticKnowledgeGraph(SemanticKnowledgeGraph):
+    def __init__(self, collection):
+        if not isinstance(collection, SolrCollection):
+            raise TypeError("Only supports a SolrCollection")
+        super().__init__(collection)
 
-    def traverse(self, collection, *nodes):
-        request = generate_skg_request(*nodes)
-        response = collection.native_search(request)
+    def traverse(self, *multi_nodes):
+        request = self.generate_request(*multi_nodes)
+        response = self.collection.native_search(request)
         return {"graph": transform_response_facet(response["facets"], request["params"])}
     
-    def generate_skg_request(self, *multi_nodes):
-        return generate_skg_request(*multi_nodes)
+    def generate_request(self, *multi_nodes):
+        return generate_request(*multi_nodes)
