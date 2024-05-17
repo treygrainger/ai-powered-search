@@ -70,26 +70,26 @@ Because the `collection.write` method takes a dataframe, we utilize helpers as n
 
 No additional engine-specific implementation is needed for loading from these additional data sources, as any data source that can be mapped to a Spark dataframe is implicitly supported.  
 
-== Adding support for additional engines
+## Adding support for additional engines
 
 While we intend to support most major search engines and vector databases, you may find that your favorite engine is not currently supported. If that is the case, we encourage you to add support for it and submit a pull request to the codebase. The `engine` and `collection` interfaces are designed to be easy to implement, and you can use the default `solr` implementation or any other already implemented engines as a reference.
 
 ### Required abstractions to implement for a new engine
 There are 6 main abstractions (located in [notebooks/engines](./)).
 
-**Engine:** The `Engine` class is responsible for setting up collections with their appropriate schemas and configurations. Most of the complexity in the engine is the configuration of 15 different collections that support the system's functionality.
+* `Engine`: This class is responsible for setting up collections with their appropriate schemas and configurations. Most of the complexity in the engine is the configuration of 15 different collections that support the system's functionality.
 
-**Collection:** The `Collection` class is responsible for populating and searching a search index. `search` and `vector_search` are some of the more complex functions within this class to implement.
+* `Collection`: This class is responsible for populating and searching a search index. `search` and `vector_search` are some of the more complex functions within this class to implement.
 
-**Learning to Rank (LTR):** The `LTR` abstraction contains all functionality for creating models, handling features, and searching with a model.
+* `LTR` (Learning to Rank): The `LTR` abstraction contains all functionality for creating models, handling features, and searching with a model.
 
-**EntityExtractor:** Semantic Search requires an Entity Extractor to identify entities and tag queries.
+* `EntityExtractor`: Semantic Search requires an Entity Extractor to identify entities and tag queries.
 
-**SemanticKnowledgeGraph:** This class contains functionality to generate requests and to traverse a semantic knowledge graph.
+* `SemanticKnowledgeGraph`: This class contains functionality to generate requests and to traverse a semantic knowledge graph.
 
-**SparseSemanticSearch:** Defines query transformation logic and semantic functions used in Semantic Search
+* `SparseSemanticSearch`: Defines query transformation logic and semantic functions used in Semantic Search.
 
-If your `engine` doesn't natively support for one or more features used in the [_AI-Powered Search_](https://aipowerersearch.com) book and codebase, you have three options:
+If your `engine` doesn't natively support one or more features used in the [_AI-Powered Search_](https://aipowerersearch.com) book and codebase, you have three options:
 1. (Recommended) Implement the missing functionality in Python outside of the search engine, pushing down what you can to the engine.
 2. (Good Enough) Push that particular feature to another engine, relying on the already implemented way to handle the functionality. This option may be useful for very specific capabilities like the `EntityExtractor` and the `SemanticKnowledgeGraph` implementations, where another engine (Solr in this case) is fairly unique in its native support of these capabilities.
 3. (Worst Case) Throw a "Not Implemented" exception for a handful of unimplemented capabilities. This should only be used as a last resort.
