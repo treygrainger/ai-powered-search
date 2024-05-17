@@ -115,12 +115,14 @@ def sort_by_relatedness_desc(d):
     return {k: v for k, v in sorted(d.items(), key=lambda item: item[1]["relatedness"], reverse=True)}
 
 class SolrSemanticKnowledgeGraph(SemanticKnowledgeGraph):
-    def __init__(self, collection_name):
-        super().__init__(collection_name)
+    def __init__(self, collection):
+        if not isinstance(collection, SolrCollection):
+            raise TypeError("Only supports a SolrCollection")
+        super().__init__(collection)
 
     def traverse(self, *multi_nodes):
         request = self.generate_request(*multi_nodes)
-        response = SolrCollection(self.collection_name).native_search(request)
+        response = self.collection.native_search(request)
         return {"graph": transform_response_facet(response["facets"], request["params"])}
     
     def generate_request(self, *multi_nodes):

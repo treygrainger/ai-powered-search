@@ -1,5 +1,5 @@
 import re
-from aips import get_ltr_engine
+from aips import get_ltr_engine, get_engine
 
 class FeatureLogger:
     """ Logs LTR Features, one query at a time
@@ -61,7 +61,8 @@ class FeatureLogger:
             }
 
             ids = [str(doc_id) for doc_id in ids]
-            res = get_ltr_engine(self.index).get_logged_features(self.feature_set, ids,
+            collection = get_engine().get_collection(self.index)
+            res = get_ltr_engine(collection).get_logged_features(self.feature_set, ids,
                                              params, id_field=self.id_field, log=log)
 
 

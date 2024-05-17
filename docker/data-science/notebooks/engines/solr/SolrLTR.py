@@ -1,13 +1,14 @@
-from re import search
 from aips.environment import SOLR_URL
-from engines.solr.SolrEngine import SolrEngine
+from engines.solr.SolrCollection import SolrCollection
 from engines.LTR import LTR
 import json
 import requests
 
 class SolrLTR(LTR):
-    def __init__(self, collection_name):
-        super().__init__(collection_name)
+    def __init__(self, collection):
+        if not isinstance(collection, SolrCollection):
+            raise TypeError("Only supports a SolrCollection")
+        super().__init__(collection)
     
     def generate_feature(self, feature_name, params, 
                          feature_type="org.apache.solr.ltr.feature.SolrFeature"):
@@ -40,24 +41,23 @@ class SolrLTR(LTR):
                                      feature_type="org.apache.solr.ltr.feature.FieldLengthFeature")
     
     def delete_feature_store(self, name):
-        return requests.delete(f"{SOLR_URL}/{self.collection_name}/schema/feature-store/{name}").json()
+        return requests.delete(f"{SOLR_URL}/{self.collection.name}/schema/feature-store/{name}").json()
 
     def upload_features(self, features, model_name):
         for feature in features:
             feature["store"] = model_name
-        return requests.put(f"{SOLR_URL}/{self.collection_name}/schema/feature-store", json=features).json()
+        return requests.put(f"{SOLR_URL}/{self.collection.name}/schema/feature-store", json=features).json()
 
     def delete_model(self, model_name):
-        return requests.delete(f"{SOLR_URL}/{self.collection_name}/schema/model-store/{model_name}").json()
+        return requests.delete(f"{SOLR_URL}/{self.collection.name}/schema/model-store/{model_name}").json()
     
     def upload_model(self, model):
-        response = requests.put(f"{SOLR_URL}/{self.collection_name}/schema/model-store", json=model).json()
-        requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={self.collection_name}&wt=xml")
+        response = requests.put(f"{SOLR_URL}/{self.collection.name}/schema/model-store", json=model).json()
+        requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={self.collection.name}&wt=xml")
         return response    
     
     def get_logged_features(self, model_name, doc_ids, options={},
                             id_field="id", fields=None, log=False):
-        collection = SolrEngine().get_collection(self.collection_name)
         efi = " ".join(f'efi.{k}="{v}"' for k, v in options.items())
         if not fields:
             fields = [id_field]
@@ -69,8 +69,8 @@ class SolrLTR(LTR):
         }
         if log:
             print("Search Request:")
-            print(json.dumps(collection.transform_request(**request), indent="  "))
-        resp = collection.search(**request)
+            print(json.dumps(self.collection.transform_request(**request), indent="  "))
+        resp = self.collection.search(**request)
         docs = resp["docs"]
         # Clean up features to consistent format
         for d in docs:
@@ -135,7 +135,7 @@ class SolrLTR(LTR):
             print("search_with_model: search request:")
             print(request)
 
-        resp = SolrEngine().get_collection(self.collection_name).native_search(request)
+        resp = self.collection.native_search(request)
             
         if log:
             print("search_with_model: search response:")

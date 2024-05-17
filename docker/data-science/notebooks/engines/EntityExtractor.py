@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
 class EntityExtractor(ABC):
-    def __init__(self, collection_name):
+    def __init__(self, collection):
         "The collection containing entities"
-        self.collection_name = collection_name
+        self.collection = collection
 
     @abstractmethod
     def extract_entities(self, query):

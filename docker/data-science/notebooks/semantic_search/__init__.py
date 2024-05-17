@@ -56,8 +56,8 @@ def generate_query_tree(extracted_entities):
                 "canonical_form": final_text})
     return query_tree
 
-def process_semantic_query(collection, query):
-    extractor = get_entity_extractor("entities")
+def process_semantic_query(collection, entities_collection, query):
+    extractor = get_entity_extractor(entities_collection)
     semantic_functions = get_sparse_semantic_search()
     entities = extractor.extract_entities(query)
     tagged_query = generate_tagged_query(entities)

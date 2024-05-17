@@ -55,7 +55,7 @@ def process_semantic_functions(query_tree):
 
     return query_tree 
 
-def get_enrichments(collection_name, keyword):
+def get_enrichments(collection, keyword):
     enrichments = {}
     nodes_to_traverse = [{"field": "content",
                           "values": [keyword],
@@ -66,7 +66,7 @@ def get_enrichments(collection_name, keyword):
                           {"name": "doc_type",
                            "field": "doc_type",
                            "limit": 1}]]
-    skg = get_semantic_knowledge_graph(collection_name)
+    skg = get_semantic_knowledge_graph(collection)
     traversals = skg.traverse(*nodes_to_traverse)
     nested_traversals = traversals["graph"][0]["values"][keyword]["traversals"]
     
@@ -85,12 +85,12 @@ def get_enrichments(collection_name, keyword):
     
     return enrichments
 
-def enrich(collection_name, query_tree):
+def enrich(collection, query_tree):
     query_tree = process_semantic_functions(query_tree)    
     for i in range(len(query_tree)):
         item = query_tree[i]
         if item["type"] == "keyword":
-            enrichments = get_enrichments(collection_name, item["surface_form"])
+            enrichments = get_enrichments(collection, item["surface_form"])
             query_tree[i] = {"type": "skg_enriched", 
                              "enrichments": enrichments}                    
     return query_tree

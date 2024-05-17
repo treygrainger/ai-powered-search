@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
 class LTR(ABC):
-    def __init__(self, collection_name):
-        self.collection_name = collection_name
+    def __init__(self, collection):
+        self.collection = collection
 
     @abstractmethod
     def generate_feature(self, feature_name, params, feature_type):
