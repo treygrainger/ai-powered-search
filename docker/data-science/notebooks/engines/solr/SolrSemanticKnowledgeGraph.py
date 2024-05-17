@@ -35,8 +35,7 @@ def generate_facets(name=None, values=None, field=None,
         if not limit: base_facet.pop("limit")
         for i, _ in enumerate(values):
             facets.append(base_facet.copy())
-            op = f"q.op={default_operator} " if default_operator else ""  
-            facets[i]["query"] = "{" + f'!edismax {op}qf={field} v=${name}_{i}_query' + "}"
+            facets[i]["query"] = "{" + f'!edismax q.op={default_operator} qf={field} v=${name}_{i}_query' + "}"
     else:
         facets = [base_facet]
     return facets

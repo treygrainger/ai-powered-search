@@ -58,7 +58,8 @@ def process_semantic_functions(query_tree):
 def get_enrichments(collection_name, keyword):
     enrichments = {}
     nodes_to_traverse = [{"field": "content",
-                          "values": [keyword]},
+                          "values": [keyword],
+                          "default_operator": "OR"},
                          [{"name": "related_terms",
                            "field": "content",
                            "limit": 3},
