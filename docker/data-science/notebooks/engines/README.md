@@ -1,8 +1,8 @@
-## Supported Search Engines and Vector Databases
+# Supported Search Engines and Vector Databases
 
 All the algorithms in the code base are designed to work with a wide variety of search engines and vector databases. To that end, other than cases where engine-specific syntax is required to demonstrate a point, we have implemented search functionality using a generic `engine` interface throughout the codebase that allows you to easily swap in your favorite alternative search engine or vector database.
 
-== Supported engines
+## Supported engines (tentative)
 
 The list of supported engines will continue to grow over time, the following engines are currently being investigated for support:
 
@@ -22,25 +22,27 @@ The list of supported engines will continue to grow over time, the following eng
 * `websolr` - Websolr's managed Apache Solr platform (pending vendor support)
 * `searchstax` - Searchstax's managed Apache Solr platform (pending vendor support)
 
+**Note**: If you represent another search engine, vector database, associated hosting provider and would like to be added to this list, please reach out to trey@searchkernel.com to discuss.
 
-== Swapping out the engine
+
+## Swapping out the engine
 
 Swapping the engine is as simple as running the following command in any notebook:
 
-----
+```
 import aips
 aips.set_engine("opensearch")
-----
+```
 
 The `aips` (short for _AI-Powered Search_) module reads an `engine.conf` file from the root directory of the codebase to determine which engine to instantiate. By default, the engine is set to `solr`, but by calling the `aips.set_engine` function with the name of another engine, you will persistently change the engine for all subsequent code examples within the Docker container.
 
 You can also check the engine at any time in the `engine.conf` file or by running:
-----
+```
 aips.get_engine().name
-----
+```
 
 
-== The engine and collection abstractions
+## The engine and collection abstractions
 
 The search engine industry is full of different terminology and concepts, and we have tried to abstract away as much of that as possible in the codebase. Most search engines started with keyword search and have since added support for vector search, and many vector databases started with vector search and have since added keyword search. For our purposes, we just think of all of these systems as matching and ranking engines, and we use the term `engine` to refer to all of them.
 
@@ -72,8 +74,8 @@ No additional engine-specific implementation is needed for loading from these ad
 
 While we intend to support most major search engines and vector databases, you may find that your favorite engine is not currently supported. If that is the case, we encourage you to add support for it and submit a pull request to the codebase. The `engine` and `collection` interfaces are designed to be easy to implement, and you can use the default `solr` implementation or any other already implemented engines as a reference.
 
-=== Required engine abstractions to implement
-There are 6 main abstractions (located in docker/data-science/notebookes/engines)
+### Required abstractions to implement for a new engine
+There are 6 main abstractions (located in [notebooks/engines](./)).
 
 **Engine:** The `Engine` class is responsible for setting up collections with their appropriate schemas and configurations. Most of the complexity in the engine is the configuration of 15 different collections that support the system's functionality.
 
@@ -87,5 +89,9 @@ There are 6 main abstractions (located in docker/data-science/notebookes/engines
 
 **SparseSemanticSearch:** Defines query transformation logic and semantic functions used in Semantic Search
 
+If your `engine` doesn't natively support for one or more features used in the [_AI-Powered Search_](https://aipowerersearch.com) book and codebase, you have three options:
+1. (Recommended) Implement the missing functionality in Python outside of the search engine, pushing down what you can to the engine.
+2. (Good Enough) Push that particular feature to another engine, relying on the already implemented way to handle the functionality. This option may be useful for very specific capabilities like the `EntityExtractor` and the `SemanticKnowledgeGraph` implementations, where another engine (Solr in this case) is fairly unique in its native support of these capabilities.
+3. (Worst Case) Throw a "Not Implemented" exception for a handful of unimplemented capabilities. This should only be used as a last resort.
 
 We hope that the `engine` and `collection` abstractions will make it easy for you to add support for your favorite engine and also potentially contribute it to the book's codebase to benefit the larger community of _AI-Powered Search_ readers and practitioners. Happy searching!

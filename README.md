@@ -38,23 +38,7 @@ AI-Powered Search teaches many modern search techniques leveraging machine learn
 
 Throughout the book, all code examples are in Python, with PySpark (the Python interface to Apache Spark) being utilized heavily for data processing tasks. The default search engine leveraged by the book's examples is Apache Solr, but most examples are abstracted away from the particular search engine, and swappable implementation will be soon available for the most popular search engines and vector databases.
 
-[ *Note*: if you work for a search engine / vector database company or project and want to work with us on getting your engine supported, please reach out to trey@searchkernel.com ]
-
-## Integrating a Search Engine
-Any search engine or other database can be integrating into this system. 80% of the system uses only functionality from Engine and Collection. Most implementations will only define the Engine and Collection functionality, relying on the Solr implemntations for the advanced features. Advanced search enginge functionality lies in the remaining 4 asbtractions. Chapters 10, 11 and 12 depend on the the LTR abstraction. Chapters 5, 6 and 7 rely on the SemanticKnowledgeGraph. Finally, Chapter 7 requires entity tagging and extraction functionality defined in an EntityExtractor as well as semantic search functionality defined in SparseSemanticSearch.
-
-There are 6 main abstractions (located in docker/data-science/notebookes/engines)
-**Engine:** The Engine class is responsible for setting up collections with their appropriate schemas and configurations. Most of the complexity in the engine is the configuration of 15 different collections that support the system's functionality
-
-**Collection:** The Collection class is responsibile for populating and search the collection. search and vector_search the more complex functions within this class.
-
-**Learning to Rank (LTR):** The LTR abstraction contains all functionality for creating models, building features and searching with a model.
-
-**EntityExtractor:** Semantic Search requires an Entity Extractor to identify entities and tag queries.
-
-**SemanticKnowledgeGraph:** This class contains functionality to generate requests and to traverse a semantic knowledge graph.
-
-**SparseSemanticSearch:** Defines query transformation logic and semantic functions used in Semantic Search
+[ *Note*: if you work for a search engine / vector database company, project, or hosting provider and want to work with us on getting your engine supported, please reach out to trey@searchkernel.com ]
 
 ## Questions and help
 Your purchase of _AI-Powered Search_ includes online access to Manning's [LiveBook forum](https://livebook.manning.com/forum?product=graingert). This allows you to provide comments and ask questions about any parts of the book. Additionally, feel free to submit pull requests, Github issues, or comments on the project's official Github repo at https://github.com/treygrainger/ai-powered-search.
