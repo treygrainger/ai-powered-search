@@ -61,8 +61,6 @@ class SolrCollection(Collection):
                     request["limit"] = value
                 case "order_by":
                     request["sort"] = ", ".join([f"{column} {sort}" for (column, sort) in value])  
-                case "facet":
-                    request["facet"] = value
                 case "rerank_query":
                     request["params"]["rq"] = value
                 case "default_operator":

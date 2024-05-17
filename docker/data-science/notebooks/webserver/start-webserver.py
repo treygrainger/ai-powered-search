@@ -23,10 +23,10 @@ from webserver.display.render_search_results import render_search_results
 from semantic_search import process_semantic_query, process_basic_query
 
 engine = get_engine()
-skg = get_semantic_knowledge_graph()
-kg = get_entity_extractor("entities")
-query_transformer = get_sparse_semantic_search()
 reviews_collection = engine.get_collection("reviews")
+entities_collection = engine.get_collection("entities")
+entity_extractor = get_entity_extractor(entities_collection)
+query_transformer = get_sparse_semantic_search()
 
 def keyword_search(text):
     request = {"query": text,
@@ -58,14 +58,15 @@ class SemanticSearchHandler(http.server.SimpleHTTPRequestHandler):
         post_body = self.rfile.read(content_len).decode('UTF-8')
 
         if (self.path.startswith("/tag_query")):
-            self.sendResponse(kg.extract_entities(post_body))
+            self.sendResponse(entity_extractor.extract_entities(post_body))
         elif self.path.startswith("/tag_places"):
             request = {"query": post_body,
                        "query_fields": ["city", "state", "location_coordinates"]}
             response = reviews_collection.search(**request)
             self.sendResponse(response)
         elif self.path.startswith("/process_semantic_query"):
-            self.sendResponse(process_semantic_query(engine.get_collection("reviews"),
+            self.sendResponse(process_semantic_query(reviews_collection,
+                                                     entities_collection,
                                                      post_body))
         elif self.path.startswith("/process_basic_query"):
             self.sendResponse(process_basic_query(post_body))

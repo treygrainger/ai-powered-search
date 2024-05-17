@@ -1,6 +1,5 @@
 from aips import get_semantic_knowledge_graph, get_sparse_semantic_search
 
-skg = get_semantic_knowledge_graph()
 semantic_functions = get_sparse_semantic_search()
 
 def create_geo_filter(coordinates, field, distance_in_KM):
@@ -59,14 +58,16 @@ def process_semantic_functions(query_tree):
 def get_enrichments(collection, keyword):
     enrichments = {}
     nodes_to_traverse = [{"field": "content",
-                          "values": [keyword]},
+                          "values": [keyword],
+                          "default_operator": "OR"},
                          [{"name": "related_terms",
                            "field": "content",
                            "limit": 3},
                           {"name": "doc_type",
                            "field": "doc_type",
                            "limit": 1}]]
-    traversals = skg.traverse(collection, *nodes_to_traverse)
+    skg = get_semantic_knowledge_graph(collection)
+    traversals = skg.traverse(*nodes_to_traverse)
     nested_traversals = traversals["graph"][0]["values"][keyword]["traversals"]
     
     doc_types = list(filter(lambda t: t["name"] == "doc_type",
