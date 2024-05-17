@@ -1,7 +1,9 @@
+from engines.SparseSemanticSearch import SparseSemanticSearch
+
 def escape_quotes(text):
     return text.replace('"', '\\"')
 
-class SolrSparseSemanticSearch:
+class SolrSparseSemanticSearch(SparseSemanticSearch):
     def __init__(self):
         pass
 
@@ -19,7 +21,7 @@ class SolrSparseSemanticSearch:
                     "query": self.create_geo_filter(next_entity['location_coordinates'],
                                                     "location_coordinates", 50)}
                 return True
-        return False
+        return False 
 
     def popularity(self, query, position):
         if len(query["query_tree"]) -1 > position:

@@ -1,7 +1,6 @@
 import sys
 sys.path.append('..')
-import json
-from aips import get_knowledge_graph, get_sparse_semantic_search
+from aips import get_entity_extractor, get_sparse_semantic_search
 from .query_tree import enrich, to_query_string
 
 def generate_tagged_query(extracted_entities):
@@ -58,9 +57,9 @@ def generate_query_tree(extracted_entities):
     return query_tree
 
 def process_semantic_query(collection, query):
-    knowledge_graph = get_knowledge_graph("entities")
+    extractor = get_entity_extractor("entities")
     semantic_functions = get_sparse_semantic_search()
-    entities = knowledge_graph.extract_entities(query)
+    entities = extractor.extract_entities(query)
     tagged_query = generate_tagged_query(entities)
     query_tree = generate_query_tree(entities)
     enriched_query = " ".join([str(q) for q in query_tree])

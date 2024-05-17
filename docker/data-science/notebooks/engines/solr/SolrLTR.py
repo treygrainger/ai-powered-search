@@ -1,12 +1,13 @@
+from re import search
 from aips.environment import SOLR_URL
 from engines.solr.SolrEngine import SolrEngine
-
+from engines.LTR import LTR
 import json
 import requests
 
-class SolrLTR:
-    def __init__(self):
-        pass    
+class SolrLTR(LTR):
+    def __init__(self, collection_name):
+        super().__init__(collection_name)
     
     def generate_feature(self, feature_name, params, 
                          feature_type="org.apache.solr.ltr.feature.SolrFeature"):
@@ -38,27 +39,29 @@ class SolrLTR:
         return self.generate_feature(feature_name, params,
                                      feature_type="org.apache.solr.ltr.feature.FieldLengthFeature")
     
-    def delete_feature_store(self, collection, name):
-        return requests.delete(f"{SOLR_URL}/{collection.name}/schema/feature-store/{name}").json()
+    def delete_feature_store(self, name):
+        return requests.delete(f"{SOLR_URL}/{self.collection_name}/schema/feature-store/{name}").json()
 
-    def upload_features(self, collection, features, model_name):
+    def upload_features(self, features, model_name):
         for feature in features:
             feature["store"] = model_name
-        return requests.put(f"{SOLR_URL}/{collection.name}/schema/feature-store", json=features).json()
+        return requests.put(f"{SOLR_URL}/{self.collection_name}/schema/feature-store", json=features).json()
 
-    def delete_model_store(self, collection, model_name):
-        return requests.delete(f"{SOLR_URL}/{collection.name}/schema/model-store/{model_name}").json()
+    def delete_model(self, model_name):
+        return requests.delete(f"{SOLR_URL}/{self.collection_name}/schema/model-store/{model_name}").json()
     
-    def upload_model(self, collection, model):
-        response = requests.put(f"{SOLR_URL}/{collection.name}/schema/model-store", json=model).json()
-        requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={collection.name}&wt=xml")
+    def upload_model(self, model):
+        response = requests.put(f"{SOLR_URL}/{self.collection_name}/schema/model-store", json=model).json()
+        requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={self.collection_name}&wt=xml")
         return response    
     
-    def log_query(self, collection, featureset, doc_ids, options={}, id_field="id", fields=None, log=False):
+    def get_logged_features(self, model_name, doc_ids, options={},
+                            id_field="id", fields=None, log=False):
+        collection = SolrEngine().get_collection(self.collection_name)
         efi = " ".join(f'efi.{k}="{v}"' for k, v in options.items())
         if not fields:
             fields = [id_field]
-        fields.append(f"[features store={featureset} {efi}]")
+        fields.append(f"[features store={model_name} {efi}]")
         request = {
             "query": f"{id_field}:({' '.join(doc_ids)})" if doc_ids else "*", 
             "return_fields": fields,
@@ -98,49 +101,41 @@ class SolrLTR:
             linear_model["features"].append(config)
             linear_model["params"]["weights"][name] =  weights[i]         
         return linear_model
-    
-    def generate_query(self, model_name, query, return_fields,
-                       query_fields=["title", "overview"], rerank=None, log=False):
-        request = {"return_fields": return_fields, "limit": 5}
-        if log:
-            request["log"] = True
-        rerank_query = "{" + f'!ltr reRankDocs={rerank if rerank else 60000} model={model_name} efi.keywords="{query}"' + "}"
-        if rerank:
-            request["query"] = query
-            request["rerank_query"] = rerank_query
-            request["query_fields"] = query_fields
-        else:
-            request["query"] = rerank_query
-            request["query_parser"] = "lucene"
-        return request
-    
-    def search_with_model(self, query, model_name, rows=10, log=False):
-        """ Search using test_model LTR model (see rq to and qf params below). """
-        fuzzy_kws = "~" + " ~".join(query.split())
-        squeezed_kws = "".join(query.split())
-        
-        rq = \
-            "{!ltr reRankDocs=60000 reRankWeight=10.0 model=" + model_name \
-            + " efi.fuzzy_keywords=\"" + fuzzy_kws + "\" " \
-            + "efi.squeezed_keywords=\"" + squeezed_kws +"\" " \
-            + "efi.keywords=\"" + query + "\"}"
 
+    ["upc", "name", "manufacturer", "score"]
+
+    def search_with_model(self, model_name, **search_args):
+        parser_type = "edismax"
+        log = "log" in search_args
+        query = search_args["query"] if "query" in search_args else "*"
+        limit = search_args["limit"] if "limit" in search_args else 10
+        query_fields = search_args["query_fields"] if "query_fields" in search_args else "*"
+        return_fields = search_args["return_fields"] if "return_fields" in search_args else "*"
+        if "rerank" not in search_args:
+            parser_type = "lucene"
+            query = "{" + f'!ltr reRankDocs=60000 model={model_name} efi.keywords="{query}"' + "}"
         request = {
-                "fields": ["upc", "name", "manufacturer", "score"],
-                "limit": rows,
-                "params": {
-                "rq": rq,
-                "qf": "name name_ngram upc manufacturer short_description long_description",
-                "defType": "edismax",
-                "q": query
-                }
-            }
-        
+            "query": query,
+            "limit": limit,
+            "fields": return_fields,
+            "params": {"defType": parser_type,
+                       "qf": query_fields}
+        }
+        if "rerank" in search_args:
+            fuzzy_kws = "~" + " ~".join(query.split())
+            squeezed_kws = "".join(query.split())
+            rerank_query = (
+                "{!ltr reRankDocs=" + str(search_args["rerank"]) + " reRankWeight=10.0 model=" 
+                    + model_name +" efi.fuzzy_keywords=\"" + fuzzy_kws +
+                    "\" " + "efi.squeezed_keywords=\"" + squeezed_kws + "\" " +
+                    "efi.keywords=\"" + query + "\"}")
+            request["params"]["rq"] = rerank_query
+
         if log:
             print("search_with_model: search request:")
             print(request)
 
-        resp = SolrEngine().get_collection("products").native_search(request)
+        resp = SolrEngine().get_collection(self.collection_name).native_search(request)
             
         if log:
             print("search_with_model: search response:")
@@ -151,4 +146,4 @@ class SolrLTR:
         for rank, result in enumerate(search_results):
             result["rank"] = rank
             
-        return search_results
+        return {"docs": search_results}

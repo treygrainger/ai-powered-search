@@ -1,6 +1,5 @@
 from aips import get_semantic_knowledge_graph, get_sparse_semantic_search
 
-skg = get_semantic_knowledge_graph()
 semantic_functions = get_sparse_semantic_search()
 
 def create_geo_filter(coordinates, field, distance_in_KM):
@@ -56,7 +55,7 @@ def process_semantic_functions(query_tree):
 
     return query_tree 
 
-def get_enrichments(collection, keyword):
+def get_enrichments(collection_name, keyword):
     enrichments = {}
     nodes_to_traverse = [{"field": "content",
                           "values": [keyword]},
@@ -66,7 +65,8 @@ def get_enrichments(collection, keyword):
                           {"name": "doc_type",
                            "field": "doc_type",
                            "limit": 1}]]
-    traversals = skg.traverse(collection, *nodes_to_traverse)
+    skg = get_semantic_knowledge_graph(collection_name)
+    traversals = skg.traverse(*nodes_to_traverse)
     nested_traversals = traversals["graph"][0]["values"][keyword]["traversals"]
     
     doc_types = list(filter(lambda t: t["name"] == "doc_type",
@@ -84,12 +84,12 @@ def get_enrichments(collection, keyword):
     
     return enrichments
 
-def enrich(collection, query_tree):
+def enrich(collection_name, query_tree):
     query_tree = process_semantic_functions(query_tree)    
     for i in range(len(query_tree)):
         item = query_tree[i]
         if item["type"] == "keyword":
-            enrichments = get_enrichments(collection, item["surface_form"])
+            enrichments = get_enrichments(collection_name, item["surface_form"])
             query_tree[i] = {"type": "skg_enriched", 
                              "enrichments": enrichments}                    
     return query_tree
