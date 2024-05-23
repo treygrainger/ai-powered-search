@@ -41,11 +41,6 @@ class Collection(ABC):
     def vector_search(self, **search_args):
         "Executes a vector search given a vector search request"
         pass
-
-    @abstractmethod
-    def search_for_random_document(self, query):
-        "Searches for a random document matching the query"
-        pass
     
     @abstractmethod
     def spell_check(self, query, log=False):

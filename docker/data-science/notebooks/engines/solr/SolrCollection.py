@@ -121,13 +121,6 @@ class SolrCollection(Collection):
             print(response)
         return self.transform_response(response)
     
-    def search_for_random_document(self, query):
-        draw = random.random()
-        request = {"query": query,
-                   "limit": 1,
-                   "order_by": [(f"random_{draw}", "DESC")]}
-        return self.search(**request)
-    
     def spell_check(self, query, log=False):
         request = {"query": query,
                    "params": {"q.op": "and", "indent": "on"}}

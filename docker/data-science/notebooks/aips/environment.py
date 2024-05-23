@@ -16,15 +16,16 @@ SOLR_COLLECTIONS_URL = f"{SOLR_URL}/admin/collections"
 AIPS_WEBSERVER_HOST = os.getenv("AIPS_WEBSERVER_HOST") or "localhost"
 AIPS_WEBSERVER_PORT = os.getenv("AIPS_WEBSERVER_PORT") or "2345"
 WEBSERVER_URL = f"http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}"
+
 DEFAULT_CONFIG = {"AIPS_SEARCH_ENGINE": "SOLR",
                   "PRINT_REQUESTS": False}
 
 def write_config(config):
-    with open("../config.json", "w") as config_file:
+    with open("../system.config", "w") as config_file:
         json.dump(DEFAULT_CONFIG, config_file)
 
 def read_config():
-    with open("../config.json", "r") as f:
+    with open("../system.config", "r") as f:
         return json.load(f)
 
 def load_config():
@@ -38,7 +39,7 @@ def load_config():
 def set(key, value):
     config = load_config()
     config[key] = value
-    with open("../config.json", "w") as config_file:
+    with open("../system.config", "w") as config_file:
         json.dump(config, config_file)
 
 def get(key, default=None):
