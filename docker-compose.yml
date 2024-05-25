@@ -32,8 +32,8 @@ services:
         target: "/tmp/notebooks/"
   solr:
     build:
-      context: .
-      dockerfile: ./engines/solr/Dockerfile
+      context: ./engines/solr/docker/
+      dockerfile: Dockerfile
     container_name: aips-solr
     hostname: aips-solr
     ports:
