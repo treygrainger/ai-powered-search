@@ -98,7 +98,6 @@ def render_search_results(query, results):
                              (result['upc'] if \
                               ('upc' in result and os.path.exists(file_path + "/../data/retrotech/images/" + result['upc'] + ".jpg") \
                              ) else "unavailable") + ".jpg"
-            print(url)
             rendered += results_template.replace("${NAME}", result.get("name", "UNKNOWN")) \
                 .replace("${MANUFACTURER}", result.get("manufacturer", "UNKNOWN")) \
                 .replace("${DESCRIPTION}", remove_new_lines(result.get("short_description", ""))) \
