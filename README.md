@@ -42,7 +42,10 @@ docker compose up
 ```
 
 That's all it takes! Once the containers are built and running (this may take a while, especially on the first build), visit:
-`http://localhost:8888` to launch the [Welcome](chapters/welcome.ipynb) notebook and see a Table of Contents to all the live code examples from throughout the book.
+`http://localhost:8888` to launch the [Welcome](chapters/welcome.ipynb) notebook and see a Table of Contents for all the live code examples from throughout the book.
+
+<img src="https://aipoweredsearch.com/images/welcome.ipynb.jpg?origin=code-readme" 
+width="1024px"></a>
 
 ## Supported Technologies
 AI-Powered Search teaches many modern search techniques leveraging machine learning approaches. While we utilize specific technologies to demonstrate concepts, most techniques are applicable to many modern search engines and vector databases.
