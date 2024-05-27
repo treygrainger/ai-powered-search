@@ -6,37 +6,56 @@ All the algorithms in the code base are designed to work with a wide variety of 
 
 The list of supported engines will continue to grow over time, the following engines are currently being investigated for support:
 
+**Currently Supported:**
 * `solr` - Apache Solr
+
+**Pending Support:**
 * `opensearch` - OpenSearch (pending vendor support)
 * `elasticsearch` - Elasticsearch (pending vendor support)
 * `weaviate` - Weaviate (pending vendor support)
-* `redis` - Redis (pending vendor support)
 * `mongo` - MongoDB / Atlas Search (pending vendor support)
 * `pinecone` - Pinecone (pending vendor support)
 * `qdrant` - QDrant (pending vendor support)
 * `astradb` - Datastax Astra DB offering (pending vendor support)
 * `lucidworks-fusion` - Lucidworks Fusion (pending vendor support)
-* `algolia` - Algolia Search (pending vendor support)
 * `bonsai-opensearch` - Bonsai's managed OpenSearch platform (pending vendor support)
 * `bonsai-elasticseach` - Bonsai's managed Elasticsearch platform (pending vendor support)
 * `websolr` - Websolr's managed Apache Solr platform (pending vendor support)
 * `searchstax` - Searchstax's managed Apache Solr platform (pending vendor support)
+* `redis` - Redis (pending vendor support)
+* `algolia` - Algolia Search (pending vendor support)
+* `vespa` - Vespa (pending vendor support)
 
-**Note**: If you represent another search engine, vector database, associated hosting provider and would like to be added to this list, please reach out to trey@searchkernel.com to discuss.
-
+**Note**: If you represent another search engine, vector database, or associated hosting provider and would like to be added to this list, please reach out to trey@searchkernel.com to discuss.
 
 ## Swapping out the engine
 
-Swapping the engine is as simple as running the following command in any notebook:
+Normally, you'll only be working with one search engine or vector database at a time when running the book's code examples. To use any particular `engine`, you just need to specify the engine's name (as `enumerated` above) when starting up Docker:
+
+To launch `elasticsearch`:
+```
+docker compose up elasticsearch
+```
+
+If you want to launch more than one `engine` at a time to experiment, you can provide a list at the end of the `docker compose up` command of all the engines you wish to run:
+```
+docker compose up elasticsearch solr
+```
+
+The first `engine` you reference in your `docker compose` command will be set as your default engine (and `solr` is the default if you don't specify any engines).
+
+If you would like to switch the default `engine` at any time from inside the Jupyter notebooks, this is as simple as running the following command to specify a new default engine in any notebook:
 
 ```
 import aips
-aips.set_engine("opensearch")
+aips.set_engine("solr")
 ```
 
-The `aips` (short for _AI-Powered Search_) module reads an `engine.conf` file from the root directory of the codebase to determine which engine to instantiate. By default, the engine is set to `solr`, but by calling the `aips.set_engine` function with the name of another engine, you will persistently change the engine for all subsequent code examples within the Docker container.
+Keep in mind that if you call  `set_engine` on an engine that is not running that this will result in errors when trying to use that engine.
 
-You can also check the engine at any time in the `engine.conf` file or by running:
+The `aips` (short for _AI-Powered Search_) module reads a `system.conf` file from the root directory of the codebase to determine which engine to instantiate. By default, the engine is set to `solr`, but by calling the `aips.set_engine` function with the name of another engine, you will persistently change the engine for all subsequent code examples within the Docker container.
+
+You can also check the engine at any time in the `system.conf` file or by running:
 ```
 aips.get_engine().name
 ```
@@ -46,7 +65,7 @@ aips.get_engine().name
 
 The search engine industry is full of different terminology and concepts, and we have tried to abstract away as much of that as possible in the codebase. Most search engines started with keyword search and have since added support for vector search, and many vector databases started with vector search and have since added keyword search. For our purposes, we just think of all of these systems as matching and ranking engines, and we use the term `engine` to refer to all of them.
 
-Likewise, each engine has a concept of one or more logical partitions or containers for adding data. In Solr and Weaviate these containers are called `collections`, whereas in OpenSearch, Elasticsearch, and Redis these are called `indexes`, and in Vespa they are called `applications`. In MongoDB, the original data is stored in a `collection`, but it is then copied into an `index` for search purposes. Naming also varies further among other engines.
+Likewise, each engine has a concept of one or more logical partitions or containers for adding data. In Solr and Weaviate these containers are called `collections`, whereas in OpenSearch, Elasticsearch, and Redis these are called `indexes`, and in Vespa they are called `applications`. In MongoDB, the original data is stored in a `collection`, but it is then copied into an `index` for search purposes in Atlas Search. Naming also varies further among other engines.
 
 For proper abstraction, we always use the term `collection` in the code base, so every `engine` has a `collection` interface through which you can query or add documents.
 
@@ -57,7 +76,10 @@ Common public methods on the `engine` interface include:
 
 Common public methods on the `collection` interface include:
 
-* `collection.search(request)`: Runs a search and returns results
+* `collection.search(request)`: Runs a lexical search and returns results
+* `collection.vector_search(request)`: Runs an embedding-based vector search and returns results
+* `collection.hybrid_search(lexical_request, vector_request, algorithm)`: Runs a hybrid search leveraging both lexical and vector-based queries.
+
 * `collection.add_documents(docs)`: Adds a list of documents to the collection
 * `collection.write(dataframe)`: Writes each row from a Spark dataframe to the collection as a document
 * `collection.commit()`: Ensures recently added documents are persisted and available for searching
@@ -77,17 +99,21 @@ While we intend to support most major search engines and vector databases, you m
 ### Required abstractions to implement for a new engine
 There are 6 main abstractions (located in [notebooks/engines](./)).
 
+**Core**: Must be implemented for every engine:
 * `Engine`: This class is responsible for setting up collections with their appropriate schemas and configurations. Most of the complexity in the engine is the configuration of 15 different collections that support the system's functionality.
 
 * `Collection`: This class is responsible for populating and searching a search index. `search` and `vector_search` are some of the more complex functions within this class to implement.
 
+**Delegatable**: Must be implemented, but can be delegated to other libraries or engines if needed
 * `LTR` (Learning to Rank): The `LTR` abstraction contains all functionality for creating models, handling features, and searching with a model.
 
+* `SparseSemanticSearch`: Defines query transformation logic and semantic functions used in lexical / sparse-vector-based Semantic Search.
+
+
+**Optional**: Can be implemented, but not required (will be delegated by default to other libraries or engines):
 * `EntityExtractor`: Semantic Search requires an Entity Extractor to identify entities and tag queries.
 
 * `SemanticKnowledgeGraph`: This class contains functionality to generate requests and to traverse a semantic knowledge graph.
-
-* `SparseSemanticSearch`: Defines query transformation logic and semantic functions used in Semantic Search.
 
 If your `engine` doesn't natively support one or more features used in the [_AI-Powered Search_](https://aipowerersearch.com) book and codebase, you have three options:
 1. (Recommended) Implement the missing functionality in Python outside of the search engine, pushing down what you can to the engine.
