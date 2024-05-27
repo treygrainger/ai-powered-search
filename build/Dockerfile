@@ -19,7 +19,6 @@ RUN mkdir -p /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
 WORKDIR /home/$NB_USER
 
 COPY build/requirements.txt ./
-#RUN rm -rf work/
 
 ENV BLIS_ARCH="generic" 
 
@@ -38,6 +37,7 @@ COPY semantic_search/ /home/$NB_USER/semantic_search
 COPY webserver/ /home/$NB_USER/webserver
 
 RUN rm requirements.txt
+RUN rm -rf work/
 
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 USER $NB_UID
