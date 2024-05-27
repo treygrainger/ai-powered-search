@@ -61,27 +61,24 @@ class FeatureLogger:
             }
 
             ids = [str(doc_id) for doc_id in ids]
-            collection = get_engine().get_collection(self.index)
-            res = get_ltr_engine(collection).get_logged_features(self.feature_set, ids,
+            res = get_ltr_engine(self.index).get_logged_features(self.feature_set, ids,
                                              params, id_field=self.id_field, log=log)
 
 
             # Add feature back to each judgment
             for doc in res:
                 doc_id = str(doc[self.id_field])
-                features = doc['ltr_features']
-                featuresPerDoc[doc_id] = features
+                features = doc['[features]']
+                featuresPerDoc[doc_id] = list(features.values())
             numLeft -= BATCH_SIZE
 
         # Append features from search engine back to ranklib judgment list
         for judgment in judgments:
             try:
                 if judgment.qid != qid:
-                    raise RuntimeError("Judgment qid {} inconsistent with logged qid {}".format(
-                        judgment.qid, qid))
+                    raise RuntimeError(f"Judgment qid {judgment.qid} inconsistent with logged qid {qid}")
                 if judgment.keywords != keywords:
-                    raise RuntimeError("Judgment keywords {} inconsistent with logged keywords {}".format(
-                        judgment.keywords, keywords))
+                    raise RuntimeError(f"Judgment keywords {judgment.keywords} inconsistent with logged keywords {keywords}")
                 features = featuresPerDoc[judgment.doc_id] # If KeyError, then we have a judgment but no movie in index
                 judgment.features = features
             except KeyError:

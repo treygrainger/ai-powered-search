@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from xmlrpc.client import boolean
 import aips.environment as env
 import json
 
@@ -40,11 +39,6 @@ class Collection(ABC):
     @abstractmethod        
     def vector_search(self, **search_args):
         "Executes a vector search given a vector search request"
-        pass
-
-    @abstractmethod
-    def search_for_random_document(self, query):
-        "Searches for a random document matching the query"
         pass
     
     @abstractmethod

@@ -82,9 +82,6 @@ class SolrCollection(Collection):
                     request["params"]["hl"] = True
                 case _:
                     request["params"][name] = value
-        if "log" in search_args:
-            print("Search Request:")
-            print(json.dumps(request, indent="  "))
         return request
     
     def transform_response(self, search_response):    
@@ -95,11 +92,6 @@ class SolrCollection(Collection):
         
     def native_search(self, request=None, data=None):
         return requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
-    
-    def search(self, **search_args):
-        request = self.transform_request(**search_args)
-        search_response = self.native_search(request=request)
-        return self.transform_response(search_response)
     
     def vector_search(self, **search_args):
         field = search_args["query_field"]
@@ -125,13 +117,6 @@ class SolrCollection(Collection):
         if "log" in search_args:
             print(response)
         return self.transform_response(response)
-    
-    def search_for_random_document(self, query):
-        draw = random.random()
-        request = {"query": query,
-                   "limit": 1,
-                   "order_by": [(f"random_{draw}", "DESC")]}
-        return self.search(**request)
     
     def spell_check(self, query, log=False):
         request = {"query": query,
