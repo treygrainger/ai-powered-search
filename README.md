@@ -2,6 +2,12 @@
 
 Code examples for the book [_AI-Powered Search_](https://aipowerersearch.com) by [Trey Grainger](https://www.linkedin.com/in/treygrainger/), [Doug Turnbull](https://www.linkedin.com/in/softwaredoug/), and [Max Irwin](https://www.linkedin.com/in/maxirwin/). Published by [Manning Publications](https://www.manning.com).
 
+<br/>
+
+<a href="https://aipoweredsearch.com/the-book"><img 
+src="https://aipoweredsearch.com/images/book-cover.jpg?for=book-readme" 
+width="250px"></a>
+
 ## Book Overview
 [_AI-Powered Search_](https://aipowerersearch.com) teaches you the latest machine learning techniques to build search engines that continuously learn from your users and your content to drive more domain-aware and intelligent search.
 
@@ -27,7 +33,7 @@ For simplicity of setup, all code is shipped in Jupyter Notebooks and packaged i
 Appendix A of [the book](https://aipoweredsearch.com) provides full step-by-step instructions for running the code examples. To get up and running quickly, however, pull the book's source code and run:
 ```
 cd docker
-docker-compose up
+docker compose up
 ```
 
 Once the containers are built and running (may take a while, especially on the first build), visit:
@@ -36,7 +42,9 @@ Once the containers are built and running (may take a while, especially on the f
 ## Supported Technologies
 AI-Powered Search teaches many modern search techniques leveraging machine learning approaches. While we utilize specific technologies to demonstrate concepts, most techniques are applicable to many modern search engines and vector databases.
 
-Throughout the book, all code examples are in Python, with PySpark (the Python interface to Apache Spark) being utilized heavily for data processing tasks. The default search engine leveraged by the book's examples is Apache Solr, but most examples are abstracted away from the particular search engine, and swappable implementation will be soon available for the most popular search engines and vector databases.
+Throughout the book, all code examples are in **Python**, with **PySpark** (the Python interface to **Apache Spark**) being utilized heavily for data processing tasks. The default search engine leveraged by the book's examples is **Apache Solr**, but most examples are abstracted away from the particular search engine, and swappable implementation will be soon available for most popular search engines and vector databases.
+
+**See Full List**: [Supported Search Engines and Vector Databases](engines/README.md)
 
 [ *Note*: if you work for a search engine / vector database company, project, or hosting provider and want to work with us on getting your engine supported, please reach out to trey@searchkernel.com ]
 
