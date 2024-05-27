@@ -4,7 +4,7 @@ All the algorithms in the code base are designed to work with a wide variety of 
 
 ## Supported engines (tentative)
 
-The list of supported engines will continue to grow over time, the following engines are currently being investigated for support:
+The list of supported engines will continue to grow over time, with the following engines currently being investigated for support:
 
 **Currently Supported:**
 * `solr` - Apache Solr
@@ -32,30 +32,34 @@ The list of supported engines will continue to grow over time, the following eng
 
 Normally, you'll only be working with one search engine or vector database at a time when running the book's code examples. To use any particular `engine`, you just need to specify the engine's name (as `enumerated` above) when starting up Docker:
 
-To launch `elasticsearch`:
+To launch `elasticsearch`, for example:
 ```
 docker compose up elasticsearch
 ```
 
-If you want to launch more than one `engine` at a time to experiment, you can provide a list at the end of the `docker compose up` command of all the engines you wish to run:
+This will both start any necessary Docker containers needed to run `elasticsearch` (or the engine you specify), as well as set this engine as active in the book's Jupyter notebooks for use in all the code examples. Note that some engines, such as managed search and API-based services, do not require any additional local Docker containers since their services are hosted elsewhere. 
+
+If you want to use a different engine at any time, you can just restart the Docker container and specify the new engine you want to use.
 ```
-docker compose up elasticsearch solr
+docker compose up opensearch
 ```
 
-The first `engine` you reference in your `docker compose` command will be set as your default engine (and `solr` is the default if you don't specify any engines).
+If you want to launch more than one `engine` at a time to experiment, you can provide a list at the end of the `docker compose up` command of all the engines you wish to start:
+```
+docker compose up elasticsearch solr opensearch
+```
 
-If you would like to switch the default `engine` at any time from inside the Jupyter notebooks, this is as simple as running the following command to specify a new default engine in any notebook:
+The first `engine` you reference in your `docker compose up` command will be set as your active engine in the Jupyter notebooks, with the others available on standby.
 
+If you would like to switch to one of the standby engines within your live Jupyter notebooks (for example, to `opensearch`), you can do this at any time by simply running the following command in any notebook:
 ```
 import aips
-aips.set_engine("solr")
+aips.set_engine("opensearch")
 ```
 
-Keep in mind that if you call  `set_engine` on an engine that is not running that this will result in errors when trying to use that engine.
+Keep in mind that if you call `set_engine` for an engine that is not currently running, this will later result in errors if that engine is still unavailable when you try to use it.
 
-The `aips` (short for _AI-Powered Search_) module reads a `system.conf` file from the root directory of the codebase to determine which engine to instantiate. By default, the engine is set to `solr`, but by calling the `aips.set_engine` function with the name of another engine, you will persistently change the engine for all subsequent code examples within the Docker container.
-
-You can also check the engine at any time in the `system.conf` file or by running:
+You can also check the currently set `engine` at any time by running:
 ```
 aips.get_engine().name
 ```
@@ -104,7 +108,7 @@ There are 6 main abstractions (located in [notebooks/engines](./)).
 
 * `Collection`: This class is responsible for populating and searching a search index. `search` and `vector_search` are some of the more complex functions within this class to implement.
 
-**Delegatable**: Must be implemented, but can be delegated to other libraries or engines if needed
+**Delegatable**: Must be implemented, but can be delegated to external libraries or engines if not directly supported inside the engine
 * `LTR` (Learning to Rank): The `LTR` abstraction contains all functionality for creating models, handling features, and searching with a model.
 
 * `SparseSemanticSearch`: Defines query transformation logic and semantic functions used in lexical / sparse-vector-based Semantic Search.
@@ -117,7 +121,7 @@ There are 6 main abstractions (located in [notebooks/engines](./)).
 
 If your `engine` doesn't natively support one or more features used in the [_AI-Powered Search_](https://aipowerersearch.com) book and codebase, you have three options:
 1. (Recommended) Implement the missing functionality in Python outside of the search engine, pushing down what you can to the engine.
-2. (Good Enough) Push that particular feature to another engine, relying on the already implemented way to handle the functionality. This option may be useful for very specific capabilities like the `EntityExtractor` and the `SemanticKnowledgeGraph` implementations, where another engine (Solr in this case) is fairly unique in its native support of these capabilities.
+2. (Good Enough) Push that particular feature to another library or engine, relying on the already implemented way to handle the functionality. This option may be useful for specific capabilities like the `EntityExtractor` and the `SemanticKnowledgeGraph` implementations, where another engine (Solr in this case) is fairly unique in its native support of these capabilities and they are treated like an external model.
 3. (Worst Case) Throw a "Not Implemented" exception for a handful of unimplemented capabilities. This should only be used as a last resort.
 
 We hope that the `engine` and `collection` abstractions will make it easy for you to add support for your favorite engine and also potentially contribute it to the book's codebase to benefit the larger community of _AI-Powered Search_ readers and practitioners. Happy searching!
