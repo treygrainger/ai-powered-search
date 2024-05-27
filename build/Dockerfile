@@ -1,3 +1,4 @@
+# syntax = docker/dockerfile:1.5
 FROM jupyter/pyspark-notebook:spark-3.3.1
 
 USER root
@@ -16,29 +17,29 @@ RUN mkdir -p /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
     chmod a+rwx $SHADED_SOLR_JAR_PATH
 
 WORKDIR /home/$NB_USER
+
+COPY build/requirements.txt ./
+#RUN rm -rf work/
+
+ENV BLIS_ARCH="generic" 
+
+RUN --mount=type=cache,target=/root/.cache python -m pip install --upgrade pip && \
+  pip --no-cache-dir install -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache python -m spacy download en_core_web_sm
+RUN --mount=type=cache,target=/root/.cache pip install https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_coreference_web_trf-3.4.0a2-py3-none-any.whl
+
+COPY build/log4j.properties /usr/local/spark/conf/
 COPY aips/ /home/$NB_USER/aips
-COPY build/ /home/$NB_USER/build
 COPY chapters/ /home/$NB_USER/chapters
 COPY data/ /home/$NB_USER/data
 COPY engines/ /home/$NB_USER/engines
 COPY ltr/ /home/$NB_USER/ltr
 COPY semantic_search/ /home/$NB_USER/semantic_search
 COPY webserver/ /home/$NB_USER/webserver
-COPY build/log4j.properties /usr/local/spark/conf/
-COPY build/requirements.txt ./
-RUN rm -rf work/
-
-ENV BLIS_ARCH="generic" 
-
-RUN python -m pip --no-cache-dir install --upgrade pip && \
-  pip --no-cache-dir install -r requirements.txt
-
-RUN python -m spacy download en_core_web_sm
-RUN pip --no-cache-dir install https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_coreference_web_trf-3.4.0a2-py3-none-any.whl
 
 RUN rm requirements.txt
-RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 
+RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 USER $NB_UID
 
 # Spark Config
