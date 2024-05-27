@@ -23,7 +23,7 @@ COPY build/requirements.txt ./
 ENV BLIS_ARCH="generic" 
 
 RUN --mount=type=cache,target=/root/.cache python -m pip install --upgrade pip && \
-  pip --no-cache-dir install -r requirements.txt
+  pip install -r requirements.txt
 RUN --mount=type=cache,target=/root/.cache python -m spacy download en_core_web_sm
 RUN --mount=type=cache,target=/root/.cache pip install https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_coreference_web_trf-3.4.0a2-py3-none-any.whl
 
