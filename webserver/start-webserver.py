@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append('../..')
+sys.path.append('..')
 import http.server
 import io
 import json
@@ -8,7 +8,7 @@ import threading
 import webbrowser
 
 import sys
-sys.path.append('../..')
+sys.path.append('..')
 import urllib.parse
 import json
 import requests
