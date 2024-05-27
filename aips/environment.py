@@ -19,12 +19,15 @@ WEBSERVER_URL = f"http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}"
 DEFAULT_CONFIG = {"AIPS_SEARCH_ENGINE": "SOLR",
                   "PRINT_REQUESTS": False}
 
+CONFIG_FILE_PATH = os.path.abspath(os.path.join(os.path.join(
+            os.path.dirname(__file__) , './'), 'system.config'))
+
 def write_config(config):
-    with open("../../system.config", "w") as config_file:
-        json.dump(DEFAULT_CONFIG, config_file)
+    with open(CONFIG_FILE_PATH, "w") as config_file:
+        json.dump(config, config_file)
 
 def read_config():
-    with open("../../system.config", "r") as f:
+    with open(CONFIG_FILE_PATH, "r") as f:
         return json.load(f)
 
 def load_config():
@@ -38,7 +41,7 @@ def load_config():
 def set(key, value):
     config = load_config()
     config[key] = value
-    with open("../../system.config", "w") as config_file:
+    with open(CONFIG_FILE_PATH, "w") as config_file:
         json.dump(config, config_file)
 
 def get(key, default=None):
