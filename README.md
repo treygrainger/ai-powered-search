@@ -5,7 +5,7 @@ Code examples for the book [_AI-Powered Search_](https://aipowerersearch.com) by
 <br/>
 
 <a href="https://aipoweredsearch.com/the-book"><img 
-src="https://aipoweredsearch.com/images/book-cover.jpg?for=book-readme" 
+src="https://aipoweredsearch.com/images/book-cover.jpg?for=code-readme" 
 width="250px"></a>
 
 ## Book Overview
