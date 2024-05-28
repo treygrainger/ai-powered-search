@@ -101,7 +101,7 @@ No additional engine-specific implementation is needed for loading from these ad
 While we intend to support most major search engines and vector databases, you may find that your favorite engine is not currently supported. If that is the case, we encourage you to add support for it and submit a pull request to the codebase. The `engine` and `collection` interfaces are designed to be easy to implement, and you can use the default `solr` implementation or any other already implemented engines as a reference.
 
 ### Required abstractions to implement for a new engine
-There are 6 main abstractions (located in [notebooks/engines](./)).
+There are 6 main abstractions (located in [engines/](./)).
 
 **Core**: Must be implemented for every engine:
 * `Engine`: This class is responsible for setting up collections with their appropriate schemas and configurations. Most of the complexity in the engine is the configuration of 15 different collections that support the system's functionality.
