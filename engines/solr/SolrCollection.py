@@ -48,6 +48,7 @@ class SolrCollection(Collection):
         request = {
             "query": "*:*",
             "limit": 10,
+            "fields": ["*, score"],
             "params": {}     
         }
         
@@ -107,7 +108,7 @@ class SolrCollection(Collection):
         request = {
             "query": "{!knn " + f'topK={k} f={field}' + "}" + str(query_vector),
             "limit": 5,
-            "fields": ["*"],
+            "fields": ["*, score"],
             "params": {}
         }
         for name, value in search_args.items():

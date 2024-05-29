@@ -89,7 +89,6 @@ class SolrEngine(Engine):
                 self.upsert_text_field(collection, "image_id")
                 self.add_vector_field(collection, "image_embedding", 512, "dot_product")
             case "tmdb_lexical_plus_embeddings":
-                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "overview")
                 self.upsert_double_field(collection, "release_year")
