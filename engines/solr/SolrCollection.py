@@ -117,6 +117,8 @@ class SolrCollection(Collection):
                     request["params"]["debugQuery"] = True
                 case "limit":
                     request["limit"] = value
+                case "return_fields":
+                    request["fields"] = value
                 case "rerank_query":
                     rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
                     request["params"]["rq"] = rq
