@@ -51,6 +51,7 @@ class SolrLTR(LTR):
             feature["store"] = model_name
         response = requests.put(f"{SOLR_URL}/{self.collection.name}/schema/feature-store", json=features).json()
         if log: print(json.dumps(response, indent=2))
+        requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={self.collection.name}&wt=xml")
         return response
 
     def delete_model(self, model_name, log=False):

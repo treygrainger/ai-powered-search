@@ -23,25 +23,23 @@ class FeatureLogger:
             judgments will be modified, a training set also returned, discarding
             any judgments we could not log features for (because the doc was missing)
         """
-        featuresPerDoc = {}
-        judgments = [j for j in judgments]
-        doc_ids = [judgment.doc_id for judgment in judgments]
-
-        if keywords is None:
-            keywords=judgments[0].keywords
-
         if qid is None:
             qid=judgments[0].qid
 
-        # Check for dups of documents
-        for doc_id in doc_ids:
-            indices = [i for i, x in enumerate(doc_ids) if x == doc_id]
-            if len(indices) > 1:
-                print("Duplicate Doc in qid:%s %s" % (qid, doc_id))
+        judgments = [j for j in judgments]
+        doc_ids = [judgment.doc_id for judgment in judgments]
+        unique_ids = list(set(doc_ids))
+        if len(doc_ids) != len(unique_ids):
+            duplicated = set([id for id in doc_ids if doc_ids.count(id) > 1])
+            print(f"Duplicate docs in for query id {qid}: {duplicated}")
+        doc_ids = unique_ids
 
+        if keywords is None:
+            keywords = judgments[len(judgments) - 1].keywords
         # For every batch of N docs to generate judgments for
         BATCH_SIZE = 500
         numLeft = len(doc_ids)
+        document_features = {}
         for i in range(0, 1 + (len(doc_ids) // BATCH_SIZE)):
 
             numFetch = min(BATCH_SIZE, numLeft)
@@ -69,21 +67,18 @@ class FeatureLogger:
             for doc in res:
                 doc_id = str(doc[self.id_field])
                 features = doc['[features]']
-                featuresPerDoc[doc_id] = list(features.values())
+                document_features[doc_id] = list(features.values())
             numLeft -= BATCH_SIZE
 
         # Append features from search engine back to ranklib judgment list
         for judgment in judgments:
-            try:
-                if judgment.qid != qid:
-                    raise RuntimeError(f"Judgment qid {judgment.qid} inconsistent with logged qid {qid}")
-                if judgment.keywords != keywords:
-                    raise RuntimeError(f"Judgment keywords {judgment.keywords} inconsistent with logged keywords {keywords}")
-                features = featuresPerDoc[judgment.doc_id] # If KeyError, then we have a judgment but no movie in index
-                judgment.features = features
-            except KeyError:
-                pass
-                print("Missing doc %s" % judgment.doc_id)
+            if judgment.qid != qid:
+                raise RuntimeError(f"Judgment qid {judgment.qid} inconsistent with logged qid {qid}")
+            if judgment.keywords != keywords:
+                raise RuntimeError(f"Judgment keywords {judgment.keywords} inconsistent with logged keywords {keywords}")
+            if judgment.doc_id not in document_features:                
+                print(f"Missing doc {judgment.doc_id} with error")
+            judgment.features = document_features[judgment.doc_id]
 
         # Return a paired down judgments if we are missing features for judgments
         training_set = []
