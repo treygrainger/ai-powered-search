@@ -23,23 +23,28 @@ class Collection(ABC):
         pass
     
     @abstractmethod
-    def transform_request(self, **search_args):
-        "Transforms a generic search request into a native search request"
+    def transform_lexical_request(self, **search_args):
+        "Transforms a generic lexical search request into a native search request"
         pass
     
     @abstractmethod
-    def transform_response(self, search_response):
-        "Transform a native search response into a generic search response"
+    def transform_vector_request(self, **search_args):
+        "Transforms a generic vector search request into a native search request"
+        pass    
+    
+    @abstractmethod
+    def transform_lexical_response(self, search_response):
+        "Transform a native lexical search response into a generic search response"
+        pass
+
+    @abstractmethod
+    def transform_vector_response(self, search_response):
+        "Transform a native vector search response into a generic search response"
         pass
 
     @abstractmethod
     def native_search(self, request=None):
         "Executes a search against the search engine given a native search request"
-        pass
-    
-    @abstractmethod        
-    def vector_search(self, **search_args):
-        "Executes a vector search given a vector search request"
         pass
 
     @abstractmethod
@@ -78,3 +83,13 @@ class Collection(ABC):
         if "log" in search_args:
             print(json.dumps(search_response, indent=2))
         return self.transform_response(search_response)
+    
+    @abstractmethod        
+    def vector_search(self, **search_args):
+        "Executes a vector search given a vector search request"
+        pass
+    
+    @abstractmethod        
+    def hybrid_search(self, lexical_search_args, vector_search_args, algorithm):
+        "Executes a vector search given a vector search request"
+        pass
