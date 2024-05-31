@@ -4,8 +4,8 @@ Code examples for the book [_AI-Powered Search_](https://aipowerersearch.com) by
 
 <br/>
 
-<a href="https://aipoweredsearch.com/the-book"><img 
-src="https://aipoweredsearch.com/images/book-cover.jpg?for=code-readme" 
+<a href="https://aipoweredsearch.com/the-book?origin=code-readme"><img 
+src="https://aipoweredsearch.com/images/book-cover.jpg?origin=code-readme" 
 width="250px"></a>
 
 ## Book Overview
@@ -28,16 +28,24 @@ AI-Powered Search will teach you modern, data-science-driven search techniques l
 Today’s search engines are expected to be smart, understanding the nuances of natural language queries, as well as each user’s preferences and context. This book empowers you to build search engines that take advantage of user interactions and the hidden semantic relationships in your content to automatically deliver better, more relevant search experiences.
 
 ## How to run
-For simplicity of setup, all code is shipped in Jupyter Notebooks and packaged in Docker containers. This means that installing Docker and then pulling (or building) and running the book's Docker containers is the only necessary setup.
+For simplicity of setup, all code is shipped in Jupyter Notebooks and packaged in Docker containers. This means that installing Docker and then pulling (or building) and running the book's Docker containers is the only necessary setup. [Appendix A](https://livebook.manning.com/book/ai-powered-search/appendix-a?origin=code-base) of the book provides full step-by-step instructions for running the code examples, but you can run the following to get up and running quickly:
 
-Appendix A of [the book](https://aipoweredsearch.com) provides full step-by-step instructions for running the code examples. To get up and running quickly, however, pull the book's source code and run:
+If you haven't already pulled the source code locally, run:
 ```
-cd docker
+git clone https://github.com/treygrainger/ai-powered-search.git
+```
+
+Then, to build and start the codebase with interactive Jupyter notebooks, run:
+```
+cd ai-powered-search
 docker compose up
 ```
 
-Once the containers are built and running (may take a while, especially on the first build), visit:
-`http://localhost:8888` to pull up all the Jupyter notebooks and run the code examples live.
+That's all it takes! Once the containers are built and running (this may take a while, especially on the first build), visit:
+`http://localhost:8888` to launch the [Welcome](chapters/welcome.ipynb) notebook and see a Table of Contents for all the live code examples from throughout the book.
+
+<img src="https://aipoweredsearch.com/images/welcome.ipynb.jpg?origin=code-readme" 
+width="1024px"></a>
 
 ## Supported Technologies
 AI-Powered Search teaches many modern search techniques leveraging machine learning approaches. While we utilize specific technologies to demonstrate concepts, most techniques are applicable to many modern search engines and vector databases.
