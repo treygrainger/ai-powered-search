@@ -80,8 +80,7 @@ Common public methods on the `engine` interface include:
 
 Common public methods on the `collection` interface include:
 
-* `collection.search(request)`: Runs a lexical search and returns results
-* `collection.vector_search(request)`: Runs an embedding-based vector search and returns results
+* `collection.search(request)`: Runs a lexical or vector search (depending on the type of query) and returns results
 * `collection.hybrid_search(lexical_request, vector_request, algorithm)`: Runs a hybrid search leveraging both lexical and vector-based queries.
 
 * `collection.add_documents(docs)`: Adds a list of documents to the collection
@@ -106,7 +105,7 @@ There are 6 main abstractions (located in [engines/](./)).
 **Core**: Must be implemented for every engine:
 * `Engine`: This class is responsible for setting up collections with their appropriate schemas and configurations. Most of the complexity in the engine is the configuration of 15 different collections that support the system's functionality.
 
-* `Collection`: This class is responsible for populating and searching a search index. `search` and `vector_search` are some of the more complex functions within this class to implement.
+* `Collection`: This class is responsible for populating and searching a search index. `search` and `hybrid_search` are some of the more complex functions within this class to implement.
 
 **Delegatable**: Must be implemented, but can be delegated to external libraries or engines if not directly supported inside the engine
 * `LTR` (Learning to Rank): The `LTR` abstraction contains all functionality for creating models, handling features, and searching with a model.

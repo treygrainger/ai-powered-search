@@ -10,7 +10,7 @@ class Collection(ABC):
     @abstractmethod 
     def commit(self):
         "Force the collection to commit all uncommited data into the collection"
-        pass 
+        pass  
     
     @abstractmethod
     def write(self, dataframe):
@@ -23,23 +23,13 @@ class Collection(ABC):
         pass
     
     @abstractmethod
-    def transform_lexical_request(self, **search_args):
-        "Transforms a generic lexical search request into a native search request"
+    def transform_request(self, **search_args):
+        "Transforms a generic search request into a native search request"
         pass
     
     @abstractmethod
-    def transform_vector_request(self, **search_args):
-        "Transforms a generic vector search request into a native search request"
-        pass    
-    
-    @abstractmethod
-    def transform_lexical_response(self, search_response):
-        "Transform a native lexical search response into a generic search response"
-        pass
-
-    @abstractmethod
-    def transform_vector_response(self, search_response):
-        "Transform a native vector search response into a generic search response"
+    def transform_response(self, search_response):
+        "Transform a native search response into a generic search response"
         pass
 
     @abstractmethod
@@ -85,11 +75,6 @@ class Collection(ABC):
         return self.transform_response(search_response)
     
     @abstractmethod        
-    def vector_search(self, **search_args):
-        "Executes a vector search given a vector search request"
-        pass
-    
-    @abstractmethod        
     def hybrid_search(self, lexical_search_args, vector_search_args, algorithm):
-        "Executes a vector search given a vector search request"
+        "A search with multiple search requests and an algorithm to handle results"
         pass

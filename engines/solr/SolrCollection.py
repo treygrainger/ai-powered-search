@@ -1,4 +1,5 @@
 import random
+from numpy import isin
 import requests
 from engines.Collection import Collection
 from aips.environment import SOLR_URL, AIPS_ZK_HOST
@@ -31,26 +32,20 @@ class SolrCollection(Collection):
         if commit:
             self.commit()
         return response
-
     
-    def search(self, **search_args):
-        request = self.transform_lexical_request(**search_args)
-        search_response = self.native_search(request=request)
-        return self.transform_response(search_response)
-    
-    def vector_search(self, **search_args):
-        request = self.transform_vector_request(**search_args)
-        search_response = self.native_search(request=request)
-        return self.transform_response(search_response)
-    
-    
-    def transform_lexical_request(self, **search_args):
+    def transform_request(self, **search_args):
         request = {
             "query": "*:*",
             "limit": 10,
-            "fields": ["*, score"],
             "params": {}     
         }
+        #handle before standard handling search arg to prevent conflicting request params
+        if "query" in search_args and isinstance(search_args["query"], list):
+            vector = search_args.pop("query")
+            field = search_args.pop("query_fields")
+            k = search_args.pop("k", 10)
+            request["query"] = "{!knn " + f'f={field} topK={k}' + "}" + str(vector)
+            search_args["query_parser"] = "lucene"
         
         for name, value in search_args.items():
             match name:
@@ -59,6 +54,13 @@ class SolrCollection(Collection):
                     request["params"]["q"] = value
                 case "query":
                     request["query"] = value if value else "*:*"
+                case "rerank_query":
+                    #rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
+                    #request["params"]["rq"] = rq
+                    #request["params"]["rq_query"] = "{!knn f=" + value["query_field"] + " topK=10}" + value["query_vector"]
+                    request["params"]["rq"] = value
+                case "quantization_size":
+                    pass
                 case "query_parser":
                     request["params"]["defType"] = value
                 case "query_fields":
@@ -74,8 +76,6 @@ class SolrCollection(Collection):
                     request["limit"] = value
                 case "order_by":
                     request["sort"] = ", ".join([f"{column} {sort}" for (column, sort) in value])  
-                case "rerank_query":
-                    request["params"]["rq"] = value
                 case "default_operator":
                     request["params"]["q.op"] = value
                 case "min_match":
@@ -95,90 +95,20 @@ class SolrCollection(Collection):
                     request["params"]["hl"] = True
                 case _:
                     request["params"][name] = value
-        if "log" in search_args:
-            print("Search Request:")
-            print(json.dumps(request, indent="  "))
         return request
     
-
-    def transform_vector_request(self, **search_args):
-        field = search_args["query_field"]
-        k = search_args["k"] if "k" in search_args else 10
-        query_vector = search_args["query_vector"]
-        request = {
-            "query": "{!knn " + f'topK={k} f={field}' + "}" + str(query_vector),
-            "limit": 5,
-            "fields": ["*, score"],
-            "params": {}
-        }
-        for name, value in search_args.items():
-            match name:
-                case "log":
-                    request["params"]["debugQuery"] = True
-                case "limit":
-                    request["limit"] = value
-                case "return_fields":
-                    request["fields"] = value
-                case "rerank_query":
-                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
-                    request["params"]["rq"] = rq
-                    request["params"]["rq_query"] = "{!knn f=" + value["query_field"] + " topK=10}" + value["query_vector"]
-        if "log" in search_args:
-            print("Vector Search Request:")
-            print(json.dumps(request, indent="  "))
-        return request
- 
-    def native_search(self, request=None, data=None):
-        return requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
-
-    def transform_lexical_response(self, lexical_response):
-        transform_response(self, lexical_response)
-
-    def transform_vector_response(self, vector_response):
-        transform_response(self, vector_response)
-        
     def transform_response(self, search_response):    
         response = {"docs": search_response["response"]["docs"]}
         if "highlighting" in search_response:
             response["highlighting"] = search_response["highlighting"]
         return response
         
-
+    def native_search(self, request=None, data=None):
+        return requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
+            
     def hybrid_search(self, lexical_search_args, vector_search_args, algorithm):
-        #algorithm = {name: "rrf", k:60}
-        hybrid_search_results = None
-        match algorithm.get("name"):
-            case "rrf":
-                k = 60
-                if algorithm.has("k"): k = algorithm.get("k")
-                
-                lexical_search_results = self.search(**lexical_search_args)
-                vector_search_results = self.vector_search(**vector_search_args)
-                hybrid_search_results = reciprocal_rank_fusion(lexical_search_results, vector_search_results, k)
-            case "rerank_lexical_with_vector":
-                pass
-        return hybrid_search_results
-    
-    def reciprocal_rank_fusion(k, *query_results):
-        # k is a ranking constant
-        # q is a query in the set of queries
-        # d is a document in the result set of q
-        # result(q) is the result set of q
-        # rank( result(q), d ) is d's rank within the result(q) starting from 1
+        pass
 
-        score = 0.0
-        for result_set in query_results:
-            if d in result(q):
-                score += 1.0 / ( k + rank( result(q), d ) )
-        return score
-
-# where
-# k is a ranking constant
-# q is a query in the set of queries
-# d is a document in the result set of q
-# result(q) is the result set of q
-# rank( result(q), d ) is d's rank within the result(q) starting from 1
-    
     def search_for_random_document(self, query):
         draw = random.random()
         request = {"query": query,

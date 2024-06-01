@@ -89,12 +89,11 @@ class SolrEngine(Engine):
                 self.upsert_text_field(collection, "image_id")
                 self.add_vector_field(collection, "image_embedding", 512, "dot_product")
             case "tmdb_lexical_plus_embeddings":
-                self.upsert_text_field(collection, "title")
-                self.upsert_text_field(collection, "overview")
-                self.upsert_double_field(collection, "release_year")
                 self.upsert_text_field(collection, "movie_id")
+                self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "image_id")
                 self.add_vector_field(collection, "image_embedding", 512, "dot_product")
+                self.upsert_text_field(collection, "overview")
             case "outdoors":
                 self.set_search_defaults(collection)
                 self.upsert_string_field(collection, "post_type")
@@ -135,7 +134,7 @@ class SolrEngine(Engine):
                 self.set_search_defaults(collection)
               
     def add_vector_field(self, collection, field_name, dimensions, similarity_function,
-                         vector_encoding_size="FLOAT32"):    
+                         vector_encoding_size="FLOAT32"):
         field_type = f"{field_name}_vector"
         field_name = f"{field_name}"
         self.delete_field(collection, field_name)

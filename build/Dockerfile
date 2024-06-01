@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.5
-FROM jupyter/pyspark-notebook:spark-3.3.1
+FROM jupyter/pyspark-notebook:spark-3.5.1
 USER root
 
 # Install gcc, c++, and related dependencies needed for pip to build some python dependencies
