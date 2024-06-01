@@ -42,10 +42,14 @@ class SolrCollection(Collection):
         #handle before standard handling search arg to prevent conflicting request params
         if "query" in search_args and isinstance(search_args["query"], list):
             vector = search_args.pop("query")
-            field = search_args.pop("query_fields")
+            #note: need to make more robust so it doesn't blow up when no field specified and to handle more than one field
+            #just making it work for now by using the first field.
+            field = search_args.pop("query_fields")[0]
             k = search_args.pop("k", 10)
+            if "limit" in search_args: 
+                if int(search_args["limit"]) > k: k = int(search_args["limit"]) #otherwise will only get k results
             request["query"] = "{!knn " + f'f={field} topK={k}' + "}" + str(vector)
-            search_args["query_parser"] = "lucene"
+            request["params"]["defType"] = "lucene"
         
         for name, value in search_args.items():
             match name:
@@ -61,8 +65,6 @@ class SolrCollection(Collection):
                     request["params"]["rq"] = value
                 case "quantization_size":
                     pass
-                case "query_parser":
-                    request["params"]["defType"] = value
                 case "query_fields":
                     request["params"]["qf"] = value
                 case "return_fields":
