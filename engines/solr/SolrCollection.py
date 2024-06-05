@@ -47,7 +47,8 @@ class SolrCollection(Collection):
             field = search_args.pop("query_fields")[0]
             k = search_args.pop("k", 10)
             if "limit" in search_args: 
-                if int(search_args["limit"]) > k: k = int(search_args["limit"]) #otherwise will only get k results
+                if int(search_args["limit"]) > k:
+                    k = int(search_args["limit"]) #otherwise will only get k results
             request["query"] = "{!knn " + f'f={field} topK={k}' + "}" + str(vector)
             request["params"]["defType"] = "lucene"
         
@@ -59,10 +60,10 @@ class SolrCollection(Collection):
                 case "query":
                     request["query"] = value if value else "*:*"
                 case "rerank_query":
-                    #rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
-                    #request["params"]["rq"] = rq
-                    #request["params"]["rq_query"] = "{!knn f=" + value["query_field"] + " topK=10}" + value["query_vector"]
-                    request["params"]["rq"] = value
+                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_query"]} reRankWeight=1' + "}"
+                    k = str(value.pop("k", 10))
+                    request["params"]["rq"] = rq
+                    request["params"]["rq_query"] = "{!knn f=" + value["query_fields"][0] + " topK=" + k + "}" + str(value["query"])
                 case "quantization_size":
                     pass
                 case "query_fields":
