@@ -60,7 +60,7 @@ class SolrCollection(Collection):
                 case "query":
                     request["query"] = value if value else "*:*"
                 case "rerank_query":
-                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_query"]} reRankWeight=1' + "}"
+                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
                     k = str(value.pop("k", 10))
                     request["params"]["rq"] = rq
                     request["params"]["rq_query"] = "{!knn f=" + value["query_fields"][0] + " topK=" + k + "}" + str(value["query"])
