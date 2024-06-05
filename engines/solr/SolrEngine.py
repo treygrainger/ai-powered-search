@@ -84,11 +84,11 @@ class SolrEngine(Engine):
                 self.upsert_text_field(collection, "overview")
                 self.upsert_double_field(collection, "release_year")
             case "tmdb_with_embeddings":
-                self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "movie_id")
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "image_id")
                 self.add_vector_field(collection, "image_embedding", 512, "dot_product")
+                self.add_vector_field(collection, "image_binary_embedding", 512, "euclidean", "BYTE")
             case "tmdb_lexical_plus_embeddings":
                 self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "movie_id")
@@ -236,8 +236,7 @@ class SolrEngine(Engine):
                         {"class": "solr.NGramFilterFactory",
                          #"preserveOriginal": "true",
                          "minGramSize": "3",
-                         "maxGramSize": "6"}]
-            }
+                         "maxGramSize": "6"}]}
         self.add_text_field_type(collection, "ngram", ngram_analyzer,
                                  omit_frequencies_and_positions=True)
 
