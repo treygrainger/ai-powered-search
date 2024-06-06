@@ -60,10 +60,13 @@ class SolrCollection(Collection):
                 case "query":
                     request["query"] = value if value else "*:*"
                 case "rerank_query":
-                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
+                    rerank_quantity = value.pop("rerank_quantity", 500)
+                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={rerank_quantity} reRankWeight=1' + "}"
                     k = str(value.pop("k", 10))
+                    query_field = value["query_fields"][0]
+                    query = str(value["query"])
                     request["params"]["rq"] = rq
-                    request["params"]["rq_query"] = "{!knn f=" + value["query_fields"][0] + " topK=" + k + "}" + str(value["query"])
+                    request["params"]["rq_query"] = "{!knn f=" + query_field + " topK=" + k + "}" + query
                 case "quantization_size":
                     pass
                 case "query_fields":
@@ -108,9 +111,45 @@ class SolrCollection(Collection):
         
     def native_search(self, request=None, data=None):
         return requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
-            
-    def hybrid_search(self, lexical_search_args, vector_search_args, algorithm):
-        pass
+    
+    def reciprocal_rank_fusion(self, search_results, algorithm_params):
+        k = algorithm_params.pop("k", 60)
+        scores = {}
+        for ranked_docs in search_results:
+            for rank, doc in enumerate(ranked_docs, 1):
+                scores[doc["id"]] = scores.get(doc["id"], 0)  + (1.0 / (k + rank))
+        sorted_scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
+        return sorted_scores
+
+    def merge_search_results(self, search_results, scores):   
+        merged_results = {}
+        for results in search_results:
+            for doc in results:
+                if doc["id"] in merged_results:
+                    merged_results[doc["id"]] = {**doc, **merged_results[doc["id"]]}
+                else: 
+                    merged_results[doc["id"]] = doc
+        return [{**merged_results[id], "score": score}
+                for id, score in scores.items()]
+
+    def hybrid_search(self, searches=[], limit=None, algorithm="rrf", algorithm_params={}):
+        hybrid_search_results = None
+        match algorithm:
+            case "rrf":
+                search_results = [self.search(**request)["docs"]
+                                  for request in searches]
+
+                hybrid_search_scores = self.reciprocal_rank_fusion(search_results,
+                                                                   algorithm_params)      
+                scored_docs = self.merge_search_results(search_results, 
+                                                hybrid_search_scores)    
+                return {"docs": scored_docs[:limit]}
+            case "lexical_vector_rerank":
+                lexical_search_request = searches[0]
+                searches[1]["k"] = algorithm_params.get("k", 10)
+                lexical_search_request["rerank_query"] = searches[1]
+                return self.search(**lexical_search_request)
+        return hybrid_search_results
 
     def search_for_random_document(self, query):
         draw = random.random()
