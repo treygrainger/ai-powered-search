@@ -30,3 +30,12 @@ def test_create_and_get_collection(weaviate_engine):
 
     assert collection.__class__.__name__ == "WeaviateCollection"
     assert collection.name == collection_name
+
+
+def test_enable_ltr(weaviate_engine):
+    collection_name = f"TestCollection_{uuid.uuid4().hex}"
+    weaviate_engine.create_collection(collection_name)
+
+    collection = weaviate_engine.get_collection(collection_name)
+    with pytest.raises(NotImplementedError):
+        weaviate_engine.enable_ltr(collection)

@@ -41,4 +41,4 @@ class WeaviateEngine(Engine):
 
     def enable_ltr(self, collection):
         "Initializes LTR dependencies for a given collection"
-        pass
+        raise NotImplementedError("¯\\_(ツ)_/¯")
