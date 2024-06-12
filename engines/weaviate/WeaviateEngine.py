@@ -7,10 +7,9 @@ class WeaviateEngine(Engine):
     def __init__(self):
         self.client = weaviate.connect_to_local(port=8090)
     
-    # @abstractmethod
     def health_check(self):
         "Checks the state of the search engine returning a boolean"
-        pass
+        return self.client.is_ready()
     
     # @abstractmethod
     def print_status(self, response):
