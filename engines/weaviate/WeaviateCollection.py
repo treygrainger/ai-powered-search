@@ -8,27 +8,27 @@ from engines.Collection import Collection
 class WeaviateCollection(Collection):
     def __init__(self, name):
         self.name = name
-        
-    @abstractmethod 
+
+    @abstractmethod
     def commit(self):
         "Force the collection to commit all uncommited data into the collection"
-        pass 
-    
+        pass
+
     @abstractmethod
     def write(self, dataframe):
         "Writes a pyspark dataframe containing documents into the collection"
         pass
-    
+
     @abstractmethod
     def add_documents(self, docs, commit=True):
         "Adds a collection of documents into the collection"
         pass
-    
+
     @abstractmethod
     def transform_request(self, **search_args):
         "Transforms a generic search request into a native search request"
         pass
-    
+
     @abstractmethod
     def transform_response(self, search_response):
         "Transform a native search response into a generic search response"
@@ -38,8 +38,8 @@ class WeaviateCollection(Collection):
     def native_search(self, request=None):
         "Executes a search against the search engine given a native search request"
         pass
-    
-    @abstractmethod        
+
+    @abstractmethod
     def vector_search(self, **search_args):
         "Executes a vector search given a vector search request"
         pass
@@ -48,12 +48,12 @@ class WeaviateCollection(Collection):
     def search_for_random_document(self, query):
         "Searches for a random document matching the query"
         pass
-    
+
     @abstractmethod
     def spell_check(self, query, log=False):
         "Execute a spellcheck against the collection"
         pass
-    
+
     def search(self, **search_args):
         """
         Searches the collection
@@ -61,7 +61,7 @@ class WeaviateCollection(Collection):
         :param str query_parser: The name of the query parser to use in the search
         :param list of str query_fields: the fields to query against
         :param list of str return_fields: the fields to return on each document
-        :param list of tuple of str filters: A list of tuples (field, value) to filter the results by 
+        :param list of tuple of str filters: A list of tuples (field, value) to filter the results by
         :param int limit: The number of results to return
         :param list of tuple of str order_by: A list of tuples (field, ASC/DESC) to order the results by
         :param str rerank_query: A query to rerank the results by

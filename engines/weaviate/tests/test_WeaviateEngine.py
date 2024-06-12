@@ -2,7 +2,8 @@ import uuid
 import weaviate
 import pytest
 import sys
-sys.path.insert(0, '/workspaces/ai-powered-search/')
+
+sys.path.insert(0, "/workspaces/ai-powered-search/")
 
 from aips import set_engine, get_engine
 from engines.weaviate.WeaviateEngine import WeaviateEngine
@@ -18,10 +19,9 @@ def weaviate_engine():
 def test_health_check(weaviate_engine):
     assert weaviate_engine.health_check() == True
 
+
 def test_create_collection(weaviate_engine):
     collection_name = f"TestCollection_{uuid.uuid4().hex}"
     weaviate_engine.create_collection(collection_name)
 
     assert weaviate_engine.client.collections.exists(collection_name)
-
-    
