@@ -30,4 +30,3 @@ def test_create_and_get_collection(weaviate_engine):
 
     assert collection.__class__.__name__ == "WeaviateCollection"
     assert collection.name == collection_name
-
