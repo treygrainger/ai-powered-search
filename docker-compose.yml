@@ -55,7 +55,7 @@ services:
       dockerfile: Dockerfile
     container_name: aips-weaviate
     ports:
-      - 8080:8090
+      - 8090:8080
       - 50051:50051
     volumes:
       - weaviate_data:/var/lib/weaviate

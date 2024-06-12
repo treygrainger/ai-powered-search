@@ -10,7 +10,7 @@ services:
     - http
     image: cr.weaviate.io/semitechnologies/weaviate:1.25.3
     ports:
-    - 8080:8090
+    - 8090:8080
     - 50051:50051
     volumes:
     - weaviate_data:/var/lib/weaviate
