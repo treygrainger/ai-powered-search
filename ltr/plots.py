@@ -12,7 +12,7 @@ def plot_judgments(qids, xlabel, ylabel, judg_list, focus=None,
     if focus is None:
         focus=qids
 
-    features, predictors = judgments_to_nparray(judg_list)
+    features, predictors, _ = judgments_to_nparray(judg_list)
 
     from random import shuffle
     from itertools import product

@@ -29,8 +29,8 @@ class SolrLTR(LTR):
     def generate_fuzzy_query_feature(self, feature_name, field_name):
         return self.generate_query_feature(feature_name, f"{field_name}_ngram")
     
-    def generate_bigram_query_feature(self, feature_name, field):
-        query = "{" + f"!edismax qf={field} pf2={field}" +"}(${keywords})"
+    def generate_bigram_query_feature(self, feature_name, field_name):
+        query = "{" + f"!edismax qf={field_name} pf2={field_name}" +"}(${keywords})"
         return self.generate_feature(feature_name, {"q": query})
         
     def generate_field_value_feature(self, feature_name, field_name):
@@ -134,17 +134,16 @@ class SolrLTR(LTR):
 
     def search_with_model(self, model_name, **search_args):
         parser_type = "edismax"
-        log = "log" in search_args and search_args["log"]
-        query = search_args["query"] if "query" in search_args else "*"
-        limit = search_args["limit"] if "limit" in search_args else 10
-        return_fields = (search_args["return_fields"] if "return_fields" in search_args
-                         else ["upc", "name", "manufacturer", "short_description", "long_description"])
+        log = search_args.get("log", False)
+        query = search_args.get("query", "*")
+        return_fields = search_args.get("return_fields", ["upc", "name", "manufacturer",
+                                                          "short_description", "long_description"])
         if "rerank" not in search_args:
             parser_type = "lucene"
             query = "{" + f'!ltr reRankDocs=60000 model={model_name} efi.keywords="{query}"' + "}"
         request = {
             "query": query,
-            "limit": limit,
+            "limit": search_args.get("limit", 5),
             "fields": return_fields,
             "params": {"defType": parser_type}
         }

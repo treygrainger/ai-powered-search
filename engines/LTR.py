@@ -20,7 +20,7 @@ class LTR(ABC):
         pass
     
     @abstractmethod
-    def generate_bigram_query_feature(self, feature_name, field):
+    def generate_bigram_query_feature(self, feature_name, field_name):
         "Generates an LTR bigram query feature definition."
         pass
     

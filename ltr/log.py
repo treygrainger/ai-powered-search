@@ -78,6 +78,7 @@ class FeatureLogger:
                 raise RuntimeError(f"Judgment keywords {judgment.keywords} inconsistent with logged keywords {keywords}")
             if judgment.doc_id not in document_features:                
                 print(f"Missing doc {judgment.doc_id} with error")
+                continue
             judgment.features = document_features[judgment.doc_id]
 
         # Return a paired down judgments if we are missing features for judgments
