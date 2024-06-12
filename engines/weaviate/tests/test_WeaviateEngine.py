@@ -1,5 +1,4 @@
 import uuid
-import weaviate
 import pytest
 import sys
 
