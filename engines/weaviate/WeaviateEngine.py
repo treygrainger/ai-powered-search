@@ -14,12 +14,24 @@ class WeaviateEngine(Engine):
     # @abstractmethod
     def print_status(self, response):
         "Prints the resulting status of a search engine request"
-        pass
+        if response:
+            print("Status: Success")
 
     # @abstractmethod
     def create_collection(self, name):
         "Create and initialize the schema for a collection, returns the initialized collection"
-        pass
+        collection_exists = self.client.collections.exists(name)
+        if collection_exists:
+            print(f"Wiping collection {name}")
+            self.client.collections.delete(name)
+        
+        print(f"Creating collection {name}")
+        collection = self.client.collections.create(name)
+
+        self.apply_schema_for_collection(name)
+        self.print_status(collection)
+        return collection
+
 
     # @abstractmethod
     def get_collection(self, name):
@@ -29,7 +41,7 @@ class WeaviateEngine(Engine):
     # @abstractmethod
     def apply_schema_for_collection(self, collection):
         "Applies the appriorate schema for a given collection"
-        pass
+        print(f"Using auto schema for collection {collection}")
 
     # @abstractmethod
     def enable_ltr(self, collection):
