@@ -9,7 +9,9 @@ import pandas
 import re
 import requests
 
-engine_type_map = {"SOLR": SolrEngine()}
+from engines.weaviate.WeaviateEngine import WeaviateEngine
+
+engine_type_map = {"SOLR": SolrEngine(), "WEAVIATE":WeaviateEngine()}
 
 def get_engine():
     return engine_type_map[environment.get("AIPS_SEARCH_ENGINE", "SOLR")]
