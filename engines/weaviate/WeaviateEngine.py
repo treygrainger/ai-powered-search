@@ -36,7 +36,7 @@ class WeaviateEngine(Engine):
     # @abstractmethod
     def get_collection(self, name):
         "Returns initialized object for a given collection"
-        pass
+        return WeaviateCollection(name)
 
     # @abstractmethod
     def apply_schema_for_collection(self, collection):

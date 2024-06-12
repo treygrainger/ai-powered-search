@@ -9,47 +9,47 @@ class WeaviateCollection(Collection):
     def __init__(self, name):
         self.name = name
 
-    @abstractmethod
+    # @abstractmethod
     def commit(self):
         "Force the collection to commit all uncommited data into the collection"
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def write(self, dataframe):
         "Writes a pyspark dataframe containing documents into the collection"
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def add_documents(self, docs, commit=True):
         "Adds a collection of documents into the collection"
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def transform_request(self, **search_args):
         "Transforms a generic search request into a native search request"
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def transform_response(self, search_response):
         "Transform a native search response into a generic search response"
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def native_search(self, request=None):
         "Executes a search against the search engine given a native search request"
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def vector_search(self, **search_args):
         "Executes a vector search given a vector search request"
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def search_for_random_document(self, query):
         "Searches for a random document matching the query"
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def spell_check(self, query, log=False):
         "Execute a spellcheck against the collection"
         pass

@@ -20,8 +20,14 @@ def test_health_check(weaviate_engine):
     assert weaviate_engine.health_check() == True
 
 
-def test_create_collection(weaviate_engine):
+def test_create_and_get_collection(weaviate_engine):
     collection_name = f"TestCollection_{uuid.uuid4().hex}"
     weaviate_engine.create_collection(collection_name)
 
     assert weaviate_engine.client.collections.exists(collection_name)
+
+    collection = weaviate_engine.get_collection(collection_name)
+
+    assert collection.__class__.__name__ == "WeaviateCollection"
+    assert collection.name == collection_name
+
