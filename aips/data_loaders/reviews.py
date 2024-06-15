@@ -11,4 +11,5 @@ def load_dataframe(csv_file):
                 col("categories_t").alias("categories"), col("stars_i").alias("stars_rating"),
                 col("location_pt_s").alias("location_coordinates"))
     dataframe.printSchema()
+    dataframe = dataframe.filter(dataframe.business_name != "Charlotte Center City Partners")
     return dataframe
