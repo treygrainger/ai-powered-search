@@ -73,8 +73,43 @@ class Collection(ABC):
         if "log" in search_args:
             print(json.dumps(search_response, indent=2))
         return self.transform_response(search_response)
+
+    def hybrid_search(self, searches=[], limit=None, algorithm="rrf", algorithm_params={}):
+        hybrid_search_results = None
+        match algorithm:
+            case "rrf":
+                search_results = [self.search(**request)["docs"]
+                                  for request in searches]
+
+                hybrid_search_scores = reciprocal_rank_fusion(search_results,
+                                                              algorithm_params.get("k"))
+                scored_docs = self.merge_search_results(search_results, 
+                                                hybrid_search_scores)    
+                return {"docs": scored_docs[:limit]}
+            case "lexical_vector_rerank":
+                lexical_search_request = searches[0]
+                searches[1]["k"] = algorithm_params.get("k", 10) #TODO: should probably default to "limit" instead of 10
+                lexical_search_request["rerank_query"] = searches[1]
+                return self.search(**lexical_search_request)
+        return hybrid_search_results
+
+    def merge_search_results(self, search_results, scores):   
+        merged_results = {}
+        for results in search_results:
+            for doc in results:
+                if doc["id"] in merged_results:
+                    merged_results[doc["id"]] = {**doc, **merged_results[doc["id"]]}
+                else: 
+                    merged_results[doc["id"]] = doc
+        return [{**merged_results[id], "score": score}
+                for id, score in scores.items()]
     
-    @abstractmethod        
-    def hybrid_search(self, lexical_search_args, vector_search_args, algorithm):
-        "A search with multiple search requests and an algorithm to handle results"
-        pass
+    
+def reciprocal_rank_fusion(search_results, k = None):
+    if k is None: k = 60
+    scores = {}
+    for ranked_docs in search_results:
+        for rank, doc in enumerate(ranked_docs, 1):
+            scores[doc["id"]] = scores.get(doc["id"], 0)  + (1.0 / (k + rank))
+    sorted_scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
+    return sorted_scores
