@@ -167,3 +167,29 @@ class SolrLTR(LTR):
         for rank, result in enumerate(docs):
             result["rank"] = rank            
         return {"docs": docs}
+    
+    def enable_ltr(self, collection):
+        delete_parser = {"delete-queryparser": "ltr"}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_parser)
+
+        delete_transformer = {"delete-transformer": "features"}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_transformer)
+        
+        print(f"Adding LTR QParser for {collection.name} collection")
+        add_parser = {
+            "add-queryparser": {
+                "name": "ltr",
+                "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
+                }
+            }
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_parser)        
+
+        print(f"Adding LTR Doc Transformer for {collection.name} collection")
+        add_transformer =  {
+            "add-transformer": {
+                "name": "features",
+                "class": "org.apache.solr.ltr.response.transform.LTRFeatureLoggerTransformerFactory",
+                "fvCacheName": "QUERY_DOC_FV"
+                }
+            }
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_transformer)

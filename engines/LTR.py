@@ -80,3 +80,8 @@ class LTR(ABC):
         """Search a collection using an uploaded model.
            See engines.Collection.search() for information on parameters"""
         pass
+
+    @abstractmethod
+    def enable_ltr(self, collection):
+        "Initializes LTR dependencies for a given collection"
+        pass
