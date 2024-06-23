@@ -23,7 +23,7 @@ sentence-transformers==3.0.0
 spacy-experimental==0.6.4
 staticmap==0.5.7
 spacy==3.7.4
-transformers==4.34.0
+transformers==4.38.0
 openai-clip==1.0.1
 torch==2.3.0
 torchvision==0.18.0 
