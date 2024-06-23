@@ -87,7 +87,15 @@ class SolrEngine(Engine):
                 self.upsert_text_field(collection, "movie_id")
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "image_id")
-                self.add_vector_field(collection, "image", 512, "dot_product")
+                self.add_vector_field(collection, "image_embedding", 512, "dot_product")
+                self.add_vector_field(collection, "image_binary_embedding", 512, "euclidean", "BYTE")
+            case "tmdb_lexical_plus_embeddings":
+                self.set_search_defaults(collection)
+                self.upsert_text_field(collection, "movie_id")
+                self.upsert_text_field(collection, "title")
+                self.upsert_text_field(collection, "image_id")
+                self.add_vector_field(collection, "image_embedding", 512, "dot_product")
+                self.upsert_text_field(collection, "overview")
             case "outdoors":
                 self.set_search_defaults(collection)
                 self.upsert_string_field(collection, "post_type")
@@ -104,7 +112,7 @@ class SolrEngine(Engine):
                 self.upsert_integer_field(collection, "answer_count")
             case "outdoors_with_embeddings":
                 self.upsert_text_field(collection, "title")
-                self.add_vector_field(collection, "title", 768, "dot_product")
+                self.add_vector_field(collection, "title_embedding", 768, "dot_product")
             case "reviews":
                 self.upsert_text_field(collection, "content")
                 self.add_delimited_field_type(collection, "commaDelimited", ",\s*")
@@ -128,9 +136,9 @@ class SolrEngine(Engine):
                 self.set_search_defaults(collection)
               
     def add_vector_field(self, collection, field_name, dimensions, similarity_function,
-                         vector_encoding_size="FLOAT32"):    
+                         vector_encoding_size="FLOAT32"):
         field_type = f"{field_name}_vector"
-        field_name = f"{field_name}_embedding"
+        field_name = f"{field_name}"
         self.delete_field(collection, field_name)
         self.delete_field_type(collection, field_type)
         
@@ -228,8 +236,7 @@ class SolrEngine(Engine):
                         {"class": "solr.NGramFilterFactory",
                          #"preserveOriginal": "true",
                          "minGramSize": "3",
-                         "maxGramSize": "6"}]
-            }
+                         "maxGramSize": "6"}]}
         self.add_text_field_type(collection, "ngram", ngram_analyzer,
                                  omit_frequencies_and_positions=True)
 
