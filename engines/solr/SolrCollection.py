@@ -1,4 +1,5 @@
 import random
+from numpy import isin
 import requests
 from engines.Collection import Collection
 from aips.environment import SOLR_URL, AIPS_ZK_HOST
@@ -38,6 +39,18 @@ class SolrCollection(Collection):
             "limit": 10,
             "params": {}     
         }
+        #handle before standard handling search arg to prevent conflicting request params
+        if "query" in search_args and isinstance(search_args["query"], list):
+            vector = search_args.pop("query")
+            #note: need to make more robust so it doesn't blow up when no field specified and to handle more than one field
+            #just making it work for now by using the first field.
+            field = search_args.pop("query_fields")[0]
+            k = search_args.pop("k", 10)
+            if "limit" in search_args: 
+                if int(search_args["limit"]) > k:
+                    k = int(search_args["limit"]) #otherwise will only get k results
+            request["query"] = "{!knn " + f'f={field} topK={k}' + "}" + str(vector)
+            request["params"]["defType"] = "lucene"
         
         for name, value in search_args.items():
             match name:
@@ -46,8 +59,16 @@ class SolrCollection(Collection):
                     request["params"]["q"] = value
                 case "query":
                     request["query"] = value if value else "*:*"
-                case "query_parser":
-                    request["params"]["defType"] = value
+                case "rerank_query":
+                    rerank_quantity = value.pop("rerank_quantity", 500)
+                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={rerank_quantity} reRankWeight=1' + "}"
+                    k = str(value.pop("k", 10))
+                    query_field = value["query_fields"][0]
+                    query = str(value["query"])
+                    request["params"]["rq"] = rq
+                    request["params"]["rq_query"] = "{!knn f=" + query_field + " topK=" + k + "}" + query
+                case "quantization_size":
+                    pass
                 case "query_fields":
                     request["params"]["qf"] = value
                 case "return_fields":
@@ -61,8 +82,6 @@ class SolrCollection(Collection):
                     request["limit"] = value
                 case "order_by":
                     request["sort"] = ", ".join([f"{column} {sort}" for (column, sort) in value])  
-                case "rerank_query":
-                    request["params"]["rq"] = value
                 case "default_operator":
                     request["params"]["q.op"] = value
                 case "min_match":
@@ -117,6 +136,13 @@ class SolrCollection(Collection):
         if "log" in search_args:
             print(response)
         return self.transform_response(response)
+
+    def search_for_random_document(self, query):
+        draw = random.random()
+        request = {"query": query,
+                   "limit": 1,
+                   "order_by": [(f"random_{draw}", "DESC")]}
+        return self.search(**request)
     
     def spell_check(self, query, log=False):
         request = {"query": query,
