@@ -2,7 +2,8 @@ import random
 from numpy import isin
 import requests
 from engines.Collection import Collection
-from aips.environment import SOLR_URL, AIPS_ZK_HOST
+from engines.solr.solr_environment import SOLR_URL
+from aips.environment import AIPS_ZK_HOST
 import time
 import json
 
@@ -135,7 +136,7 @@ class SolrCollection(Collection):
     def spell_check(self, query, log=False):
         request = {"query": query,
                    "params": {"q.op": "and", "indent": "on"}}
-        if log:
+        if log: 
             print("Solr spellcheck basic request syntax: ")
             print(json.dumps(request, indent="  "))
         response = requests.post(f"{SOLR_URL}/{self.name}/spell", json=request).json()

@@ -16,6 +16,7 @@ services:
       - solr
     networks:
       - solr-network
+      - opensearch-network
     restart: unless-stopped
     environment:
       #PYSPARK_SUBMIT_ARGS: '--jars /usr/local/spark/lib/spark-solr-4.0.0-shaded.jar pyspark-shell'
@@ -29,6 +30,7 @@ services:
       - type: bind
         source: "."
         target: "/tmp/notebooks/"
+
   solr:
     build:
       context: ./engines/solr/build/
@@ -47,6 +49,11 @@ services:
     depends_on:
       - zookeeper
 
+  opensearch:
+    extends:
+      file: ./engines/opensearch/build/docker-compose.yml
+      service: opensearch-node1
+
   zookeeper:
     image: zookeeper:3.5.8
     container_name: aips-zk
@@ -58,6 +65,10 @@ services:
       - solr-network
     restart: unless-stopped
 
+volumes:
+  opensearch-data:
+  
 networks:
   zk-solr:  
   solr-network:
+  opensearch-network:

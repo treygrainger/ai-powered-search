@@ -1,5 +1,5 @@
 import requests
-from aips.environment import SOLR_URL
+from engines.solr.solr_environment import SOLR_URL
 from engines.solr.SolrCollection import SolrCollection
 from engines.EntityExtractor import EntityExtractor
 

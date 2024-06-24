@@ -1,15 +1,15 @@
 import aips.environment as environment
-from aips.environment import SOLR_URL
 from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
 from engines.solr.SolrEngine import SolrEngine
+from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 
 import os
 from IPython.display import display,HTML
 import pandas
 import re
-import requests
 
-engine_type_map = {"SOLR": SolrEngine()}
+engine_type_map = {"SOLR": SolrEngine(),
+                   "OPENSEARCH": OpenSearchEngine()}
 
 def get_engine():
     return engine_type_map[environment.get("AIPS_SEARCH_ENGINE", "SOLR")]
@@ -36,15 +36,10 @@ def get_sparse_semantic_search():
 def healthcheck():
     try:
         if get_engine().health_check():
-            print("Solr is up and responding.")
-            print("Zookeeper is up and responding.\n")
             print("All Systems are ready. Happy Searching!")
     except:
         print("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
-
-def print_status(solr_response):
-      print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
-      
+        
 def num2str(number):
     return str(round(number,4)) #round to 4 decimal places for readibility
 
@@ -115,15 +110,14 @@ def render_search_results(query, results):
     return rendered
 
 def fetch_products(doc_ids):
-    doc_ids = ["%s" % doc_id for doc_id in doc_ids]
-    query = "upc:( " + " OR ".join(doc_ids) + " )"
-    params = {'q':  query, 'wt': 'json', 'rows': len(doc_ids)}
-    resp = requests.get(f"{SOLR_URL}/products/select", params=params)
-    df = pandas.DataFrame(resp.json()['response']['docs'])
+    request = {"query": " ".join([str(id) for id in doc_ids]),
+               "query_fields": ["upc"],
+               "limit": len(doc_ids)}
+    response = get_engine().get_collection("products").search(request)
+    
+    df = pandas.DataFrame(response["docs"])
     df['upc'] = df['upc'].astype('int64')
-
-    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_upc(row) + "\">", axis=1))
-
+    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_upc(row['upc']) + "\">", axis=1))
     return df
 
 def render_judged(products, judged, grade_col='ctr', label=""):

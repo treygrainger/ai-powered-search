@@ -3,6 +3,11 @@ from abc import ABC, abstractmethod
 class LTR(ABC):
     def __init__(self, collection):
         self.collection = collection
+    
+    @abstractmethod
+    def enable_ltr(self, collection):
+        "Initializes LTR dependencies for a given collection"
+        pass
 
     @abstractmethod
     def generate_feature(self, feature_name, params, feature_type):
