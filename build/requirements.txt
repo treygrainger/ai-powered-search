@@ -19,7 +19,7 @@ py4j==0.10.9.7
 pysolr==3.9.0
 qtconsole==5.1.1
 retrying==1.3.3
-sentence-transformers==3.0.0
+sentence-transformers==2.2.2
 spacy-experimental==0.6.4
 staticmap==0.5.7
 spacy==3.7.4
