@@ -28,8 +28,3 @@ class Engine(ABC):
     def apply_schema_for_collection(self, collection):
         "Applies the appriorate schema for a given collection"
         pass
-
-    @abstractmethod
-    def enable_ltr(self, collection):
-        "Initializes LTR dependencies for a given collection"
-        pass
