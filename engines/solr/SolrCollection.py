@@ -42,9 +42,13 @@ class SolrCollection(Collection):
         #handle before standard handling search arg to prevent conflicting request params
         if "query" in search_args and isinstance(search_args["query"], list):
             vector = search_args.pop("query")
-            #note: need to make more robust so it doesn't blow up when no field specified and to handle more than one field
-            #just making it work for now by using the first field.
-            field = search_args.pop("query_fields")[0]
+            query_fields = search_args.pop("query_fields", [])
+            if not isinstance(query_fields, list):
+                raise TypeError("query_fields must be a list")
+            elif len(query_fields) == 0:
+                raise ValueError("You must specificy at least one field in query_fields")
+            else: 
+                field = query_fields[0]
             k = search_args.pop("k", 10)
             if "limit" in search_args: 
                 if int(search_args["limit"]) > k:
