@@ -50,7 +50,7 @@ width="1024px"></a>
 ## Supported Technologies
 AI-Powered Search teaches many modern search techniques leveraging machine learning approaches. While we utilize specific technologies to demonstrate concepts, most techniques are applicable to many modern search engines and vector databases.
 
-Throughout the book, all code examples are in **Python**, with **PySpark** (the Python interface to **Apache Spark**) being utilized heavily for data processing tasks. The default search engine leveraged by the book's examples is **Apache Solr**, but most examples are abstracted away from the particular search engine, and swappable implementation will be soon available for most popular search engines and vector databases. For more information about the search engine abstraction and integrating check out the [engine documentation](https://github.com/treygrainger/ai-powered-search/engines/README.md).
+Throughout the book, all code examples are in **Python**, with **PySpark** (the Python interface to **Apache Spark**) being utilized heavily for data processing tasks. The default search engine leveraged by the book's examples is **Apache Solr**, but most examples are abstracted away from the particular search engine, and swappable implementation will be soon available for most popular search engines and vector databases. For more information about the search engine abstractions and custom integrations check out the [engine documentation](https://github.com/treygrainger/ai-powered-search/engines/README.md).
 
 **See Full List**: [Supported Search Engines and Vector Databases](engines/README.md)
 
