@@ -49,23 +49,17 @@ class SolrEngine(Engine):
                 self.set_search_defaults(collection)
                 self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
-                self.upsert_text_field(collection, "name")
-                self.upsert_text_field(collection, "manufacturer")
-                self.upsert_text_field(collection, "collectionName")
-                
-                self.add_ngram_field_type(collection)
-                self.add_copy_field(collection, "name", "name_ngram")
-                
-                self.add_omit_norms_field_type(collection)
-                self.add_copy_field(collection, "name", "name_omit_norms")
-                
-                self.add_copy_field(collection, "name", "name_txt_en_split")
-                
-                self.upsert_field(collection, "promotion_b", "boolean")
+                self.upsert_text_field(collection, "manufacturer")                               
                 self.upsert_field(collection, "has_promotion", "boolean")
-                self.add_copy_field(collection, "promotion_b", "has_promotion") #Alter csv and remove
                 self.upsert_text_field(collection, "short_description")
                 self.upsert_text_field(collection, "long_description")
+
+                self.upsert_text_field(collection, "name")
+                self.add_ngram_field_type(collection)
+                self.add_copy_field(collection, "name", "name_ngram")                
+                self.add_omit_norms_field_type(collection)
+                self.add_copy_field(collection, "name", "name_omit_norms")                
+                self.add_copy_field(collection, "name", "name_txt_en_split") 
                 if collection.name == "products_with_signals_boosts":
                     self.upsert_boosts_field_type(collection, "boosts")
                     self.upsert_boosts_field(collection, "signals_boosts")
@@ -349,29 +343,3 @@ class SolrEngine(Engine):
             }
         }
         return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=request)
-    
-    def enable_ltr(self, collection):
-        delete_parser = {"delete-queryparser": "ltr"}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_parser)
-
-        delete_transformer = {"delete-transformer": "features"}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_transformer)
-        
-        print(f"Adding LTR QParser for {collection.name} collection")
-        add_parser = {
-            "add-queryparser": {
-                "name": "ltr",
-                "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
-                }
-            }
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_parser)        
-
-        print(f"Adding LTR Doc Transformer for {collection.name} collection")
-        add_transformer =  {
-            "add-transformer": {
-                "name": "features",
-                "class": "org.apache.solr.ltr.response.transform.LTRFeatureLoggerTransformerFactory",
-                "fvCacheName": "QUERY_DOC_FV"
-                }
-            }
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_transformer)

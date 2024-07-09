@@ -1,3 +1,5 @@
+from random import random
+from re import search
 from aips.environment import SOLR_URL
 from engines.solr.SolrCollection import SolrCollection
 from engines.LTR import LTR
@@ -27,8 +29,8 @@ class SolrLTR(LTR):
     def generate_fuzzy_query_feature(self, feature_name, field_name):
         return self.generate_query_feature(feature_name, f"{field_name}_ngram")
     
-    def generate_bigram_query_feature(self, feature_name, field):
-        query = "{" + f"!edismax qf={field} pf2={field}" +"}(${keywords})"
+    def generate_bigram_query_feature(self, feature_name, field_name):
+        query = "{" + f"!edismax qf={field_name} pf2={field_name}" +"}(${keywords})"
         return self.generate_feature(feature_name, {"q": query})
         
     def generate_field_value_feature(self, feature_name, field_name):
@@ -40,22 +42,35 @@ class SolrLTR(LTR):
         return self.generate_feature(feature_name, params,
                                      feature_type="org.apache.solr.ltr.feature.FieldLengthFeature")
     
-    def delete_feature_store(self, name):
+    def delete_feature_store(self, name, log=False):
         return requests.delete(f"{SOLR_URL}/{self.collection.name}/schema/feature-store/{name}").json()
 
-    def upload_features(self, features, model_name):
+    def upload_features(self, features, model_name, log=False):
+        if log: print(f"Uploading {model_name} features to {self.collection.name} collection.")        
         for feature in features:
             feature["store"] = model_name
-        return requests.put(f"{SOLR_URL}/{self.collection.name}/schema/feature-store", json=features).json()
+        response = requests.put(f"{SOLR_URL}/{self.collection.name}/schema/feature-store", json=features).json()
+        if log: print(json.dumps(response, indent=2))
+        requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={self.collection.name}&wt=xml")
+        return response
 
-    def delete_model(self, model_name):
-        return requests.delete(f"{SOLR_URL}/{self.collection.name}/schema/model-store/{model_name}").json()
+    def delete_model(self, model_name, log=False):
+        if log: print(f"Delete model {model_name}")
+        response = requests.delete(f"{SOLR_URL}/{self.collection.name}/schema/model-store/{model_name}").json()
+        if log: print(json.dumps(response, indent=2))
+        return response
     
-    def upload_model(self, model):
+    def upload_model(self, model, log=False):
+        if log: print(f'Uploading model {model["name"]}')
         response = requests.put(f"{SOLR_URL}/{self.collection.name}/schema/model-store", json=model).json()
+        if log: print(json.dumps(response, indent=2))
         requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={self.collection.name}&wt=xml")
         return response    
     
+    def upsert_model(self, model, log=False):
+        self.delete_model(model["name"], log=log)
+        self.upload_model(model, log=log)
+
     def get_logged_features(self, model_name, doc_ids, options={},
                             id_field="id", fields=None, log=False):
         efi = " ".join(f'efi.{k}="{v}"' for k, v in options.items())
@@ -68,15 +83,12 @@ class SolrLTR(LTR):
             "limit": 1000
         }
         if log:
-            print("Search Request:")
-            print(json.dumps(self.collection.transform_request(**request), indent="  "))
-        resp = self.collection.search(**request)
-        docs = resp["docs"]
+            request["log"] = True
+        docs = self.collection.search(**request)["docs"]
         # Clean up features to consistent format
         for d in docs:
-            features = list(map(lambda f : float(f.split("=")[1]), d["[features]"].split(",")))
-            d["ltr_features"] = features
-
+            d["[features]"] = {f.split("=")[0] : float(f.split("=")[1])
+                               for f in d["[features]"].split(",")}
         return docs
     
     def generate_model(self, model_name, feature_names, means, std_devs, weights):
@@ -101,26 +113,42 @@ class SolrLTR(LTR):
             linear_model["features"].append(config)
             linear_model["params"]["weights"][name] =  weights[i]         
         return linear_model
-
-    ["upc", "name", "manufacturer", "score"]
+    
+    def get_explore_candidate(self, query, explore_vector, feature_config, log=False):        
+        query = ""
+        for feature_name, config in feature_config.items():
+            if feature_name in explore_vector:
+                if explore_vector[feature_name] == 1.0:
+                    query += f' +{config["field"]}:({config["value"]})'
+                elif explore_vector[feature_name] == -1.0:
+                    query += f' -{config["field"]}:({config["value"]})'
+        request = {"query": query or "*",
+                   "limit": 1,
+                   "return_fields": ["upc", "name", "manufacturer", "short_description", "long_description", "has_promotion"],
+                   "order_by": [(f"random_{random()}", "DESC")]}
+        if log: request["log"] = log
+        docs = self.collection.search(**request)["docs"]
+        if log and not docs:
+            print(f"No exploration candidate matching query {query}")
+        return docs    
 
     def search_with_model(self, model_name, **search_args):
         parser_type = "edismax"
-        log = "log" in search_args
-        query = search_args["query"] if "query" in search_args else "*"
-        limit = search_args["limit"] if "limit" in search_args else 10
-        query_fields = search_args["query_fields"] if "query_fields" in search_args else "*"
-        return_fields = search_args["return_fields"] if "return_fields" in search_args else "*"
+        log = search_args.get("log", False)
+        query = search_args.get("query", "*")
+        return_fields = search_args.get("return_fields", ["upc", "name", "manufacturer",
+                                                          "short_description", "long_description"])
         if "rerank" not in search_args:
             parser_type = "lucene"
             query = "{" + f'!ltr reRankDocs=60000 model={model_name} efi.keywords="{query}"' + "}"
         request = {
             "query": query,
-            "limit": limit,
+            "limit": search_args.get("limit", 5),
             "fields": return_fields,
-            "params": {"defType": parser_type,
-                       "qf": query_fields}
+            "params": {"defType": parser_type}
         }
+        if "query_fields" in search_args:
+            request["params"]["qf"] = search_args["query_fields"]
         if "rerank" in search_args:
             fuzzy_kws = "~" + " ~".join(query.split())
             squeezed_kws = "".join(query.split())
@@ -131,19 +159,37 @@ class SolrLTR(LTR):
                     "efi.keywords=\"" + query + "\"}")
             request["params"]["rq"] = rerank_query
 
-        if log:
-            print("search_with_model: search request:")
-            print(request)
+        if log: print(f"search_with_model() request: {request}")
+        response = self.collection.native_search(request)            
+        if log: print(f"search_with_model() response: {response}")
 
-        resp = self.collection.native_search(request)
-            
-        if log:
-            print("search_with_model: search response:")
-            print(resp)
-            
-        search_results = resp["response"]["docs"]
+        docs = response["response"]["docs"]
+        for rank, result in enumerate(docs):
+            result["rank"] = rank            
+        return {"docs": docs}
+    
+    def enable_ltr(self, collection):
+        delete_parser = {"delete-queryparser": "ltr"}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_parser)
 
-        for rank, result in enumerate(search_results):
-            result["rank"] = rank
-            
-        return {"docs": search_results}
+        delete_transformer = {"delete-transformer": "features"}
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_transformer)
+        
+        print(f"Adding LTR QParser for {collection.name} collection")
+        add_parser = {
+            "add-queryparser": {
+                "name": "ltr",
+                "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
+                }
+            }
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_parser)        
+
+        print(f"Adding LTR Doc Transformer for {collection.name} collection")
+        add_transformer =  {
+            "add-transformer": {
+                "name": "features",
+                "class": "org.apache.solr.ltr.response.transform.LTRFeatureLoggerTransformerFactory",
+                "fvCacheName": "QUERY_DOC_FV"
+                }
+            }
+        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_transformer)

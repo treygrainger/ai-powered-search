@@ -25,8 +25,7 @@ RUN mkdir -p $PIP_CACHE_DIR
 RUN --mount=type=cache,target=$PIP_CACHE_DIR \
     python -m pip install --upgrade pip && \
     pip install -r requirements.txt && \
-    python -m spacy download en_core_web_sm && \
-    pip install https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_coreference_web_trf-3.4.0a2-py3-none-any.whl
+    python -m spacy download en_core_web_sm
 RUN rm requirements.txt   
 
 # Configure home directory

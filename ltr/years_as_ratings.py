@@ -31,9 +31,7 @@ def synthesize(client, featureSet='release', latestTrainingSetOut='data/latest-t
 
     docs = []
     for hit in resp:
-        # Expect clients to return features per doc in ltr_features as ordered list
-        feature = hit['ltr_features'][0]
-
+        feature = list(hit['[features]'].values())[0]
         docs.append([feature]) # Treat features as ordered lists
 
     # Classic film fan
@@ -63,7 +61,3 @@ def synthesize(client, featureSet='release', latestTrainingSetOut='data/latest-t
         judgments_to_file(out, judgments)
 
     print('Done')
-
-
-
-
