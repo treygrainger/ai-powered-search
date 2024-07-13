@@ -21,39 +21,32 @@ def generate_tagged_query(extracted_entities):
                 
 def generate_query_tree(extracted_entities):
     query = extracted_entities["query"]
+    entities = {entity["id"]: entity for entity
+                in extracted_entities["entities"]}
     query_tree = []    
     last_end = 0
-    doc_map =  {}
-    for doc in extracted_entities["entities"]:
-        doc_map[doc["id"]] = doc
-        
+    
     for tag in extracted_entities["tags"]:
-        best_doc_id = None
-        for doc_id in tag["ids"]:
-            if best_doc_id:
-                if (doc_map[doc_id]["popularity"] > 
-                    doc_map[best_doc_id]["popularity"]):
-                    best_doc_id = doc_id
-            else:
-                best_doc_id = doc_id
-        best_doc = doc_map[best_doc_id]
+        best_entity = entities[tag["ids"][0]]
+        for entity_id in tag["ids"]:
+            if (entities[entity_id]["popularity"] > 
+                best_entity["popularity"]):
+                best_entity = entities[entity_id]
         
         next_text = query[last_end:tag["startOffset"]].strip()
-        if len(next_text) > 0:
-            query_tree.append({
-                "type": "keyword", "known": False,
-                "surface_form": next_text,
-                "canonical_form": next_text})
-        query_tree.append(best_doc)
+        if next_text:
+            query_tree.append({"type": "keyword",
+                               "surface_form": next_text,
+                               "canonical_form": next_text})
+        query_tree.append(best_entity)
         last_end = tag["endOffset"]
 
     if last_end < len(query):
         final_text = query[last_end:len(query)].strip()
-        if len(final_text) > 0:
-            query_tree.append({ 
-                "type": "keyword", "known": False, 
-                "surface_form": final_text,
-                "canonical_form": final_text})
+        if final_text:
+            query_tree.append({"type": "keyword",
+                               "surface_form": final_text,
+                               "canonical_form": final_text})
     return query_tree
 
 def process_semantic_query(collection, entities_collection, query):

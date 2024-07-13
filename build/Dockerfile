@@ -58,6 +58,7 @@ RUN find . -name \*.ipynb -print0|xargs -0 jupyter-trust -y
 
 # Start Jupyter Notebooks
 RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-CMD start-notebook.sh --ServerApp.token='' --ServerApp.ip=0.0.0.0 --no-browser \
+CMD start-notebook.sh --ServerApp.token='' --ServerApp.password='' \
+  --notebook-dir=/home/$NB_USER --ServerApp.ip=0.0.0.0 --no-browser \
   --LabApp.default_url='/lab/tree/chapters/welcome.ipynb' --NotebookApp.token='' --LabApp.token='' \
   --NotebookApp.allow_origin='*' --NotebookApp.ip='0.0.0.0'

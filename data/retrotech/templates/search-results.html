@@ -1,15 +1,16 @@
 <div id="demo">
-        <input style="width:50%" readonly type="text" name="q" value="${QUERY}">
-        <input readonly type="submit" value="Search">
-
+	<center><input style="width:40%" readonly type="text" name="q" value="${QUERY}">
+	<input readonly type="submit" value="Search">
+	</center>
     <div class="results">
     	<!-- BEGIN_TEMPLATE: SEARCH_RESULTS -->
     	<div style="position: relative; width: 100%; height:auto; overflow: auto;">
 	    	<div style="position: relative; float:left; width: 120px; margin-top:5px">
-	    		<img style="width:100px; height: auto; max-height:150px" src="${IMAGE_URL}">
+	    		<img style="width:250px; height: auto; max-height:150px" src="${IMAGE_URL}">
 	    	</div>
 	    	<div style="position:relative; float:left; clear:none; width: 80%; height:auto">
-	    		<p><strong>Name:</strong> ${NAME} | <strong>Manufacturer:</strong> ${MANUFACTURER}</p>
+	    		<p style="font-size:24px; padding-left: 50px;"><strong>		Name:</strong> ${NAME}
+					<br><strong>		Manufacturer:</strong> ${MANUFACTURER}</p>
 	    		<p>${DESCRIPTION} 
 	    		</p>
 	    	</div>

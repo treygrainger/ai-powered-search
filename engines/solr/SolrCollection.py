@@ -40,7 +40,8 @@ class SolrCollection(Collection):
             "params": {}     
         }
         #handle before standard handling search arg to prevent conflicting request params
-        if "query" in search_args and isinstance(search_args["query"], list):
+        is_vector_search = "query" in search_args and isinstance(search_args["query"], list)
+        if is_vector_search:
             vector = search_args.pop("query")
             query_fields = search_args.pop("query_fields", [])
             if not isinstance(query_fields, list):
@@ -107,21 +108,27 @@ class SolrCollection(Collection):
                     request["params"][name] = value
         return request
     
-    def transform_response(self, search_response):    
+    def transform_response(self, search_response):
         response = {"docs": search_response["response"]["docs"]}
         if "highlighting" in search_response:
             response["highlighting"] = search_response["highlighting"]
+
+        #This de-normalizes to fix vector scores. 
+        #Currently checks request for existance of {!knn, maybe theres a better indicator
+        #  as this catches more complex queries. Currently any query using the knn parser
+        #  will be de-normalized. Though it doesn't really matter to denormalize those more
+        #  complex searches as the rank won't change and score is not considered.
+        if ("params" in search_response["responseHeader"] and
+            "json" in search_response["responseHeader"]["params"] and
+            search_response["responseHeader"]["params"]["json"].find("{!knn") != -1):
+            for doc in response["docs"]:
+                doc["score"] = 2 * doc.get("score", 1) - 1                
+
         return response
         
     def native_search(self, request=None, data=None):
-        return requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
-
-    def search_for_random_document(self, query):
-        draw = random.random()
-        request = {"query": query,
-                   "limit": 1,
-                   "order_by": [(f"random_{draw}", "DESC")]}
-        return self.search(**request)
+        response = requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
+        return response
     
     def spell_check(self, query, log=False):
         request = {"query": query,

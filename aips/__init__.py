@@ -55,10 +55,9 @@ def tokenize(text):
     return text.replace(".","").replace(",","").lower().split()
 
 def img_path_for_upc(upc):
-    # file_path = os.path.dirname(os.path.abspath(__file__))
-    expected_jpg_path = f"../data/retrotech/images/{upc}.jpg"
-    unavailable_jpg_path = "../data/retrotech/images/unavailable.jpg"
-    return expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
+    expected_jpg_path = f"data/retrotech/images/{upc}.jpg"
+    unavailable_jpg_path = "data/retrotech/images/unavailable.jpg"
+    return "../../" + expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
 
 def remove_new_lines(data):
     return str(data).replace('\\n', '').replace('\\N', '')
@@ -73,11 +72,10 @@ def display_search(query, documents):
    
 def display_product_search(query, documents):
     rendered_html = render_search_results(query, documents)
-    display(HTML((rendered_html)))
+    display(HTML(rendered_html))
     
 def render_search_results(query, results):
-    file_path = os.path.dirname(os.path.abspath(__file__))
-    search_results_template_file = os.path.join(file_path + "/../data/retrotech/templates/", "search-results.html")
+    search_results_template_file = os.path.join("data/retrotech/templates/", "search-results.html")
     with open(search_results_template_file) as file:
         file_content = file.read()
 
@@ -92,12 +90,11 @@ def render_search_results(query, results):
         x = re.search(separator_template_syntax, file_content, flags=re.S)
         separator_template = x.group(1)
 
-        rendered = header_template.replace("${QUERY}", query)
+        rendered = header_template.replace("${QUERY}", query.replace('"', '\"'))
         for result in results:
-            url = "../../data/retrotech/images/" + \
-                             (result['upc'] if \
-                              ('upc' in result and os.path.exists(file_path + "/../data/retrotech/images/" + result['upc'] + ".jpg") \
-                             ) else "unavailable") + ".jpg"
+            image_exists = 'upc' in result and os.path.exists(f"data/retrotech/images/{result['upc']}.jpg")
+            file = result['upc'] if image_exists else "unavailable"
+            url = f"../../data/retrotech/images/{file}.jpg"
             rendered += results_template.replace("${NAME}", result.get("name", "UNKNOWN")) \
                 .replace("${MANUFACTURER}", result.get("manufacturer", "UNKNOWN")) \
                 .replace("${DESCRIPTION}", remove_new_lines(result.get("short_description", ""))) \

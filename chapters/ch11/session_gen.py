@@ -104,7 +104,7 @@ def build_ground_truth(signals_path, min_query_count):
 
 
 class SessionGenerator:
-    def __init__(self, signals_path='../../data/retrotech/signals.csv', min_query_count=100):
+    def __init__(self, signals_path='data/retrotech/signals.csv', min_query_count=100):
         self.canonical_rankings = build_ground_truth(signals_path, min_query_count)
         self.curr_sess_id = 1
         self.random_rankings = {}
