@@ -1,7 +1,7 @@
 import json
 from pyspark.sql import SparkSession, Row
 
-def load_dataframe(movie_file="../data/tmdb.json", movie_image_ids={}):
+def load_dataframe(movie_file="data/tmdb.json", movie_image_ids={}):
     movies = []
     for movieId, tmdbMovie in json.load(open(movie_file)).items():
         try:

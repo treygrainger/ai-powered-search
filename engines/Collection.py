@@ -35,11 +35,6 @@ class Collection(ABC):
     def native_search(self, request=None):
         "Executes a search against the search engine given a native search request"
         pass
-
-    @abstractmethod
-    def search_for_random_document(self, query):
-        "Searches for a random document matching the query"
-        pass
     
     @abstractmethod
     def spell_check(self, query, log=False):
@@ -82,8 +77,8 @@ class Collection(ABC):
 
                 hybrid_search_scores = reciprocal_rank_fusion(search_results,
                                                               algorithm_params.get("k"))
-                scored_docs = self.merge_search_results(search_results, 
-                                                hybrid_search_scores)    
+                scored_docs = merge_search_results(search_results, 
+                                                   hybrid_search_scores)    
                 return {"docs": scored_docs[:limit]}
             case "lexical_vector_rerank":
                 lexical_search_request = searches[0]
@@ -92,19 +87,19 @@ class Collection(ABC):
                 return self.search(**lexical_search_request)
         return hybrid_search_results
 
-    def merge_search_results(self, search_results, scores):   
-        merged_results = {}
-        for results in search_results:
-            for doc in results:
-                if doc["id"] in merged_results:
-                    merged_results[doc["id"]] = {**doc, **merged_results[doc["id"]]}
-                else: 
-                    merged_results[doc["id"]] = doc
-        return [{**merged_results[id], "score": score}
-                for id, score in scores.items()]
+def merge_search_results(search_results, scores):
+    merged_results = {}
+    for results in search_results:
+        for doc in results:
+            if doc["id"] in merged_results:
+                merged_results[doc["id"]] = {**doc, **merged_results[doc["id"]]}
+            else: 
+                merged_results[doc["id"]] = doc
+    return [{**merged_results[id], "score": score}
+            for id, score in scores.items()]
     
     
-def reciprocal_rank_fusion(search_results, k = None):
+def reciprocal_rank_fusion(search_results, k=None):
     if k is None: k = 60
     scores = {}
     for ranked_docs in search_results:
