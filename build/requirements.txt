@@ -24,6 +24,6 @@ https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_core
 sentence-transformers==2.2.2
 staticmap==0.5.7
 openai-clip==1.0.1
-setuptools==69.5.1
+setuptools==70.0.0
 spladerunner==0.1.5
 numpy==1.23.5
