@@ -18,21 +18,24 @@ class OpenSearchEngine(Engine):
         "Prints the resulting status of a search engine request"
         pass
 
-    def create_collection(self, name):
+    def create_collection(self, name, log=False):
         print(f'Wiping "{name}" collection')
         response = requests.delete(f"{OPENSEARCH_URL}/{name}").json()
 
         print(f'Creating "{name}" collection')
         collection = self.get_collection(name)
-        request = SCHEMAS[name]["schema"]
+        request = SCHEMAS[name]["schema"] if name in SCHEMAS else {}
         response = requests.put(f"{OPENSEARCH_URL}/{name}", json=request).json()
-        
-        self.print_status(response)
+        if log: 
+            print("Schema:", json.dumps(request, indent=2))
+        if log: 
+            print("Status:", json.dumps(response, indent=2))
         return collection
 
     def get_collection(self, name):
         "Returns initialized object for a given collection"
-        return OpenSearchCollection(name, SCHEMAS[name]["id_field"])
+        id_field = SCHEMAS[name]["id_field"] if name in SCHEMAS else None
+        return OpenSearchCollection(name, id_field)
 
     def set_search_defaults(self, collection, default_parser="edismax"):
         pass

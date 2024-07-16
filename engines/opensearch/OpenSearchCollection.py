@@ -7,12 +7,9 @@ import json
 from pyspark.sql import Row, SparkSession
 
 class OpenSearchCollection(Collection):
-    def __init__(self, name, id_field="_id"):
-        #response = requests.get(f"{SOLR_COLLECTIONS_URL}/?action=LIST")
-        #print(response)
-        #collections = response.json()["collections"]
-        #if name.lower() not in [s.lower() for s in collections]:
-        #    raise ValueError(f"Collection name invalid. '{name}' does not exists.")
+    def __init__(self, name, id_field=None):
+        if not id_field:
+            id_field="_id"
         super().__init__(name)
         self.id_field = id_field
         
@@ -21,8 +18,9 @@ class OpenSearchCollection(Collection):
 
     def write(self, dataframe):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
-                "opensearch.net.ssl": "false",
-                "opensearch.mapping.id": self.id_field}
+                "opensearch.net.ssl": "false"}
+        if self.id_field != "_id":
+            opts["opensearch.mapping.id"] = self.id_field
         dataframe.write.format("opensearch").options(**opts).mode("overwrite").save(self.name)
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
@@ -43,10 +41,10 @@ class OpenSearchCollection(Collection):
                 case "query_fields":
                     pass
                 case "query":
-                    request["query"] = {"dis_max": 
-                                        {"queries": [{"match": {f: {"query": value,
-                                                                    "boost": 0.454545454}}}
-                                                     for f in query_fields]}}
+                    #
+                    queries = [{"match": {f: {"query": value, "boost": 0.454545454}}}
+                               for f in query_fields]
+                    request["query"] = {"dis_max": {"queries": queries}}
                 case "return_fields":
                     request["fields"] = value
                 case "filters":
@@ -135,12 +133,23 @@ class OpenSearchCollection(Collection):
             print(response)
         return self.transform_response(response)
     
-    def search_for_random_document(self, query):
-        draw = random.random()
-        request = {"query": query,
-                   "limit": 1,
-                   "order_by": [(f"random_{draw}", "DESC")]}
-        return self.search(**request)
-    
     def spell_check(self, query, log=False):
-        pass
+        request = {
+            "suggest": {
+                "spell-check" : {
+                "text" : query,
+                "term" : {
+                    "field" : "_text_",
+                    "suggest_mode" : "missing"                    
+                }
+            }
+            }
+        }
+        if log: print(json.dumps(request, indent=2))
+        response = self.native_search(request=request)
+        if log: print(json.dumps(response, indent=2))
+        suggestions = {}
+        if len(response["suggest"]["spell-check"]):
+            suggestions = {term["text"]: term["freq"] for term
+                            in response["suggest"]["spell-check"][0]["options"]}
+        return suggestions
