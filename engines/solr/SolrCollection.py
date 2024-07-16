@@ -140,6 +140,9 @@ class SolrCollection(Collection):
             print("Solr spellcheck basic request syntax: ")
             print(json.dumps(request, indent="  "))
         response = requests.post(f"{SOLR_URL}/{self.name}/spell", json=request).json()
-        return {r["collationQuery"]: r["hits"]
-                for r in response["spellcheck"]["collations"]
-                if r != "collation"}
+        suggestions = {}
+        if "spellcheck" in response:
+            suggestions =  {r["collationQuery"]: r["hits"]
+                            for r in response["spellcheck"]["collations"]
+                            if r != "collation"}
+        return suggestions

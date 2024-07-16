@@ -1,30 +1,46 @@
 import os
+import copy
 
 OPENSEARCH_HOST = os.getenv("AIPS_OPENSEARCH_HOST") or "aips-opensearch"
 OPENSEARCH_PORT = os.getenv("AIPS_OPENSEARCH_PORT") or "9200"
 OPENSEARCH_URL = f"http://{OPENSEARCH_HOST}:{OPENSEARCH_PORT}"
 
-def base_field(type, stored=True, indexed=True):
-    return {"type": type, "stored": stored, "index": indexed}
+def base_field(type, **kwargs):
+    #"index": True
+    field = {"type": type, "store": True}
+    return field | kwargs
 
-def text_field(): return base_field("text")
+def text_field(**kwargs):
+    return base_field("text", **kwargs)
 
-def boolean_field(): return base_field("boolean")
+def boolean_field():
+    return base_field("boolean")
 
-def double_field(): return base_field("double")
+def double_field():
+    return base_field("double")
 
-def integer_field(): return base_field("integer")
 
-def keyword_field(): return base_field("text") 
-    # {"multiValued": "true", "docValues": "true"}
+def integer_field():
+    return base_field("integer")
 
-def string_field(): return base_field("string")
+
+def keyword_field():
+    return base_field("text")
+
+
+# {"multiValued": "true", "docValues": "true"}
+
+
+def string_field():
+    return base_field("string")
+
 
 def basic_schema(field_mappings, id_field="_id"):
     return {
         "id_field": id_field,
         "schema": {"mappings": {"properties": field_mappings}},
     }
+
 
 def body_title_schema():
     return basic_schema({"title": text_field(), "body": text_field()})
@@ -56,19 +72,35 @@ def dense_vector_schema(
     schema["schema"]["mappings"]["properties"] | additional_fields
     return schema
 
+
 PRODUCTS_SCHEMA = basic_schema(
     {
-        "upc": text_field(),
-        "name": text_field(),
-        "manufacturer": text_field(),
-        "short_description": text_field(),
-        "long_description": text_field(),
+        "upc": text_field(fielddata=True),
+        "_text_": text_field(),#analyzer="autocomplete"),
+        "name": text_field(copy_to="_text_"),
+        "manufacturer": text_field(copy_to="_text_"),
+        "short_description": text_field(copy_to="_text_"),
+        "long_description": text_field(copy_to="_text_"),
         "has_promotion": boolean_field(),
     },
     "upc",
 )
+PRODUCTS_SCHEMA["schema"]["settings"] = {
+    "analysis": {
+        "filter": {
+            "edge_ngram_filter": {"type": "edge_ngram", "min_gram": 1, "max_gram": 20}
+        },
+        "analyzer": {
+            "autocomplete": {
+                "type": "custom",
+                "tokenizer": "standard",
+                "filter": ["lowercase", "edge_ngram_filter"],
+            }
+        },
+    }
+}
 
-PRODUCT_BOOSTS_SCHEMA = PRODUCTS_SCHEMA.copy()
+PRODUCT_BOOSTS_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
 PRODUCT_BOOSTS_SCHEMA["schema"]["settings"] = {
     "analysis": {
         "analyzer": {
@@ -83,7 +115,10 @@ PRODUCT_BOOSTS_SCHEMA["schema"]["settings"] = {
                     },
                 ],
             }
-        }
+        },
+        "filter": {
+            "edge_ngram_filter": {"type": "edge_ngram", "min_gram": 1, "max_gram": 20}
+        },
     }
 }
 PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
@@ -99,9 +134,10 @@ SCHEMAS = {
         {
             "id": text_field(),
             "title": text_field(),
-            "description": text_field() | {"similarity": "BM25", "discount_overlaps": False},
+            "description": text_field()
+            | {"similarity": "BM25", "discount_overlaps": False},
         },
-        "id"
+        "id",
     ),
     "products": PRODUCTS_SCHEMA,
     "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
@@ -131,7 +167,7 @@ SCHEMAS = {
             "accepted_answer_id": integer_field(),
             "parent_id": integer_field(),
             "creation_date": string_field(),
-            "score": integer_field(), # rename?
+            "score": integer_field(),  # rename?
             "view_count": integer_field(),
             "body": text_field(),
             "owner_user_id": text_field(),
@@ -140,9 +176,12 @@ SCHEMAS = {
             "url": string_field(),
             "answer_count": integer_field(),
         }
-    ),  
+    ),
     "tmdb_with_embeddings": dense_vector_schema(
-        "image", 512, "dot_product", "FLOAT32",
+        "image",
+        512,
+        "dot_product",
+        "FLOAT32",
         {"title": text_field(), "movie_id": text_field(), "image_id": text_field()},
     ),
     "outdoors_with_embeddings": dense_vector_schema(
