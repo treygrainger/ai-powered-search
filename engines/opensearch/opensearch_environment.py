@@ -57,11 +57,11 @@ def dense_vector_schema(
                     field_name: {
                         "type": "knn_vector",
                         "dimension": dimensions,
-                        "data_type": data_type_map.get(quantization_size, "float"),
+                        #"data_type": data_type_map.get(quantization_size, "float"),
                         "method": {
                             "name": "hnsw",
-                            "space_type": similarity_score or "l2",
-                            "engine": "lucene",
+                            "engine": "nmslib",
+                            "space_type": similarity_score or "l2",                            
                             "parameters": {"ef_construction": 128, "m": 24},
                         },
                     }
@@ -178,13 +178,20 @@ SCHEMAS = {
         }
     ),
     "tmdb_with_embeddings": dense_vector_schema(
-        "image",
+        "image_embedding",
         512,
-        "dot_product",
+        "innerproduct",
         "FLOAT32",
         {"title": text_field(), "movie_id": text_field(), "image_id": text_field()},
     ),
+    "tmdb_lexical_plus_embeddings": dense_vector_schema(
+        "image_embedding",
+        512,
+        "innerproduct",
+        "FLOAT32",
+        {"title": text_field(), "overview": text_field(), "movie_id": text_field(), "image_id": text_field()},
+    ),
     "outdoors_with_embeddings": dense_vector_schema(
-        "image", 728, "dot_product", "FLOAT32", {"title": text_field()}
+        "image_embedding", 728, "dot_product", "FLOAT32", {"title": text_field()}
     ),
 }

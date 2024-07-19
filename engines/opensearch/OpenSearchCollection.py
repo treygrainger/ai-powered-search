@@ -31,27 +31,53 @@ class OpenSearchCollection(Collection):
         self.write(dataframe)
     
     def transform_request(self, **search_args):
-        request = {
-            "query": "*:*",
-            "size": 10
-            }
-        query_fields = search_args.get("query_fields", "*")
+        #Of the many approaches to implement all these features, the most
+        #straightforward and effective is to use the query_string functionality
+        #https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html
+        #Does multimatching, supports default operator, does dis_max by default.
+        
+        is_vector_search = "query" in search_args and isinstance(search_args["query"], list)
+        if is_vector_search:
+            vector = search_args.pop("query")
+            query_fields = search_args.pop("query_fields", [])
+            if not isinstance(query_fields, list):
+                raise TypeError("query_fields must be a list")
+            elif len(query_fields) == 0:
+                raise ValueError("You must specificy at least one field in query_fields")
+            else: 
+                field = query_fields[0]
+            k = search_args.pop("k", 10)
+            if "limit" in search_args: 
+                if int(search_args["limit"]) > k:
+                    k = int(search_args["limit"]) #otherwise will only get k results
+            request = {"query": {"knn": {field: {"vector": vector,
+                                                 "k": k}}},
+                       "size": search_args.get("limit", 5)}             
+            if "log" in search_args:
+                print("Search Request:")
+                print(json.dumps(request, indent="  "))
+            return request
+
+        query = ""
+        if "query" in search_args:
+            query = search_args["query"]
+        if "query_boosts" in search_args:
+            boost = search_args["query_boosts"]
+            if isinstance(boost, tuple):
+                boost = f"{boost[0]}:({boost[1]})"
+            query += " " + boost
+        request = {"query": {"query_string": {"query": query.strip()
+                                              if query else "*:*",
+                                              "boost": 0.454545454}},
+                   "size": 10}
         for name, value in search_args.items():
             match name:
                 case "query_fields":
-                    pass
-                case "query":
-                    #
-                    queries = [{"match": {f: {"query": value, "boost": 0.454545454}}}
-                               for f in query_fields]
-                    request["query"] = {"dis_max": {"queries": queries}}
+                    request["query"]["query_string"]["fields"] = value
                 case "return_fields":
                     request["fields"] = value
                 case "filters":
-                    request["filter"] = []
-                    for f in value:
-                        filter_value = f'({" ".join(f[1])})' if isinstance(f[1], list) else f[1] 
-                        request["filter"].append(f"{f[0]}:{filter_value}")
+                    pass
                 case "limit":
                     request["size"] = value
                 case "order_by":
@@ -59,18 +85,13 @@ class OpenSearchCollection(Collection):
                                         {"order": sort}} for (column, sort) in value] 
                     #request["sort"] =  ",".join([f"{field}:{dir}" for (field, dir) in value])
                     #request["sort"] = request["sort"].replace("score", "_score")
-                #    request["sort"] = [{"score": {"order": "asc"}}]
+                    #request["sort"] = [{"score": {"order": "asc"}}]
                 case "rerank_query":
                     request["params"]["rq"] = value
                 case "default_operator":
                     request["default_operator"] = value
                 case "min_match":
                     request["params"]["mm"] = value
-                case "query_boosts":
-                    request["params"]["boost"] = "sum(1,query($boost_query))"
-                    if isinstance(value, tuple):
-                        value = f"{value[0]}:({value[1]})"
-                    request["params"]["boost_query"] = value
                 case "index_time_boost":
                     request["params"]["boost"] = f'payload({value[0]}, "{value[1]}", 1, first)'
                 case "explain":
@@ -107,31 +128,6 @@ class OpenSearchCollection(Collection):
         request = self.transform_request(**search_args)
         search_response = self.native_search(request=request)
         return self.transform_response(search_response)
-    
-    def vector_search(self, **search_args):
-        field = search_args["query_field"]
-        k = search_args["k"] if "k" in search_args else 10
-        query_vector = search_args["query_vector"]
-        request = {
-            "query": "{!knn " + f'topK={k} f={field}' + "}" + str(query_vector),
-            "limit": 5,
-            "fields": ["*"],
-            "params": {}
-        }
-        for name, value in search_args.items():
-            match name:
-                case "log":
-                    request["params"]["debugQuery"] = True
-                case "limit":
-                    request["limit"] = value
-                case "rerank_query":
-                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={value["rerank_quantity"]} reRankWeight=1' + "}"
-                    request["params"]["rq"] = rq
-                    request["params"]["rq_query"] = "{!knn f=" + value["query_field"] + " topK=10}" + value["query_vector"]
-        response = self.native_search(request=request)
-        if "log" in search_args:
-            print(response)
-        return self.transform_response(response)
     
     def spell_check(self, query, log=False):
         request = {
