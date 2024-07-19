@@ -34,7 +34,7 @@ class OpenSearchEngine(Engine):
 
     def get_collection(self, name):
         "Returns initialized object for a given collection"
-        id_field = SCHEMAS[name]["id_field"] if name in SCHEMAS else None
+        id_field = SCHEMAS[name].get("id_field", None) if name in SCHEMAS else None
         return OpenSearchCollection(name, id_field)
 
     def set_search_defaults(self, collection, default_parser="edismax"):
