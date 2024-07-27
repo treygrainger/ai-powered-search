@@ -54,10 +54,9 @@ def vec2str(vector):
 def tokenize(text):
     return text.replace(".","").replace(",","").lower().split()
 
-def img_path_for_upc(upc):
-    expected_jpg_path = f"data/retrotech/images/{upc}.jpg"
-    unavailable_jpg_path = "data/retrotech/images/unavailable.jpg"
-    return "../../" + expected_jpg_path if os.path.exists(expected_jpg_path) else unavailable_jpg_path
+def img_path_for_upc(product):
+    file = product.get("upc", "unavailable")
+    return f"../../data/retrotech/images/{file}.jpg"
 
 def remove_new_lines(data):
     return str(data).replace('\\n', '').replace('\\N', '')
@@ -75,7 +74,7 @@ def display_product_search(query, documents):
     display(HTML(rendered_html))
     
 def render_search_results(query, results):
-    search_results_template_file = os.path.join("data/retrotech/templates/", "search-results.html")
+    search_results_template_file = os.path.join("../../data/retrotech/templates/", "search-results.html")
     with open(search_results_template_file) as file:
         file_content = file.read()
 
@@ -92,13 +91,11 @@ def render_search_results(query, results):
 
         rendered = header_template.replace("${QUERY}", query.replace('"', '\"'))
         for result in results:
-            image_exists = 'upc' in result and os.path.exists(f"data/retrotech/images/{result['upc']}.jpg")
-            file = result['upc'] if image_exists else "unavailable"
-            url = f"../../data/retrotech/images/{file}.jpg"
+            image_url = img_path_for_upc(result)
             rendered += results_template.replace("${NAME}", result.get("name", "UNKNOWN")) \
                 .replace("${MANUFACTURER}", result.get("manufacturer", "UNKNOWN")) \
                 .replace("${DESCRIPTION}", remove_new_lines(result.get("short_description", ""))) \
-                .replace("${IMAGE_URL}", url)
+                .replace("${IMAGE_URL}", image_url)
 
             rendered += separator_template
     return rendered
@@ -111,7 +108,7 @@ def fetch_products(doc_ids):
     df = pandas.DataFrame(resp.json()['response']['docs'])
     df['upc'] = df['upc'].astype('int64')
 
-    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_upc(row['upc']) + "\">", axis=1))
+    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_upc(row) + "\">", axis=1))
 
     return df
 
