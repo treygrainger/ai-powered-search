@@ -37,11 +37,13 @@ COPY engines/ /home/$NB_USER/engines
 COPY ltr/ /home/$NB_USER/ltr
 COPY semantic_search/ /home/$NB_USER/semantic_search
 COPY webserver/ /home/$NB_USER/webserver
+COPY build/ipython_kernel_config.py /etc/ipython/
 RUN rm -rf work/
 
 # Change to notebook user
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
-USER $NB_UID
+RUN fix-permissions /home/$NB_USER
+USER $NB_USER
 
 # Spark Config
 ENV SPARK_OPTS="$SPARK_OPTS --driver-java-options=\"-DXlint:none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer -Dlog4j.logger.org.apache.spark.repl.Main=ERROR\" --spark.ui.showConsoleProgress=False --spark.driver.extraLibraryPath=$SHADED_SOLR_JAR_PATH --spark.executor.extraLibraryPath=$SHADED_SOLR_JAR_PATH" \
@@ -58,7 +60,7 @@ RUN find . -name \*.ipynb -print0|xargs -0 jupyter-trust -y
 
 # Start Jupyter Notebooks
 RUN jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
-CMD start-notebook.sh --ServerApp.token='' --ServerApp.password='' \
-  --notebook-dir=/home/$NB_USER --ServerApp.ip=0.0.0.0 --no-browser \
-  --LabApp.default_url='/lab/tree/chapters/welcome.ipynb' --NotebookApp.token='' --LabApp.token='' \
-  --NotebookApp.allow_origin='*' --NotebookApp.ip='0.0.0.0'
+CMD start-notebook.sh --ServerApp.password='' \
+  --ServerApp.token='' --NotebookApp.token='' --LabApp.token='' \
+  --LabApp.default_url='/lab/tree/chapters/welcome.ipynb' \
+  --NotebookApp.allow_origin='*' --NotebookApp.ip='0.0.0.0' --ServerApp.ip=0.0.0.0 --no-browser

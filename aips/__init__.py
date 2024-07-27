@@ -54,9 +54,24 @@ def vec2str(vector):
 def tokenize(text):
     return text.replace(".","").replace(",","").lower().split()
 
+def get_executing_notebook_path():
+    return globals().get("__vsc_ipynb_file__", #only exists during a remote vscode kernel
+                         globals().get("_dh", [None])[0])
+
+def images_directory():    
+    path = get_executing_notebook_path()
+    if path:
+        relative = os.path.relpath(os.environ.get("HOME"), path)
+    else:
+        relative = "../.."
+    return f"{relative}/data/retrotech/images"
+
 def img_path_for_upc(product):
-    file = product.get("upc", "unavailable")
-    return f"../../data/retrotech/images/{file}.jpg"
+    directory = images_directory()
+    file = product.get("upc", "no-upc")
+    if not os.path.exists(f"data/retrotech/images/{file}.jpg"):
+        file = "unavailable"
+    return f"{directory}/{file}.jpg"
 
 def remove_new_lines(data):
     return str(data).replace('\\n', '').replace('\\N', '')
@@ -74,7 +89,7 @@ def display_product_search(query, documents):
     display(HTML(rendered_html))
     
 def render_search_results(query, results):
-    search_results_template_file = os.path.join("../../data/retrotech/templates/", "search-results.html")
+    search_results_template_file = os.path.join("data/retrotech/templates/", "search-results.html")
     with open(search_results_template_file) as file:
         file_content = file.read()
 
