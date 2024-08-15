@@ -1,7 +1,8 @@
 def product_search_request(query, param_overrides={}):
     request = {"query": query,
                "query_fields": ["name", "manufacturer", "long_description"],
-               "return_fields": ["upc", "name", "manufacturer", "score"],
+               "return_fields": ["upc", "name", "manufacturer",
+                                 "short_description", "score"],
                "limit": 5,
                "order_by": [("score", "desc"), ("upc", "asc")]}
     return request | param_overrides
