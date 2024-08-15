@@ -128,9 +128,22 @@ def fetch_products(doc_ids):
     return df
 
 def render_judged(products, judged, grade_col='ctr', label=""):
-    """ Render the computed judgments alongside the productns and description data"""
+    """ Render the computed judgments alongside the products and description data"""
     w_prods = judged.merge(products, left_on='doc_id', right_on='upc', how='left')
 
-    w_prods = w_prods[[grade_col, 'image', 'upc', 'name', 'short_description']]
+    style = """
+        <style>img {width:125px; height:125px; }
+               tr {font-size:24px; text-align:left; font-weight:normal; }
+               td {padding-right:40px; text-align:left; }
+               th {font-size:28px; text-align:left; }
+               th:nth-child(4) {width:125px; }</style>"""
+    w_prods = w_prods[[grade_col, 'upc', 'image', 'name']][:5]
+    return HTML(style + 
+                f"<h1>{label}</h>" + w_prods.to_html(float_format=lambda x: '%10.4f' % x,
+                                                     escape=False))
 
-    return HTML(f"<h1>{label}</h1>" + w_prods.to_html(escape=False))
+#def print_s(series_data, column):
+    ##pandas.set_option("display.width", 76)
+    #dataframe = series_data.to_frame(name=column).sort_values(column, ascending=False)
+    #merged = dataframe.merge(products, left_on='doc_id', right_on='upc', how='left')
+    #print(merged.rename(columns={"upc": "doc_id"})[["doc_id", column, "name"]].set_index("doc_id"))

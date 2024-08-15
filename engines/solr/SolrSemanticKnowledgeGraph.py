@@ -6,7 +6,7 @@ def generate_request_root():
         "limit": 0,
         "params": {
             "q": "*:*",
-            "fore": "{!type=$defType v=$q}",
+            "fore": "{!${defType} v=$q}",
             "back": "*:*",
             "defType": "edismax"
         },
@@ -18,7 +18,7 @@ def generate_facets(name=None, values=None, field=None,
                     min_popularity=None, default_operator="AND"):
     base_facet = {"type": "query" if values else "terms",
                   "limit": limit if limit else 10,
-                  "sort": { "relatedness": "desc" },
+                  "sort": {"relatedness": "desc" },
                   "facet": {
                       "relatedness": {
                           "type": "func",
