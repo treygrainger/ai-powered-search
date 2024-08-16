@@ -1,8 +1,9 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
 
-def from_csv(file, more_opts=False):
-    print(f"Loading {file}")
+def from_csv(file, more_opts=False, log=True):    
+    if log:
+        print(f"Loading {file}")
     spark = SparkSession.builder.appName("AIPS").getOrCreate()
     reader = spark.read.format("csv").option("header", "true").option("inferSchema", "true")
     if more_opts:
@@ -13,8 +14,11 @@ def from_csv(file, more_opts=False):
         # If we do it, comment out previous line
         # .withColumn("id", concat(col("category"), lit("_") col("id")))
         dataframe = dataframe.withColumn("category", lit(more_opts.get("category"))).drop("id")
-    print("Schema: ")
-    dataframe.printSchema()
+    
+    if log:
+        print("Schema: ")
+        dataframe.printSchema()
+
     return dataframe
 
 def from_sql(query, spark=None):
