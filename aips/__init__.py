@@ -109,7 +109,6 @@ def render_search_results(query, results):
             image_url = img_path_for_upc(result)
             rendered += results_template.replace("${NAME}", result.get("name", "UNKNOWN")) \
                 .replace("${MANUFACTURER}", result.get("manufacturer", "UNKNOWN")) \
-                .replace("${DESCRIPTION}", remove_new_lines(result.get("short_description", ""))) \
                 .replace("${IMAGE_URL}", image_url)
 
             rendered += separator_template
