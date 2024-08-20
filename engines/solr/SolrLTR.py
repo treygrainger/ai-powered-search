@@ -135,12 +135,22 @@ class SolrLTR(LTR):
     def search_with_model(self, model_name, **search_args):
         parser_type = "edismax"
         log = search_args.get("log", False)
-        query = search_args.get("query", "*")
+        rerank_count = search_args.get("rerank_count", 9999999)
         return_fields = search_args.get("return_fields", ["upc", "name", "manufacturer",
-                                                          "short_description", "long_description"])
-        if "rerank" not in search_args:
-            parser_type = "lucene"
-            query = "{" + f'!ltr reRankDocs=60000 model={model_name} efi.keywords="{query}"' + "}"
+                                                          "short_description", "long_description"])         
+        
+        rerank_query = search_args.get("rerank_query", None)
+        query = search_args.get("query", None)
+        if query:
+            if not rerank_query:
+                parser_type = "lucene"   
+                query = "{" + f'!ltr reRankDocs={rerank_count} model={model_name} efi.keywords="{query}"' + "}"
+        else:
+            value = rerank_query if rerank_query else query
+            query = "{" + f'!ltr reRankDocs={rerank_count} model={model_name} efi.keywords="{value}"' + "}"
+            if rerank_query:                
+                rerank_query = None
+
         request = {
             "query": query,
             "limit": search_args.get("limit", 5),
@@ -149,23 +159,15 @@ class SolrLTR(LTR):
         }
         if "query_fields" in search_args:
             request["params"]["qf"] = search_args["query_fields"]
-        if "rerank" in search_args:
-            fuzzy_kws = "~" + " ~".join(query.split())
-            squeezed_kws = "".join(query.split())
-            rerank_query = (
-                "{!ltr reRankDocs=" + str(search_args["rerank"]) + " reRankWeight=10.0 model=" 
-                    + model_name +" efi.fuzzy_keywords=\"" + fuzzy_kws +
-                    "\" " + "efi.squeezed_keywords=\"" + squeezed_kws + "\" " +
-                    "efi.keywords=\"" + query + "\"}")
-            request["params"]["rq"] = rerank_query
+        if rerank_query:
+            rq = "{" + f'!ltr reRankDocs={rerank_count} model={model_name} efi.keywords="{rerank_query}"' + "}"
+            request["params"]["rq"] = rq
 
         if log: print(f"search_with_model() request: {request}")
         response = self.collection.native_search(request)            
         if log: print(f"search_with_model() response: {response}")
 
-        docs = response["response"]["docs"]
-        for rank, result in enumerate(docs):
-            result["rank"] = rank            
+        docs = response["response"]["docs"]    
         return {"docs": docs}
     
     def enable_ltr(self, collection):
