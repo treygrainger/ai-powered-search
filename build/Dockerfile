@@ -9,8 +9,6 @@ ENV PIP_CACHE_DIR=/var/cache/pip
 RUN mkdir -p $PIP_CACHE_DIR
 RUN --mount=type=cache,target=$PIP_CACHE_DIR python -m pip install --upgrade pip
 RUN conda install -c pytorch faiss-cpu=1.8.0
-#RUN cmake -B build .
-#RUN make -C build -j faiss
 
 # Spark dependencies
 ENV SPARK_SOLR_VERSION=4.0.2
