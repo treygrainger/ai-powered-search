@@ -72,7 +72,7 @@ class SolrCollection(Collection):
                     query = str(value["query"])
                     request["params"]["rq"] = rq
                     request["params"]["rq_query"] = "{!knn f=" + query_field + " topK=" + k + "}" + query
-                case "quantization_size":
+                case "quantization_type":
                     pass
                 case "query_fields":
                     request["params"]["qf"] = value
