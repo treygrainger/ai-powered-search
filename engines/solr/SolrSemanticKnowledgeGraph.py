@@ -6,7 +6,7 @@ def generate_request_root():
         "limit": 0,
         "params": {
             "q": "*:*",
-            "fore": "{!type=$defType v=$q}",
+            "fore": "{!${defType} v=$q}",
             "back": "*:*",
             "defType": "edismax"
         },
@@ -18,7 +18,7 @@ def generate_facets(name=None, values=None, field=None,
                     min_popularity=None, default_operator="AND"):
     base_facet = {"type": "query" if values else "terms",
                   "limit": limit if limit else 10,
-                  "sort": { "relatedness": "desc" },
+                  "sort": {"relatedness": "desc" },
                   "facet": {
                       "relatedness": {
                           "type": "func",
@@ -52,7 +52,7 @@ def validate_skg_request_input(multi_node):
     if "field" not in multi_node: # and "values" in multi_node
         raise ValueError("'field' must be provided")
 
-def generate_request(*multi_nodes):
+def transform_request(*multi_nodes):
     """Generates a faceted Solr SKG request from a set of multi-nodes. 
     A multi-node can be a single node or a collection of nodes.
     A node can contain the following params: `name`, `values`, `field`, `min_occurance` and `limit`.
@@ -121,9 +121,9 @@ class SolrSemanticKnowledgeGraph(SemanticKnowledgeGraph):
         super().__init__(collection)
 
     def traverse(self, *multi_nodes):
-        request = self.generate_request(*multi_nodes)
+        request = self.transform_request(*multi_nodes)
         response = self.collection.native_search(request)
         return {"graph": transform_response_facet(response["facets"], request["params"])}
     
-    def generate_request(self, *multi_nodes):
-        return generate_request(*multi_nodes)
+    def transform_request(self, *multi_nodes):
+        return transform_request(*multi_nodes)

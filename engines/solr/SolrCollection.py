@@ -65,8 +65,8 @@ class SolrCollection(Collection):
                 case "query":
                     request["query"] = value if value else "*:*"
                 case "rerank_query":
-                    rerank_quantity = value.pop("rerank_quantity", 500)
-                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={rerank_quantity} reRankWeight=1' + "}"
+                    rerank_count = value.pop("rerank_count", 500)
+                    rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={rerank_count} reRankWeight=1' + "}"
                     k = str(value.pop("k", 10))
                     query_field = value["query_fields"][0]
                     query = str(value["query"])
@@ -92,9 +92,11 @@ class SolrCollection(Collection):
                 case "min_match":
                     request["params"]["mm"] = value
                 case "query_boosts":
-                    request["params"]["boost"] = "sum(1,query($boost_query))"
+                    clause = "$boost_query"
                     if isinstance(value, tuple):
-                        value = f"{value[0]}:({value[1]})"
+                        clause = "{" + f"! df={value[0]} v=$boost_query" + "}"
+                        value = value[1]
+                    request["params"]["boost"] = f"sum(1,query({clause}))"
                     request["params"]["boost_query"] = value
                 case "index_time_boost":
                     request["params"]["boost"] = f'payload({value[0]}, "{value[1]}", 1, first)'
