@@ -10,7 +10,7 @@ class SemanticKnowledgeGraph(ABC):
         pass
 
     @abstractmethod    
-    def generate_request(self, *nodes):
+    def transform_request(self, *nodes):
         """
         Generates a semantic knowledge graph request from a list of nodes, or multi-nodes
         A node can contain the following params: `name`, `values`, `field`, `min_occurance` and `limit`.

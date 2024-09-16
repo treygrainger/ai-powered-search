@@ -25,5 +25,5 @@ sentence-transformers==2.2.2
 staticmap==0.5.7
 openai-clip==1.0.1
 setuptools==69.5.1
-spladerunner==0.1.5
+#spladerunner==0.1.5 - Commented out until M.2 Issue is solved or avoided for onnxruntime-gpu
 numpy==1.23.5

@@ -27,11 +27,8 @@ def plot_judgments(qids, xlabel, ylabel, judg_list, focus=None,
         # Make a random set of colors per query
         colors = [[r*0.1,g*0.1,b*0.1,out_of_focus_alpha] for r,g,b in product(r,g,b)]
         shuffle(colors)
-    else: # These are intentionally looking different
-        max_c = 0.4
-        colors = [[0,max_c,0,out_of_focus_alpha],
-                  [max_c,0,0,out_of_focus_alpha],
-                  [0,0,max_c,out_of_focus_alpha]]
+    else: 
+        colors = ["lightgreen", "maroon"]
 
     qid_col=predictors[:,1]
     qid_idxs=numpy.array([])
@@ -47,13 +44,13 @@ def plot_judgments(qids, xlabel, ylabel, judg_list, focus=None,
         x_qidA
         y_qidA = predictors[qid_idxs, 0]
         color = colors[idx]
-        if qid in focus:
-            color[3] = in_focus_alpha
         for grade in [1,0]:
             this_grade=numpy.argwhere(y_qidA==grade)
             path = pl.scatter(x_qidA[this_grade,0],
                               x_qidA[this_grade,1],
                                marker=markers[grade],
+                               linewidth=1,
+                               s=80.0,
                                facecolors=color,
                                edgecolors=color,
                                norm=norm)
