@@ -3,12 +3,7 @@ FROM jupyter/pyspark-notebook:spark-3.3.1
 USER root
 
 # Install gcc, c++, and related dependencies needed for pip to build some python dependencies
-RUN sudo apt-get -y update && apt-get install -y --reinstall apt-file swig vim autoconf build-essential gcc cargo && rm -rf /var/lib/apt/lists/ 
-ENV BLIS_ARCH="generic" 
-ENV PIP_CACHE_DIR=/var/cache/pip
-RUN mkdir -p $PIP_CACHE_DIR
-RUN --mount=type=cache,target=$PIP_CACHE_DIR python -m pip install --upgrade pip
-RUN conda install -c pytorch faiss-cpu=1.8.0
+RUN sudo apt-get -y update && apt-get install -y --reinstall build-essential gcc cargo && rm -rf /var/lib/apt/lists/ 
 
 # Spark dependencies
 ENV SPARK_SOLR_VERSION=4.0.2
@@ -24,7 +19,11 @@ WORKDIR /home/$NB_USER
 
 # Install Python dependencies
 COPY build/requirements.txt ./
+ENV BLIS_ARCH="generic" 
+ENV PIP_CACHE_DIR=/var/cache/pip
+RUN mkdir -p $PIP_CACHE_DIR
 RUN --mount=type=cache,target=$PIP_CACHE_DIR \
+    python -m pip install --upgrade pip && \
     pip install -r requirements.txt && \
     python -m spacy download en_core_web_sm
 RUN rm requirements.txt   
