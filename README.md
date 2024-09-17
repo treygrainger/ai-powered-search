@@ -1,6 +1,6 @@
 # AI-Powered Search
 
-Code examples for the book [_AI-Powered Search_](https://aipowerersearch.com) by [Trey Grainger](https://www.linkedin.com/in/treygrainger/), [Doug Turnbull](https://www.linkedin.com/in/softwaredoug/), and [Max Irwin](https://www.linkedin.com/in/maxirwin/). Published by [Manning Publications](https://www.manning.com).
+Code examples for the book [_AI-Powered Search_](https://aipoweredsearch.com) by [Trey Grainger](https://www.linkedin.com/in/treygrainger/), [Doug Turnbull](https://www.linkedin.com/in/softwaredoug/), and [Max Irwin](https://www.linkedin.com/in/maxirwin/). Published by [Manning Publications](https://www.manning.com).
 
 <br/>
 
@@ -9,7 +9,7 @@ src="https://aipoweredsearch.com/images/book-cover.jpg?origin=code-readme"
 width="250px"></a>
 
 ## Book Overview
-[_AI-Powered Search_](https://aipowerersearch.com) teaches you the latest machine learning techniques to build search engines that continuously learn from your users and your content to drive more domain-aware and intelligent search.
+[_AI-Powered Search_](https://aipoweredsearch.com) teaches you the latest machine learning techniques to build search engines that continuously learn from your users and your content to drive more domain-aware and intelligent search.
 
 Search engine technology is rapidly evolving, with Artificial Intelligence (AI) driving much of that innovation. Crowdsourced relevance and the integration of large language models (LLMs) like GPT and other foundation models are massively accelerating the capabilities and expectations of search technology.
 
