@@ -96,6 +96,8 @@ class OpenSearchCollection(Collection):
                     request["params"]["boost"] = f'payload({value[0]}, "{value[1]}", 1, first)'
                 case "explain":
                     request["explain"] = value
+                case "ext":
+                    request["ext"] = value
                 case "hightlight":
                     request["highlight"] = {"fields": {value: {}}}
                 case _:

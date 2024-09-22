@@ -29,7 +29,8 @@ def keyword_field():
 
 
 # {"multiValued": "true", "docValues": "true"}
-
+def date_field():
+    return base_field("date")
 
 def string_field():
     return base_field("string")
@@ -161,8 +162,7 @@ SCHEMAS = {
             "release_year": double_field(),
         }
     ),
-    "outdoors": basic_schema(
-        {
+    "outdoors": basic_schema({
             "post_type": string_field(),
             "accepted_answer_id": integer_field(),
             "parent_id": integer_field(),
@@ -194,4 +194,19 @@ SCHEMAS = {
     "outdoors_with_embeddings": dense_vector_schema(
         "image_embedding", 728, "dot_product", "FLOAT32", {"title": text_field()}
     ),
+    "ubi_queries": basic_schema({
+        "timestamp": date_field(), # signal_time
+        "query_id": keyword_field(),
+        "client_id": text_field()
+    }),
+    "ubi_events": basic_schema({
+        "application": text_field(),
+        "action_name": text_field(),
+        "query_id": keyword_field(), #linked, linked to queries.query_id
+        "client_id": text_field(), #the user, linked to queries.client_id 
+        "timestamp": date_field(), # signal_time
+        "message_type": text_field(), # type
+        "message": text_field(),
+        #"event_attributes": {}
+    }),
 }
