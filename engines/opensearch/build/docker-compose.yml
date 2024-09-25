@@ -1,6 +1,9 @@
 services:
+
   opensearch-node1:
-    image: opensearchproject/opensearch:2.5.0
+    build:
+      context: ./engines/opensearch/build/
+      dockerfile: engine-Dockerfile
     container_name: opensearch-node1
     hostname: aips-opensearch
     environment:
@@ -35,8 +38,9 @@ services:
     expose:
       - "5601"
     environment:
-      - OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
-      - plugins.security.disabled: true
+      OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
+      OPENSEARCH_USERNAME: ''
+      OPENSEARCH_PASSWORD: ''
     networks:
       - opensearch-network
 
