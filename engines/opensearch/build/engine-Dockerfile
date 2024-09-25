@@ -32,8 +32,7 @@ RUN groupadd -g $GID opensearch && \
     adduser -u $UID -g $GID -d $OPENSEARCH_HOME opensearch && \
     mkdir $TEMP_DIR
 
-RUN mkdir /usr/share/elasticsearch
-WORKDIR /usr/share/elasticsearch
+WORKDIR /usr/share/opensearch
 
 RUN set -eux ; \
     cur_arch="" ; \
@@ -96,6 +95,8 @@ RUN bin/opensearch-plugin install file:/usr/share/opensearch/$OPENSEARCH_UBI_PLU
 # Enable security plugin during image build, and allow user to disable during startup of the container
 ARG DISABLE_INSTALL_DEMO_CONFIG=true
 ARG DISABLE_SECURITY_PLUGIN=false
+RUN chown -R $UID:$UID ./
+RUN chmod u+x opensearch-onetime-setup.sh
 RUN ./opensearch-onetime-setup.sh
 
 EXPOSE 9200 9300 9600 9650
