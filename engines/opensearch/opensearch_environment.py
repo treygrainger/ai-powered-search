@@ -19,22 +19,18 @@ def boolean_field():
 def double_field():
     return base_field("double")
 
-
 def integer_field():
     return base_field("integer")
 
-
-def keyword_field():
-    return base_field("text")
-
+def keyword_field(**kwargs):
+    return base_field("keyword", **kwargs)
 
 # {"multiValued": "true", "docValues": "true"}
 def date_field():
     return base_field("date")
 
-def string_field():
-    return base_field("string")
-
+def string_field(**kwargs):
+    return base_field("string", **kwargs)
 
 def basic_schema(field_mappings, id_field="_id"):
     return {
@@ -135,8 +131,8 @@ SCHEMAS = {
         {
             "id": text_field(),
             "title": text_field(),
-            "description": text_field()
-            | {"similarity": "BM25", "discount_overlaps": False},
+            "description": text_field() | {"similarity": "BM25",
+                                           "discount_overlaps": False},
         },
         "id",
     ),
@@ -147,6 +143,13 @@ SCHEMAS = {
             "company_country": text_field(),
             "job_description": text_field(),
             "company_description": text_field(),
+        }
+    ),
+    "signals_boosting": basic_schema(
+        {
+            "query": keyword_field(),
+            "doc": text_field(),
+            "boost": integer_field()
         }
     ),
     "stackexchange": body_title_schema(),
