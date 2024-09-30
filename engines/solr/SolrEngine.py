@@ -16,7 +16,7 @@ class SolrEngine(Engine):
         print("Status: Success" if response["responseHeader"]["status"] == 0 else
               f"Status: Failure; Response:[ {response} ]" )
 
-    def create_collection(self, name):
+    def create_collection(self, name, log=False):
         collection = self.get_collection(name)
         wipe_collection_params = [("action", "delete"),
                                   ("name", name)]
@@ -30,15 +30,16 @@ class SolrEngine(Engine):
                                     ("replicationFactor", 1)]
         print(f'Creating "{name}" collection')
         response = requests.post(SOLR_COLLECTIONS_URL + "?commit=true", data=create_collection_params).json()
-        
-        self.apply_schema_for_collection(collection)
+        if log:
+            display(response)
+        self.apply_schema_for_collection(collection, log=log)
         self.print_status(response)
         return collection
     
     def get_collection(self, name):
         return SolrCollection(name)
     
-    def apply_schema_for_collection(self, collection):
+    def apply_schema_for_collection(self, collection, log=False):
         match collection.name:
             case "cat_in_the_hat":
                 self.set_search_defaults(collection)
@@ -107,6 +108,11 @@ class SolrEngine(Engine):
             case "outdoors_with_embeddings":
                 self.upsert_text_field(collection, "title")
                 self.add_vector_field(collection, "title_embedding", 768, "dot_product")
+            case "outdoors_quantization":
+                self.upsert_text_field(collection, "title")
+                self.upsert_text_field(collection, "body")
+                self.add_vector_field(collection, "text_embedding", 1024, "dot_product")
+                self.add_vector_field(collection, "binary_text_embedding", 1024, "euclidean", "BYTE")
             case "reviews":
                 self.upsert_text_field(collection, "content")
                 self.add_delimited_field_type(collection, "commaDelimited", ",\s*")
