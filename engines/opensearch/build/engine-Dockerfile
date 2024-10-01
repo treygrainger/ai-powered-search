@@ -97,6 +97,7 @@ ARG DISABLE_INSTALL_DEMO_CONFIG=true
 ARG DISABLE_SECURITY_PLUGIN=false
 RUN chown -R $UID:$UID ./
 RUN chmod u+x opensearch-onetime-setup.sh
+RUN chmod u+x opensearch-docker-entrypoint.sh
 RUN ./opensearch-onetime-setup.sh
 
 EXPOSE 9200 9300 9600 9650
