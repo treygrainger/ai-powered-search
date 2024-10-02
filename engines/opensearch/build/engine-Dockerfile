@@ -62,11 +62,13 @@ ARG UBI_PLUGIN_FILE=opensearch-ubi-plugin-$UBI_VERSION.zip
 ARG UBI_PLUGIN_URL=https://github.com/o19s/opensearch-ubi/releases/download/release-$UBI_VERSION/$UBI_PLUGIN_FILE
 
 ARG LTR_EXT_FILE=ltr-2.14.0-os2.14.0.zip
-RUN pwd
-RUN ls
-RUN cd bin && ls
 COPY $LTR_EXT_FILE ./
-COPY --chown=$UID:$UID --chmod=u+x ./*.sh $OPENSEARCH_HOME/
+COPY --chown=$UID:$UID --chmod=u+x ./*.sh $OPENSEARCH_HOME
+
+ARG DISABLE_SECURITY_PLUGIN=false
+RUN chown -R $UID:$UID ./
+RUN chmod u+x opensearch-onetime-setup.sh
+RUN chmod u+x opensearch-docker-entrypoint.sh
 RUN ./opensearch-onetime-setup.sh
 RUN bin/opensearch-plugin install $UBI_PLUGIN_URL --batch
 RUN bin/opensearch-plugin install $LTR_EXT_FILE --batch
