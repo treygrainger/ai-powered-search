@@ -202,7 +202,7 @@ SCHEMAS = {
         "query_id": keyword_field(),
         "client_id": text_field()
     }),
-    "ubi_events": basic_schema({
+    "ubi_aips_events": basic_schema({
         "application": text_field(),
         "action_name": text_field(),
         "query_id": keyword_field(), #linked, linked to queries.query_id

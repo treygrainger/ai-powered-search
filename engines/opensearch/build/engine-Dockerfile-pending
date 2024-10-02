@@ -1,0 +1,73 @@
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# This dockerfile generates an AmazonLinux-based image containing an OpenSearch installation.
+# It assumes that the working directory contains these files: an OpenSearch tarball (opensearch.tgz), log4j2.properties, opensearch.yml, opensearch-docker-entrypoint.sh, opensearch-onetime-setup.sh.
+# Build arguments:
+#   VERSION: Required. Used to label the image.
+#   UID: Optional. Specify the opensearch userid. Defaults to 1000.
+#   GID: Optional. Specify the opensearch groupid. Defaults to 1000.
+#   OPENSEARCH_HOME: Optional. Specify the opensearch root directory. Defaults to /usr/share/opensearch.
+########################### Stage 0 ########################
+FROM amazonlinux:2 AS linux_stage_0
+
+ARG UID=1000
+ARG GID=1000
+ARG OPENSEARCH_HOME=/usr/share/opensearch
+ARG OS_VERSION=2.14.0
+
+
+RUN yum update -y && yum install -y tar gzip shadow-utils which && yum clean all
+RUN groupadd -g $GID opensearch && adduser -u $UID -g $GID -d $OPENSEARCH_HOME opensearch
+
+WORKDIR $OPENSEARCH_HOME
+
+RUN set -eux ; \
+    CPU_ARCH=`case "$(arch)" in aarch64) echo 'arm64' ;; x86_64) echo 'x64' ;; *) echo "Invalid cpu arcitechture" ; exit 1 ;; esac` ; \
+    tar_file=https://artifacts.opensearch.org/releases/bundle/opensearch/$OS_VERSION/opensearch-$OS_VERSION-linux-$CPU_ARCH.tar.gz && \
+    curl --retry 10 -S -L --create-dirs --output /tmp/opensearch/opensearch.tar.gz ${tar_file}; \
+    curl --output /tmp/opensearch/opensearch.pgp https://artifacts.opensearch.org/publickeys/opensearch.pgp; \
+    gpg --import https://artifacts.opensearch.org/publickeys/opensearch.pgp; \
+    curl --output /tmp/opensearch/opensearch.tar.gz.sig ${tar_file}.sig; \
+    gpg --verify /tmp/opensearch/opensearch.tar.gz.sig /tmp/opensearch/opensearch.tar.gz;
+
+RUN tar --warning=no-timestamp -zxf /tmp/opensearch/opensearch.tar.gz -C $OPENSEARCH_HOME --strip-components=1 && \
+    mkdir -p $OPENSEARCH_HOME/data && chown -Rv $UID:$GID $OPENSEARCH_HOME/data && \
+    chmod -f 750 $OPENSEARCH_HOME/plugins/opensearch-security/tools/* && \
+    rm -rf /tmp/opensearch
+
+#COPY config/* $OPENSEARCH_PATH_CONF/
+COPY ./performance-analyzer.properties $OPENSEARCH_HOME/config/opensearch-performance-analyzer/
+#RUN if [[ -d $PERFORMANCE_ANALYZER_PLUGIN_CONFIG_DIR ]] ; then mv $OPENSEARCH_PATH_CONF/performance-analyzer.properties $PERFORMANCE_ANALYZER_PLUGIN_CONFIG_DIR/ ; fi
+
+RUN echo "export JAVA_HOME=$OPENSEARCH_HOME/jdk" >> /etc/profile.d/java_home.sh && \
+    echo "export PATH=\$PATH:\$JAVA_HOME/bin" >> /etc/profile.d/java_home.sh
+ENV JAVA_HOME=$OPENSEARCH_HOME/jdk
+ENV PATH=$PATH:$JAVA_HOME/bin:$OPENSEARCH_HOME/bin
+ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$OPENSEARCH_HOME/plugins/opensearch-knn/lib"
+USER $UID
+
+ARG DISABLE_INSTALL_DEMO_CONFIG=true
+ARG DISABLE_SECURITY_PLUGIN=true
+
+ARG PLUGIN_VERSION=v0.0.12.1-os2.14.0
+ARG UBI_PLUGIN_FILE=opensearch-ubi-plugin-$PLUGIN_VERSION.zip
+ARG UBI_PLUGIN_URL=https://github.com/o19s/opensearch-ubi/releases/download/release-$PLUGIN_VERSION/$UBI_PLUGIN_FILE
+
+ARG LTR_EXT_FILE=ltr-2.14.0-os2.14.0.zip
+COPY $LTR_EXT_FILE ./
+RUN bin/opensearch-plugin install $UBI_PLUGIN_URL --batch
+RUN bin/opensearch-plugin install $LTR_EXT_FILE --batch
+COPY --chown=$UID:$UID --chmod=u+x ./*.sh $OPENSEARCH_HOME/
+RUN ./opensearch-onetime-setup.sh
+
+EXPOSE 9200 9300 9600 9650
+LABEL org.label-schema.schema-version="1.0" \
+      org.label-schema.name="opensearch" \
+      org.label-schema.version="$OS_VERSION" \
+      org.label-schema.url="https://opensearch.org" \
+      org.label-schema.vcs-url="https://github.com/OpenSearch" \
+      org.label-schema.license="Apache-2.0" \
+      org.label-schema.vendor="OpenSearch"
+ENTRYPOINT ["./opensearch-docker-entrypoint.sh"]
+CMD ["opensearch"]

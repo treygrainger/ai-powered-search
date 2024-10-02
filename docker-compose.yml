@@ -59,16 +59,18 @@ services:
       - cluster.name=opensearch-cluster
       - node.name=opensearch-node1
       - discovery.type=single-node
-      - plugins.security.disabled=true
+      - network.host=0.0.0.0
+      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=''"
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
+      - "DISABLE_SECURITY_PLUGIN=true"
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
     ulimits:
       memlock:
         soft: -1
         hard: -1
       nofile:
-        soft: 65536 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
-        hard: 65536
+        soft: 262114 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
+        hard: 262114
     volumes:
       - opensearch-data:/usr/share/opensearch/data
     ports:
@@ -85,11 +87,10 @@ services:
     ports:
       - 5601:5601
     expose:
-      - "5601"
+      - 5601:5601
     environment:
-      OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
-      OPENSEARCH_USERNAME: ''
-      OPENSEARCH_PASSWORD: ''
+      - 'OPENSEARCH_HOSTS=["http://opensearch-node1:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"
     networks:
       - opensearch-network
 
