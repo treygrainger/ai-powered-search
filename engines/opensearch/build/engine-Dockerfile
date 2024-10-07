@@ -63,7 +63,8 @@ COPY *.properties $OPENSEARCH_HOME/config/
 ARG ANALYZER_DIR=$OPENSEARCH_HOME/config/opensearch-performance-analyzer/
 RUN [ ! -d $ANALYZER_DIR ] || mv $OPENSEARCH_HOME/config/performance-analyzer.properties $ANALYZER_DIR
 COPY --chown=$UID:$UID --chmod=u+x *.sh $OPENSEARCH_HOME/
-RUN chown -R $UID::GID $OPENSEARCH_HOME
+RUN chown -R $UID:$GID $OPENSEARCH_HOME
+RUN chmod u+x *.sh
 RUN ./opensearch-onetime-setup.sh
 
 EXPOSE 9200 9300 9600 9650
