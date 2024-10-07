@@ -9,50 +9,44 @@ ARG GID=1000
 ARG BUILDARCH
 
 RUN yum update -y && yum install -y tar gzip shadow-utils which && yum clean all
-RUN mkdir $OPENSEARCH_HOME /tmp/build/
+RUN mkdir /tmp/build/
+RUN mkdir $OPENSEARCH_HOME
 RUN groupadd -g $GID os_group && adduser -g $GID -u $UID -b $OPENSEARCH_HOME opensearch
 
 WORKDIR /tmp/build/
 RUN pwd
-RUN set -eux && BUILDARCH=$(echo $BUILDARCH | sed 's/amd64/x64/' -) && \
+ENV DISTRO_CACHE_DIR=/var/cache/pip
+RUN mkdir -p $DISTRO_CACHE_DIR
+RUN --mount=type=cache,target=$DISTRO_CACHE_DIR \
+    set -eux && BUILDARCH=$(echo $BUILDARCH | sed 's/amd64/x64/' -) && \
     OS_DISTRO_FILE=opensearch-${OS_VERSION}-linux-${BUILDARCH}.tar.gz && \
     OS_DISTRO_URL=https://artifacts.opensearch.org/releases/bundle/opensearch/${OS_VERSION}/${OS_DISTRO_FILE} && \
-    curl -O $OS_DISTRO_URL -O $OS_DISTRO_URL.sig -O https://artifacts.opensearch.org/publickeys/opensearch.pgp && \
+    curl -O $OS_DISTRO_URL -O $OS_DISTRO_URL.sig && \
     curl https://artifacts.opensearch.org/publickeys/opensearch.pgp | gpg --import && \
-    gpg --verify $OS_DISTRO_FILE.sig $OS_DISTRO_FILE
-
-RUN tar --warning=no-timestamp -zxf /tmp/build/$OS_DISTRO_FILE -C $OPENSEARCH_HOME/ --strip-components=1 && \
+    gpg --verify $OS_DISTRO_FILE.sig $OS_DISTRO_FILE && \
+    tar --warning=no-timestamp -zxf /tmp/build/$OS_DISTRO_FILE -C $OPENSEARCH_HOME --strip-components=1 && \
     install -d -m 750 -o $UID -g $GID $OPENSEARCH_HOME/data/
-
-COPY *.sh $OPENSEARCH_HOME/
-COPY *.properties $OPENSEARCH_HOME/config/
-ARG ANALYZER_DIR=$OPENSEARCH_HOME/config/opensearch-performance-analyzer/
-RUN [ ! -d $ANALYZER_DIR ] || mv $OPENSEARCH_HOME/config/performance-analyzer.properties $ANALYZER_DIR
 
 ########################### Stage 1 ########################
 # Copy working directory to the actual release docker images
 FROM amazonlinux:2
 
-ARG UID GID OS_VERSION OPENSEARCH_HOME TEMP_DIR BUILDARCH
+ENV OS_VERSION=2.14.0
+ARG OPENSEARCH_HOME=/usr/share/opensearch
+ARG UID=1000
+ARG GID=1000
+ARG BUILDARCH
+
 RUN yum update -y && yum install -y tar gzip shadow-utils which && yum clean all
 
-#RUN groupadd -g $GID opensearch && \
-#    adduser -u $UID -g $GID -d $OPENSEARCH_HOME opensearch
-
-# Copy from Stage0
 WORKDIR $OPENSEARCH_HOME
 COPY --from=linux_stage_0 --chown=$UID:$UID $OPENSEARCH_HOME $OPENSEARCH_HOME
-
-# Set $JAVA_HOME
 RUN echo "export JAVA_HOME=$OPENSEARCH_HOME/jdk" >> /etc/profile.d/java_home.sh && \
     echo "export PATH=\$PATH:\$JAVA_HOME/bin" >> /etc/profile.d/java_home.sh
 ENV JAVA_HOME=$OPENSEARCH_HOME/jdk
 ENV PATH=$PATH:$JAVA_HOME/bin:$OPENSEARCH_HOME/bin
-
-# Add k-NN lib directory to library loading path variable
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$OPENSEARCH_HOME/plugins/opensearch-knn/lib"
 
-# Change user
 USER $UID
 
 ARG DISABLE_INSTALL_DEMO_CONFIG=true
@@ -60,16 +54,17 @@ ARG DISABLE_SECURITY_PLUGIN=true
 ARG UBI_VERSION=v0.0.12.1-os2.14.0
 ARG UBI_PLUGIN_FILE=opensearch-ubi-plugin-$UBI_VERSION.zip
 ARG UBI_PLUGIN_URL=https://github.com/o19s/opensearch-ubi/releases/download/release-$UBI_VERSION/$UBI_PLUGIN_FILE
-
-ARG LTR_EXT_FILE=ltr-2.14.0-os2.14.0.zip
-RUN pwd
-RUN ls
-RUN cd bin && ls
-COPY $LTR_EXT_FILE ./
-COPY --chown=$UID:$UID --chmod=u+x ./*.sh $OPENSEARCH_HOME/
-RUN ./opensearch-onetime-setup.sh
 RUN bin/opensearch-plugin install $UBI_PLUGIN_URL --batch
-RUN bin/opensearch-plugin install $LTR_EXT_FILE --batch
+
+#ARG LTR_PLUGIN_FILE=ltr-2.14.0-os2.14.0.zip
+#COPY $LTR_PLUGIN_FILE .
+#RUN bin/opensearch-plugin install $OPENSEARCH_HOME/$LTR_PLUGIN_FILE --batch
+
+COPY --chown=$UID:$UID --chmod=u+x *.sh $OPENSEARCH_HOME/
+RUN ./opensearch-onetime-setup.sh
+COPY *.properties $OPENSEARCH_HOME/config/
+ARG ANALYZER_DIR=$OPENSEARCH_HOME/config/opensearch-performance-analyzer/
+RUN [ ! -d $ANALYZER_DIR ] || mv $OPENSEARCH_HOME/config/performance-analyzer.properties $ANALYZER_DIR
 
 EXPOSE 9200 9300 9600 9650
 
