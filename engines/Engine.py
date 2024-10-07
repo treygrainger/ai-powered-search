@@ -23,8 +23,3 @@ class Engine(ABC):
     def get_collection(self, name):
         "Returns initialized object for a given collection"
         pass
-    
-    @abstractmethod
-    def apply_schema_for_collection(self, collection):
-        "Applies the appriorate schema for a given collection"
-        pass
