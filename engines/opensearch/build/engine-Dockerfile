@@ -17,8 +17,7 @@ WORKDIR /tmp/build/
 RUN pwd
 ENV DISTRO_CACHE_DIR=/var/cache/pip
 RUN mkdir -p $DISTRO_CACHE_DIR
-RUN --mount=type=cache,target=$DISTRO_CACHE_DIR \
-    set -eux && BUILDARCH=$(echo $BUILDARCH | sed 's/amd64/x64/' -) && \
+RUN set -eux && BUILDARCH=$(echo $BUILDARCH | sed 's/amd64/x64/' -) && \
     OS_DISTRO_FILE=opensearch-${OS_VERSION}-linux-${BUILDARCH}.tar.gz && \
     OS_DISTRO_URL=https://artifacts.opensearch.org/releases/bundle/opensearch/${OS_VERSION}/${OS_DISTRO_FILE} && \
     curl -O $OS_DISTRO_URL -O $OS_DISTRO_URL.sig && \
@@ -56,15 +55,15 @@ ARG UBI_PLUGIN_FILE=opensearch-ubi-plugin-$UBI_VERSION.zip
 ARG UBI_PLUGIN_URL=https://github.com/o19s/opensearch-ubi/releases/download/release-$UBI_VERSION/$UBI_PLUGIN_FILE
 RUN bin/opensearch-plugin install $UBI_PLUGIN_URL --batch
 
-#ARG LTR_PLUGIN_FILE=ltr-2.14.0-os2.14.0.zip
-#COPY $LTR_PLUGIN_FILE .
-#RUN bin/opensearch-plugin install $OPENSEARCH_HOME/$LTR_PLUGIN_FILE --batch
+ARG LTR_PLUGIN_FILE=ltr-2.14.0-os2.14.0.zip
+COPY $LTR_PLUGIN_FILE .
+RUN bin/opensearch-plugin install file://$OPENSEARCH_HOME/$LTR_PLUGIN_FILE --batch
 
-COPY --chown=$UID:$UID --chmod=u+x *.sh $OPENSEARCH_HOME/
-RUN ./opensearch-onetime-setup.sh
 COPY *.properties $OPENSEARCH_HOME/config/
 ARG ANALYZER_DIR=$OPENSEARCH_HOME/config/opensearch-performance-analyzer/
 RUN [ ! -d $ANALYZER_DIR ] || mv $OPENSEARCH_HOME/config/performance-analyzer.properties $ANALYZER_DIR
+COPY --chown=$UID:$UID --chmod=u+x *.sh $OPENSEARCH_HOME/
+RUN ./opensearch-onetime-setup.sh
 
 EXPOSE 9200 9300 9600 9650
 
