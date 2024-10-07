@@ -98,6 +98,8 @@ class OpenSearchCollection(Collection):
                     request["explain"] = value
                 case "hightlight":
                     request["highlight"] = {"fields": {value: {}}}
+                case "ubi":
+                    request["ext"] = {"ubi": value}
                 case _:
                     pass                    
         if "log" in search_args:
@@ -121,21 +123,12 @@ class OpenSearchCollection(Collection):
             response["highlighting"] = search_response["highlighting"]
         return response
         
-    def native_search(self, request=None, data=None, headers={}):
-        return requests.post(f"{OPENSEARCH_URL}/{self.name}/_search",
-                             json=request, data=data, headers=headers).json()
-    
-    def generate_request_headers(self, **search_args):
-        if "ubi" in search_args:
-            return {"X-ubi-store": search_args["ubi"]["store_name"],
-                    "X-ubi-user-id": search_args["ubi"]["client_id"],
-                    "X-ubi-query-id": search_args["ubi"]["query_id"]}
-        return {}
+    def native_search(self, request=None, data=None):
+        return requests.post(f"{OPENSEARCH_URL}/{self.name}/_search", json=request, data=data).json()
 
     def search(self, **search_args):
         request = self.transform_request(**search_args)
-        headers = self.generate_request_headers(**search_args)
-        search_response = self.native_search(request=request, headers=headers)
+        search_response = self.native_search(request=request)
         return self.transform_response(search_response)
     
     def spell_check(self, query, log=False):
