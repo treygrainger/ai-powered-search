@@ -1,4 +1,3 @@
-version: '3.8' 
 services:
   notebooks:
     build: 
@@ -11,9 +10,7 @@ services:
       - 8081:8081 # Spark Worker UI
       - 4041:4041 # Spark UI
       - 8888:8888 # Jupyter Notebook UI 
-      - 2345:2345 # Search Webserver 
-    depends_on:
-      - solr
+      - 2345:2345 # Search Webserver
     networks:
       - solr-network
       - opensearch-network
@@ -48,6 +45,7 @@ services:
     restart: unless-stopped
     depends_on:
       - zookeeper
+      - notebooks
 
   opensearch-node1:
     build:
@@ -80,6 +78,11 @@ services:
       - 9200:9200
     networks:
       - opensearch-network
+    depends_on:
+      - notebooks
+      - opensearch-dashboards
+    profiles:
+      - nondefault
       
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.14.0
@@ -93,6 +96,8 @@ services:
       OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
     networks:
       - opensearch-network
+    profiles:
+      - nondefault
 
   zookeeper:
     image: zookeeper:3.5.8
