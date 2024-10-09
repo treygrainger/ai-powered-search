@@ -27,6 +27,9 @@ services:
       - type: bind
         source: "."
         target: "/tmp/notebooks/"
+    profiles:
+      - all
+      - ""
 
   solr:
     build:
@@ -46,8 +49,11 @@ services:
     depends_on:
       - zookeeper
       - notebooks
+    profiles:
+      - all
+      - ""
 
-  opensearch-node1:
+  opensearch:
     build:
       context: ./engines/opensearch/build/
       dockerfile: engine-Dockerfile
@@ -82,7 +88,7 @@ services:
       - notebooks
       - opensearch-dashboards
     profiles:
-      - nondefault
+      - all
       
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.14.0
@@ -97,7 +103,7 @@ services:
     networks:
       - opensearch-network
     profiles:
-      - nondefault
+      - all
 
   zookeeper:
     image: zookeeper:3.5.8
@@ -109,6 +115,9 @@ services:
       - zk-solr
       - solr-network
     restart: unless-stopped
+    profiles:
+      - all
+      - ""
 
 volumes:
   opensearch-data:
