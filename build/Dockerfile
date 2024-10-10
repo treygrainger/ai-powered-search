@@ -3,7 +3,9 @@ FROM jupyter/pyspark-notebook:spark-3.3.1
 USER root
 
 # Install gcc, c++, and related dependencies needed for pip to build some python dependencies
-RUN sudo apt-get -y update && apt-get install -y --reinstall build-essential gcc cargo && rm -rf /var/lib/apt/lists/ 
+RUN sudo apt-get -y update && \
+    apt-get install -y --reinstall build-essential gcc cargo && \
+    rm -rf /var/lib/apt/lists/ 
 
 # Install Spark-Solr
 ENV SPARK_SOLR_VERSION=4.0.2
