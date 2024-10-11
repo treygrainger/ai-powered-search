@@ -21,8 +21,7 @@ def write_config(config):
         json.dump(config, config_file)
 
 def read_config():
-    with open(CONFIG_FILE_PATH, "r") as f:
-        
+    with open(CONFIG_FILE_PATH, "r") as f:        
         return json.load(f)
 
 def load_config():

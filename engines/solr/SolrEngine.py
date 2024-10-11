@@ -5,7 +5,7 @@ from engines.solr.solr_environment import SOLR_COLLECTIONS_URL, STATUS_URL, SOLR
 
 class SolrEngine(Engine):
     def __init__(self):
-        pass
+        super().__init__("Solr")
 
     def health_check(self):
         return requests.get(STATUS_URL).json()["responseHeader"]["status"] == 0

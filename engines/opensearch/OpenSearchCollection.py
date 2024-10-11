@@ -7,9 +7,7 @@ import json
 from pyspark.sql import Row, SparkSession
 
 class OpenSearchCollection(Collection):
-    def __init__(self, name, id_field=None):
-        if not id_field:
-            id_field="_id"
+    def __init__(self, name, id_field="_id"):
         super().__init__(name)
         self.id_field = id_field
         
@@ -36,6 +34,12 @@ class OpenSearchCollection(Collection):
         #https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html
         #Does multimatching, supports default operator, does dis_max by default.
         
+        def create_filter(field, value):
+            if value != "*":
+                return {"term": {field: value}}
+            else:
+                return {"exists": {"field": field}}
+
         is_vector_search = "query" in search_args and isinstance(search_args["query"], list)
         if is_vector_search:
             vector = search_args.pop("query")
@@ -66,18 +70,18 @@ class OpenSearchCollection(Collection):
             if isinstance(boost, tuple):
                 boost = f"{boost[0]}:({boost[1]})"
             query += " " + boost
-        request = {"query": {"query_string": {"query": query.strip()
-                                              if query else "*:*",
-                                              "boost": 0.454545454}},
+        query_fields = {"fields": search_args["query_fields"]} if "query_fields" in search_args else {}
+        query_clause = {"query": (query or "*:*").strip(),
+                        "boost": 0.454545454,
+                        "default_operator": search_args.get("default_operator", "OR")} | query_fields
+        request = {"query": {"bool": {"must": [{"query_string": query_clause}]}},
                    "size": 10}
         for name, value in search_args.items():
             match name:
-                case "query_fields":
-                    request["query"]["query_string"]["fields"] = value
                 case "return_fields":
                     request["fields"] = value
                 case "filters":
-                    pass
+                    request["query"]["bool"]["filter"] = [create_filter(f, v) for (f, v) in value]
                 case "limit":
                     request["size"] = value
                 case "order_by":
@@ -88,8 +92,6 @@ class OpenSearchCollection(Collection):
                     #request["sort"] = [{"score": {"order": "asc"}}]
                 case "rerank_query":
                     request["params"]["rq"] = value
-                case "default_operator":
-                    request["default_operator"] = value
                 case "min_match":
                     request["params"]["mm"] = value
                 case "index_time_boost":

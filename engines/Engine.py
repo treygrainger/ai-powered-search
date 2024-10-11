@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
 class Engine(ABC):
-    def __init__(self):
-        pass
+    def __init__(self, name):
+        self.name = name
     
     @abstractmethod
     def health_check(self):

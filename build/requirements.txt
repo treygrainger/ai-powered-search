@@ -6,7 +6,6 @@ patsy==0.5.6
 wcwidth==0.2.13
 pandas==2.2.3
 contourpy==1.0.7
-thinc==8.1.0
 numba==0.60.0
 wrapit==0.3.0
 h5py==3.12.1

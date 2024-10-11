@@ -6,9 +6,7 @@ OPENSEARCH_PORT = os.getenv("AIPS_OPENSEARCH_PORT") or "9200"
 OPENSEARCH_URL = f"http://{OPENSEARCH_HOST}:{OPENSEARCH_PORT}"
 
 def base_field(type, **kwargs):
-    #"index": True
-    field = {"type": type, "store": True}
-    return field | kwargs
+    return {"type": type, "store": True} | kwargs
 
 def text_field(**kwargs):
     return base_field("text", **kwargs)
@@ -29,9 +27,6 @@ def keyword_field(**kwargs):
 def date_field():
     return base_field("date")
 
-def string_field(**kwargs):
-    return base_field("string", **kwargs)
-
 def basic_schema(field_mappings, id_field="_id"):
     return {
         "id_field": id_field,
@@ -45,7 +40,7 @@ def body_title_schema():
 def dense_vector_schema(
     field_name, dimensions, similarity_score, quantization_size, additional_fields={}
 ):
-    data_type_map = {"FLOAT32": "float", "BINARY": "byte"}
+    datatype_map = {"FLOAT32": "float", "BINARY": "byte"}
     schema = {
         "schema": {
             "settings": {"index": {"knn": True, "knn.algo_param.ef_search": 100}},
@@ -166,19 +161,20 @@ SCHEMAS = {
         }
     ),
     "outdoors": basic_schema({
-            "post_type": string_field(),
+            "post_type": text_field(),
             "accepted_answer_id": integer_field(),
             "parent_id": integer_field(),
-            "creation_date": string_field(),
+            "creation_date": text_field(),
             "score": integer_field(),  # rename?
             "view_count": integer_field(),
-            "body": text_field(),
+            "body": text_field(fielddata=True),
             "owner_user_id": text_field(),
-            "title": text_field(),
+            "title": text_field(fielddata=True),
             "tags": keyword_field(),
-            "url": string_field(),
+            "url": text_field(),
             "answer_count": integer_field(),
-        }
+        },
+        "id"
     ),
     "tmdb_with_embeddings": dense_vector_schema(
         "image_embedding",
