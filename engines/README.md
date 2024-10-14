@@ -8,9 +8,9 @@ The list of supported engines will continue to grow over time, with the followin
 
 **Currently Supported:**
 * `solr` - Apache Solr
+* `opensearch` - OpenSearch
 
 **Pending Support:**
-* `opensearch` - OpenSearch (pending vendor support)
 * `elasticsearch` - Elasticsearch (pending vendor support)
 * `weaviate` - Weaviate (pending vendor support)
 * `mongo` - MongoDB / Atlas Search (pending vendor support)
