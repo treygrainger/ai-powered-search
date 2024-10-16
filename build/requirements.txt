@@ -1,5 +1,5 @@
 #Implicit dependencies with set versions for optimization
-adjusttext==1.2.0
+adjusttext==0.8
 mdurl==0.1.2
 mizani==0.11.4
 patsy==0.5.6
@@ -32,7 +32,8 @@ plotly==5.24.1
 plotnine==0.13.5
 numpy==1.26.4
 scipy==1.14.1
-scikit-learn==1.5.2
+#scikit-learn==1.5.2
+scikit-learn==1.2.1
 spacy==3.5.0
 faiss-cpu==1.9.0
 sentence-transformers==3.1.1
