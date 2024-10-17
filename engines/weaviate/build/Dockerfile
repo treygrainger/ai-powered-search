@@ -1,0 +1,1 @@
+FROM cr.weaviate.io/semitechnologies/weaviate:1.25.3
