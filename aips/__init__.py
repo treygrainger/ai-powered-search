@@ -1,6 +1,9 @@
+from gc import collect
 import aips.environment as environment
 from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
 from engines.solr.SolrEngine import SolrEngine
+from engines.solr.SolrCollection import SolrCollection
+from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 
 import os
@@ -11,18 +14,21 @@ import re
 engine_type_map = {"SOLR": SolrEngine(),
                    "OPENSEARCH": OpenSearchEngine()}
 
-def get_engine():
-    return engine_type_map[environment.get("AIPS_SEARCH_ENGINE", "SOLR")]
+def get_engine(override=None):
+    engine_name = override.upper() if override else environment.get("AIPS_SEARCH_ENGINE", "SOLR")
+    return engine_type_map[engine_name]
 
-def set_engine(engine_name):    
+def set_engine(engine_name):
     engine_name = engine_name.upper()
     if engine_name not in engine_type_map:
         raise ValueError(f"No search engine implementation found for {engine_name}")
     else:
         environment.set("AIPS_SEARCH_ENGINE", engine_name)
 
-def get_ltr_engine(collection):
-    return SolrLTR(collection)
+def get_ltr_engine(collection):    
+    ltr_engine_map = {SolrCollection: SolrLTR()(),
+                      OpenSearchCollection: SolrLTR()}
+    return ltr_engine_map[type(collection)]
 
 def get_semantic_knowledge_graph(collection):
     return SolrSemanticKnowledgeGraph(collection)

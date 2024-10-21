@@ -36,7 +36,8 @@ class OpenSearchCollection(Collection):
         
         def create_filter(field, value):
             if value != "*":
-                return {"term": {field: value}}
+                key = "terms" if isinstance(value, list) else "term"
+                return {key: {field: value}}
             else:
                 return {"exists": {"field": field}}
 
@@ -65,11 +66,6 @@ class OpenSearchCollection(Collection):
         query = ""
         if "query" in search_args:
             query = search_args["query"]
-        if "query_boosts" in search_args:
-            boost = search_args["query_boosts"]
-            if isinstance(boost, tuple):
-                boost = f"{boost[0]}:({boost[1]})"
-            query += " " + boost
         query_fields = {"fields": search_args["query_fields"]} if "query_fields" in search_args else {}
         query_clause = {"query": (query or "*:*").strip(),
                         "boost": 0.454545454,
@@ -85,11 +81,17 @@ class OpenSearchCollection(Collection):
                 case "limit":
                     request["size"] = value
                 case "order_by":
-                    request["sort"] = [{column if column != "score" else "_score":
-                                        {"order": sort}} for (column, sort) in value] 
-                    #request["sort"] =  ",".join([f"{field}:{dir}" for (field, dir) in value])
-                    #request["sort"] = request["sort"].replace("score", "_score")
-                    #request["sort"] = [{"score": {"order": "asc"}}]
+                    request["sort"] = [{column if column != "score" else "_score": {"order": sort}}
+                                       for (column, sort) in value] 
+                case "query_boosts":
+                    boost_field = value[0] if isinstance(value, tuple) else "upc"
+                    boost_string = value[1] if isinstance(value, tuple) else value
+                    boosts = [(b.split("^")[0], b.split("^")[1])
+                             for b in boost_string.split(" ")]
+                    should = [{"match": {boost_field: {"query": b[0],
+                                                       "boost": b[1]}}}
+                               for b in boosts]
+                    request["query"]["bool"]["should"] = should
                 case "rerank_query":
                     request["params"]["rq"] = value
                 case "min_match":
@@ -112,7 +114,7 @@ class OpenSearchCollection(Collection):
     def transform_response(self, search_response):
         def format_doc(doc):
             formatted = doc["_source"] | {"id": doc["_id"],
-                              "score": doc["_score"]}
+                                          "score": doc["_score"]}
             if "_explanation" in doc:
                 formatted["[explain]"] = doc["_explanation"]
             return formatted

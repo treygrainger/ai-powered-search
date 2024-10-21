@@ -55,15 +55,14 @@ def dense_vector_schema(
                             "engine": "nmslib",
                             "space_type": similarity_score or "l2",                            
                             "parameters": {"ef_construction": 128, "m": 24},
-                        },
+                        }
                     }
                 }
-            },
+            }
         }
     }
     schema["schema"]["mappings"]["properties"] | additional_fields
     return schema
-
 
 PRODUCTS_SCHEMA = basic_schema(
     {
@@ -73,9 +72,9 @@ PRODUCTS_SCHEMA = basic_schema(
         "manufacturer": text_field(copy_to="_text_"),
         "short_description": text_field(copy_to="_text_"),
         "long_description": text_field(copy_to="_text_"),
-        "has_promotion": boolean_field(),
+        "has_promotion": boolean_field()
     },
-    "upc",
+    "upc"
 )
 PRODUCTS_SCHEMA["schema"]["settings"] = {
     "analysis": {
@@ -88,7 +87,7 @@ PRODUCTS_SCHEMA["schema"]["settings"] = {
                 "tokenizer": "standard",
                 "filter": ["lowercase", "edge_ngram_filter"],
             }
-        },
+        }
     }
 }
 
@@ -110,7 +109,7 @@ PRODUCT_BOOSTS_SCHEMA["schema"]["settings"] = {
         },
         "filter": {
             "edge_ngram_filter": {"type": "edge_ngram", "min_gram": 1, "max_gram": 20}
-        },
+        }
     }
 }
 PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
@@ -129,7 +128,7 @@ SCHEMAS = {
             "description": text_field() | {"similarity": "BM25",
                                            "discount_overlaps": False},
         },
-        "id",
+        "id"
     ),
     "products": PRODUCTS_SCHEMA,
     "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
@@ -138,6 +137,16 @@ SCHEMAS = {
             "company_country": text_field(),
             "job_description": text_field(),
             "company_description": text_field(),
+        }
+    ),
+    "signals": basic_schema(
+        {
+            "query": text_field(),
+            "user": text_field(),
+            "type": text_field(),
+            "target": text_field(),
+            "signal_time": text_field(),
+            "id": integer_field()
         }
     ),
     "signals_boosting": basic_schema(
@@ -160,7 +169,9 @@ SCHEMAS = {
             "release_year": double_field(),
         }
     ),
-    "outdoors": basic_schema({
+    "outdoors": basic_schema(
+        {
+            "id": text_field(),
             "post_type": text_field(),
             "accepted_answer_id": integer_field(),
             "parent_id": integer_field(),
@@ -207,5 +218,5 @@ SCHEMAS = {
         "message_type": text_field(), # type
         "message": text_field(),
         #"event_attributes": {}
-    }),
+    })
 }

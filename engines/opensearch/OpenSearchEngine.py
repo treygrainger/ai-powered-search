@@ -36,5 +36,5 @@ class OpenSearchEngine(Engine):
 
     def get_collection(self, name):
         "Returns initialized object for a given collection"
-        id_field = SCHEMAS.get("name", {}).get("id_field", "_id")
+        id_field = SCHEMAS.get(name, {}).get("id_field", "_id")
         return OpenSearchCollection(name, id_field)
