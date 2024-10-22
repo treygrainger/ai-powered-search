@@ -1,3 +1,4 @@
+from datetime import date
 import os
 import copy
 
@@ -32,7 +33,6 @@ def basic_schema(field_mappings, id_field="_id"):
         "id_field": id_field,
         "schema": {"mappings": {"properties": field_mappings}},
     }
-
 
 def body_title_schema():
     return basic_schema({"title": text_field(), "body": text_field()})
@@ -97,14 +97,14 @@ PRODUCT_BOOSTS_SCHEMA["schema"]["settings"] = {
         "analyzer": {
             "boost_analyzer": {
                 "tokenizer": {"type": "simple_pattern_split", "pattern": ","},
-                "filter": [
-                    "lowercase",
+                "filter": {
+                    "lowercase":
                     {
                         "type": "delimited_payload",
                         "delimiter": "|",
                         "encoding": "float",
                     },
-                ],
+                },
             }
         },
         "filter": {
@@ -119,6 +119,10 @@ PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
     "position_increment_gap": 100,
     "analyzer": "boost_analyzer",
 }
+SIGNALS_BOOSTING_SCHEMA = basic_schema({
+    "query": keyword_field(),
+    "doc": text_field(),
+    "boost": integer_field()})
 
 SCHEMAS = {
     "cat_in_the_hat": basic_schema(
@@ -145,17 +149,15 @@ SCHEMAS = {
             "user": text_field(),
             "type": text_field(),
             "target": text_field(),
-            "signal_time": text_field(),
+            "signal_time": date_field(),
             "id": integer_field()
         }
     ),
-    "signals_boosting": basic_schema(
-        {
-            "query": keyword_field(),
-            "doc": text_field(),
-            "boost": integer_field()
-        }
-    ),
+    "signals_boosting": SIGNALS_BOOSTING_SCHEMA,
+    "signals_boosts_with_spam": SIGNALS_BOOSTING_SCHEMA,
+    "signals_boosts_anti_spam": SIGNALS_BOOSTING_SCHEMA,
+    "signals_boosts_weighted_types": SIGNALS_BOOSTING_SCHEMA,
+    "signals_boosts_time_weighted": SIGNALS_BOOSTING_SCHEMA,
     "stackexchange": body_title_schema(),
     "health": body_title_schema(),
     "cooking": body_title_schema(),

@@ -14,19 +14,20 @@ class OpenSearchCollection(Collection):
     def commit(self):
         time.sleep(2)
 
-    def write(self, dataframe):
+    def write(self, dataframe, overwrite=True):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
                 "opensearch.net.ssl": "false"}
         if self.id_field != "_id":
             opts["opensearch.mapping.id"] = self.id_field
-        dataframe.write.format("opensearch").options(**opts).mode("overwrite").save(self.name)
+        mode = "overwrite" if overwrite else "append"
+        dataframe.write.format("opensearch").options(**opts).mode(mode).save(self.name)
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
     
     def add_documents(self, docs, commit=True):
         spark = SparkSession.builder.appName("AIPS").getOrCreate()
         dataframe = spark.createDataFrame(Row(**d) for d in docs)
-        self.write(dataframe)
+        self.write(dataframe, overwrite=False)
     
     def transform_request(self, **search_args):
         #Of the many approaches to implement all these features, the most
@@ -93,10 +94,11 @@ class OpenSearchCollection(Collection):
                                for b in boosts]
                     request["query"]["bool"]["should"] = should
                 case "rerank_query":
-                    request["params"]["rq"] = value
+                    raise Exception("To be implemented (only Ch10, Ch12 LTR)")
                 case "min_match":
-                    request["params"]["mm"] = value
+                    raise Exception("To be implemented (Only used in ch05)")
                 case "index_time_boost":
+                    pass
                     request["params"]["boost"] = f'payload({value[0]}, "{value[1]}", 1, first)'
                 case "explain":
                     request["explain"] = value
