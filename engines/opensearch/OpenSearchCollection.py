@@ -98,8 +98,8 @@ class OpenSearchCollection(Collection):
                 case "min_match":
                     raise Exception("To be implemented (Only used in ch05)")
                 case "index_time_boost":
-                    pass
-                    request["params"]["boost"] = f'payload({value[0]}, "{value[1]}", 1, first)'
+                    should = {"query": {"rank_feature": {"field": f"{value[0]}.{value[1]}"}}}
+                    request["query"]["bool"]["should"] = should
                 case "explain":
                     request["explain"] = value
                 case "hightlight":

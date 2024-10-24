@@ -92,33 +92,10 @@ PRODUCTS_SCHEMA["schema"]["settings"] = {
 }
 
 PRODUCT_BOOSTS_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
-PRODUCT_BOOSTS_SCHEMA["schema"]["settings"] = {
-    "analysis": {
-        "analyzer": {
-            "boost_analyzer": {
-                "tokenizer": {"type": "simple_pattern_split", "pattern": ","},
-                "filter": {
-                    "lowercase":
-                    {
-                        "type": "delimited_payload",
-                        "delimiter": "|",
-                        "encoding": "float",
-                    },
-                },
-            }
-        },
-        "filter": {
-            "edge_ngram_filter": {"type": "edge_ngram", "min_gram": 1, "max_gram": 20}
-        }
-    }
-}
 PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
-    "type": "text",
-    "fielddata": "true",
-    "index": "true",
-    "position_increment_gap": 100,
-    "analyzer": "boost_analyzer",
-}
+        "type": "rank_features"
+    }
+
 SIGNALS_BOOSTING_SCHEMA = basic_schema({
     "query": keyword_field(),
     "doc": text_field(),
