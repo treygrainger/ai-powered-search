@@ -1,11 +1,12 @@
 #Implicit dependencies with set versions for optimization
-adjusttext==1.2.0
+adjusttext==0.8
 mdurl==0.1.2
 mizani==0.11.4
 patsy==0.5.6
 wcwidth==0.2.13
 pandas==2.2.3
 contourpy==1.0.7
+thinc==8.1.0
 numba==0.60.0
 wrapit==0.3.0
 h5py==3.12.1
@@ -31,7 +32,8 @@ plotly==5.24.1
 plotnine==0.13.5
 numpy==1.26.4
 scipy==1.14.1
-scikit-learn==1.5.2
+#scikit-learn==1.5.2
+scikit-learn==1.2.1
 spacy==3.5.0
 faiss-cpu==1.9.0
 sentence-transformers==3.1.1
