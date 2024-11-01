@@ -3,8 +3,10 @@ import aips.environment as environment
 from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
 from engines.solr.SolrEngine import SolrEngine
 from engines.solr.SolrCollection import SolrCollection
+
 from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.opensearch.OpenSearchEngine import OpenSearchEngine
+from engines.opensearch.OpenSearchLTR import OpenSearchLTR
 
 import os
 from IPython.display import display,HTML
@@ -26,9 +28,9 @@ def set_engine(engine_name):
         environment.set("AIPS_SEARCH_ENGINE", engine_name)
 
 def get_ltr_engine(collection):    
-    ltr_engine_map = {SolrCollection: SolrLTR()(),
-                      OpenSearchCollection: SolrLTR()}
-    return ltr_engine_map[type(collection)]
+    ltr_engine_map = {SolrCollection: SolrLTR,
+                      OpenSearchCollection: OpenSearchLTR}
+    return ltr_engine_map[type(collection)](collection)
 
 def get_semantic_knowledge_graph(collection):
     return SolrSemanticKnowledgeGraph(collection)

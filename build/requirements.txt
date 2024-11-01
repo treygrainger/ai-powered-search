@@ -10,6 +10,7 @@ thinc==8.1.0
 numba==0.60.0
 wrapit==0.3.0
 h5py==3.12.1
+gitpython
 
 #Forced versions to prevent implicit dep version errors 
 #  (these sub packages are only used indirectly through normal deps)
