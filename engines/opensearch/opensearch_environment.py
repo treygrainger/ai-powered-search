@@ -67,9 +67,10 @@ def dense_vector_schema(
 PRODUCTS_SCHEMA = basic_schema(
     {
         "upc": text_field(fielddata=True),
-        "_text_": text_field(),#analyzer="autocomplete"),
+        "_text_": text_field(),
         "name": text_field(copy_to="_text_"),
-        "name_ngram": text_field(analyzer="std_bigrams", fielddata=True),
+        "name_ngram": text_field(analyzer="bigram_analyzer", fielddata=True),
+        "short_description_ngram": text_field(analyzer="bigram_analyzer", fielddata=True),
         "manufacturer": text_field(copy_to="_text_"),
         "short_description": text_field(copy_to="_text_"),
         "long_description": text_field(copy_to="_text_"),
@@ -81,9 +82,9 @@ PRODUCTS_SCHEMA["schema"]["settings"] = {
     "analysis": {
         "filter": {
             "edge_ngram_filter": {"type": "edge_ngram",
-                                  "min_gram": 3,
-                                  "max_gram": 6},
-            "bigram_filter": {
+                                  "min_gram": 1,
+                                  "max_gram": 20},
+            "shingle_filter": {
                 "type": "shingle",
                 "max_shingle_size": 2,
                 "min_shingle_size": 2,
@@ -91,17 +92,17 @@ PRODUCTS_SCHEMA["schema"]["settings"] = {
             }
         },
         "analyzer": {
-            "autocomplete": {
+            "bigram_analyzer": {
                 "type": "custom",
                 "tokenizer": "standard",
                 "filter": ["lowercase", "edge_ngram_filter"],
             },
-            "std_bigrams": {
+            "shingle_analyzer": {
                 "type": "custom",
                 "tokenizer": "standard",
                 "filter": [ 
                     "lowercase",
-                    "bigram_filter"
+                    "shingle_filter"
                 ]
             }
         }

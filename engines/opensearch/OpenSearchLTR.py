@@ -45,9 +45,13 @@ class OpenSearchLTR(LTR):
         return self.generate_feature(feature_name, feature)
     
     def generate_fuzzy_query_feature(self, feature_name, field_name):
+        return self.generate_query_feature(feature_name, field_name)
+        return {"match": {field_name: "{{keywords}}", "slop": 3}}   
         return self.generate_query_feature(feature_name, f"{field_name}_ngram")
     
     def generate_bigram_query_feature(self, feature_name, field_name):
+        return self.generate_query_feature(feature_name, field_name)
+        return {"match": {field_name: "{{keywords}}", "slop": 3}}   
         return self.generate_query_feature(feature_name, f"{field_name}_ngram")
         #{"match": {field_name: value}} 
         #query = "{" + f"!edismax qf={field_name} pf2={field_name}" +"}(${keywords})"
@@ -76,7 +80,7 @@ class OpenSearchLTR(LTR):
 
     def delete_model(self, model_name, log=False):
         if log: display(f"Delete model {model_name}")
-        response = requests.delete(f"{OPENSEARCH_URL}/_ltr/_featureset/{model_name}/_deletemodel").json()
+        response = requests.delete(f"{OPENSEARCH_URL}/_ltr/_model/{model_name}").json()
         if log: display(json.dumps(response, indent=2))
         return response
     
@@ -142,34 +146,45 @@ class OpenSearchLTR(LTR):
                     query += f' +{config["field"]}:({config["value"]})'
                 elif explore_vector[feature_name] == -1.0:
                     query += f' -{config["field"]}:({config["value"]})'
-        request = {"query": query or "*",
-                   "limit": 1,
-                   "return_fields": ["upc", "name", "manufacturer",
-                                     "short_description", "long_description", "has_promotion"],
-                   "order_by": [(f"random_{random()}", "DESC")]}
-        if log: request["log"] = log
-        docs = self.collection.search(**request)["docs"]
-        if log and not docs:
+        request = {
+            "query": {
+                "function_score" : {
+                    "query": {"query_string" : {"query": query}},
+                    "random_score" : {}
+                }
+            },
+            "fields": ["upc", "name", "manufacturer", "short_description",
+                       "long_description", "has_promotion"],
+            "size": 1
+        }
+        if log:
+            display(request)
+        response = self.collection.native_search(request)
+        if log:
+            display(response)
+        candidate_docs = response["hits"]["hits"]
+        if log and not candidate_docs:
             display(f"No exploration candidate matching query {query}")
-        return docs    
+        return [candidate_docs[0]["_source"] | {"score": candidate_docs[0]["_score"]}] 
 
     def search_with_model(self, model_name, **search_args):
         log = search_args.get("log", False)
-        rerank_count = search_args.get("rerank_count", 9999999)
+        rerank_count = search_args.get("rerank_count", 10000) #10k is max
         return_fields = search_args.get("return_fields", ["upc", "name", "manufacturer",
-                                                          "short_description", "long_description"])         
+                                                          "short_description", "long_description"])
         rerank_query = search_args.get("rerank_query", None)
         query = search_args.get("query", None)
         if rerank_query:
             request = {
-                "query": {"multi_match": {"fields": ["title", "overview"],
-                                          "query": query}},
+                "query": {"multi_match": {"query": query}},
                 "rescore": {"query": {"rescore_query" : {
                     "sltr": {"params": {"keywords": rerank_query},
                              "model": model_name}}},
                     "window_size": rerank_count},
                 "size": 10,
                 "fields": return_fields}
+            if "query_fields" in search_args:
+                request["query"]["multi_match"]["query"]["fields"] = search_args["query_fields"]
         else:
             request = {"query": {"sltr": {"params": {"keywords": query},
                                           "model": model_name}},
@@ -180,5 +195,8 @@ class OpenSearchLTR(LTR):
         response = self.collection.native_search(request)            
         if log: display(f"search_with_model() response: {response}")
 
-        docs = response["hits"]["hits"]    
-        return {"docs": docs}
+        documents = []
+        for doc in response["hits"]["hits"]:
+            transformed_doc = doc["_source"] | {"score": doc["_score"]}
+            documents.append(transformed_doc)
+        return {"docs": documents}
