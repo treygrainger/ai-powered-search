@@ -1,0 +1,5 @@
+weaviate-client
+pytest
+IPython
+pandas
+black

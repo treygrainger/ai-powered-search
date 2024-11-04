@@ -13,6 +13,7 @@ services:
       - 2345:2345 # Search Webserver 
     depends_on:
       - solr
+      - weaviate
     networks:
       - solr-network
     restart: unless-stopped
@@ -45,6 +46,27 @@ services:
     restart: unless-stopped
     depends_on:
       - zookeeper
+  
+  weaviate:
+    build:
+      context: ./engines/weaviate/build/
+      dockerfile: Dockerfile
+    container_name: aips-weaviate
+    ports:
+      - 8090:8080
+      - 50051:50051
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    restart: on-failure:0
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      ENABLE_MODULES: ''
+      CLUSTER_HOSTNAME: 'node1'
+    networks:
+      - solr-network
 
   zookeeper:
     image: zookeeper:3.5.8
@@ -60,3 +82,6 @@ services:
 networks:
   zk-solr:  
   solr-network:
+
+volumes:
+  weaviate_data:
