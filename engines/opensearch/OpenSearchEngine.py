@@ -3,7 +3,7 @@ import json
 import requests
 
 from engines.Engine import Engine
-from engines.opensearch.opensearch_environment import OPENSEARCH_URL, SCHEMAS
+from engines.opensearch.config import OPENSEARCH_URL, SCHEMAS
 from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 
 STATUS_URL = f"{OPENSEARCH_URL}/_cluster/health"

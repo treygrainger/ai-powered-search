@@ -1,6 +1,6 @@
 from random import random
 from re import search
-from engines.opensearch.opensearch_environment import OPENSEARCH_URL
+from engines.opensearch.config import OPENSEARCH_URL
 from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.LTR import LTR
 import json
@@ -15,20 +15,18 @@ class OpenSearchLTR(LTR):
             raise TypeError("Only supports a OpenSearchCollection")
         super().__init__(collection)
     
-    def enable_ltr(self, collection):        
+    def enable_ltr(self, log=False):        
         display("Enabling LTR")
         response = requests.delete(f"{OPENSEARCH_URL}/_ltr")
-        print(response)
+        if log: display(response.json())
         response = requests.put(f"{OPENSEARCH_URL}/_ltr")
-        print(response)
+        if log: display(response.json())
 
     def generate_feature(self, feature_name, template, 
                          params=["keywords"]):
-        return {
-            "name": feature_name,
-            "template": template,
-            "params": params 
-        }
+        return {"name": feature_name,
+                "template": template,
+                "params": params}
         
     def generate_query_feature(self, feature_name, field_name, constant_score=False, value="{{keywords}}"): 
         match_clause = {"match": {field_name: value}}   
@@ -45,23 +43,17 @@ class OpenSearchLTR(LTR):
         return self.generate_feature(feature_name, feature)
     
     def generate_fuzzy_query_feature(self, feature_name, field_name):
-        return self.generate_query_feature(feature_name, field_name)
-        return {"match": {field_name: "{{keywords}}", "slop": 3}}   
-        return self.generate_query_feature(feature_name, f"{field_name}_ngram")
+        query_clause = {"match_phrase": {f"{field_name}_fuzzy": {"query": "{{keywords}}", "slop": 3}}}
+        return self.generate_feature(feature_name, query_clause)
     
     def generate_bigram_query_feature(self, feature_name, field_name):
-        return self.generate_query_feature(feature_name, field_name)
-        return {"match": {field_name: "{{keywords}}", "slop": 3}}   
-        return self.generate_query_feature(feature_name, f"{field_name}_ngram")
-        #{"match": {field_name: value}} 
-        #query = "{" + f"!edismax qf={field_name} pf2={field_name}" +"}(${keywords})"
-        #return self.generate_feature(feature_name, {"q": query})
+        query_clause = {"match": {f"{field_name}_ngram": {"query": "{{keywords}}",
+                                                          "analyzer": "standard"}}}
+        return self.generate_feature(feature_name, query_clause)
         
     def generate_field_length_feature(self, feature_name, field_name):
+        #Unused except in Ammendum
         return None
-        params = {"field": field_name}
-        return self.generate_feature(feature_name, params,
-                                     feature_type="org.apache.solr.ltr.feature.FieldLengthFeature")
     
     def delete_feature_store(self, name, log=False):
         if log: display(f"Deleting features {name}")     
@@ -70,7 +62,7 @@ class OpenSearchLTR(LTR):
         return response
 
     def upload_features(self, features, model_name, log=False):
-        if log: display(f"Uploading Features {model_name}")        
+        if log: display(f"Uploading Features {model_name}")
         feature_request = {"featureset": {"name": model_name,
                                           "features": features}}
         response = requests.post(f"{OPENSEARCH_URL}/_ltr/_featureset/{model_name}",
@@ -89,17 +81,14 @@ class OpenSearchLTR(LTR):
         if log: display(f'Upload model {model_name}')
         response = requests.post(f"{OPENSEARCH_URL}/_ltr/_featureset/{model_name}/_createmodel", json=model)
         if log: display(response.json())
-        #modelPayload['model']['model']['definition'] = modelContent    
-
+        return response
+    
     def upsert_model(self, model, log=False):
         self.delete_model(model["name"], log=log)
         self.upload_model(model, log=log)
 
     def get_logged_features(self, model_name, doc_ids, options={},
                             id_field="id", fields=None, log=False):
-        id_query = " ".join(str(id) for id in doc_ids)
-        #{"terms": {"_id": ["7555"]}}
-        #query = {"query": {"match": {id_field: }}}
         keywords = options.get("keywords", "*")
         named_query = "logged_featureset"
         request = {"size": 100,

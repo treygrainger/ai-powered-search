@@ -68,12 +68,13 @@ PRODUCTS_SCHEMA = basic_schema(
     {
         "upc": text_field(fielddata=True),
         "_text_": text_field(),
-        "name": text_field(copy_to="_text_"),
         "name_ngram": text_field(analyzer="bigram_analyzer", fielddata=True),
-        "short_description_ngram": text_field(analyzer="bigram_analyzer", fielddata=True),
-        "manufacturer": text_field(copy_to="_text_"),
-        "short_description": text_field(copy_to="_text_"),
+        "name_fuzzy": text_field(analyzer="shingle_analyzer", fielddata=True),
+        "short_description_ngram": text_field(analyzer="bigram_analyzer"),
+        "name": text_field(copy_to=["name_ngram", "_text_", "name_fuzzy"], fielddata=True),
+        "short_description": text_field(copy_to=["short_description_ngram", "_text_"]),
         "long_description": text_field(copy_to="_text_"),
+        "manufacturer": text_field(copy_to="_text_"),
         "has_promotion": boolean_field()
     },
     "upc"
@@ -83,13 +84,7 @@ PRODUCTS_SCHEMA["schema"]["settings"] = {
         "filter": {
             "edge_ngram_filter": {"type": "edge_ngram",
                                   "min_gram": 1,
-                                  "max_gram": 20},
-            "shingle_filter": {
-                "type": "shingle",
-                "max_shingle_size": 2,
-                "min_shingle_size": 2,
-                "output_unigrams": False
-            }
+                                  "max_gram": 20}
         },
         "analyzer": {
             "bigram_analyzer": {
@@ -98,12 +93,8 @@ PRODUCTS_SCHEMA["schema"]["settings"] = {
                 "filter": ["lowercase", "edge_ngram_filter"],
             },
             "shingle_analyzer": {
-                "type": "custom",
                 "tokenizer": "standard",
-                "filter": [ 
-                    "lowercase",
-                    "shingle_filter"
-                ]
+                "filter": ["lowercase", "shingle"]
             }
         }
     }

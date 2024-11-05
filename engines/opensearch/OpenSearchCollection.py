@@ -1,7 +1,7 @@
 import random
 import requests
 from engines.Collection import Collection
-from engines.opensearch.opensearch_environment import OPENSEARCH_URL
+from engines.opensearch.config import OPENSEARCH_URL
 import time
 import json
 from pyspark.sql import Row, SparkSession

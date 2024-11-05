@@ -4,7 +4,7 @@ from aips.environment import AIPS_ZK_HOST
 from engines.solr.SolrCollection import SolrCollection
 
 from engines.opensearch.OpenSearchCollection import OpenSearchCollection
-from engines.opensearch.opensearch_environment import OPENSEARCH_URL
+from engines.opensearch.config import OPENSEARCH_URL
 
 
 def create_view_from_collection(collection, view_name, spark=None):

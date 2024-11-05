@@ -5,7 +5,7 @@ class LTR(ABC):
         self.collection = collection
     
     @abstractmethod
-    def enable_ltr(self, collection):
+    def enable_ltr(self, log=False):
         "Initializes LTR dependencies for a given collection"
         pass
 
@@ -84,9 +84,4 @@ class LTR(ABC):
     def search_with_model(self, model_name, **search_args):
         """Search a collection using an uploaded model.
            See engines.Collection.search() for information on parameters"""
-        pass
-
-    @abstractmethod
-    def enable_ltr(self, collection):
-        "Initializes LTR dependencies for a given collection"
         pass

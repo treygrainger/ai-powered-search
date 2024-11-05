@@ -2,7 +2,7 @@ import random
 from numpy import isin
 import requests
 from engines.Collection import Collection
-from engines.solr.solr_environment import SOLR_URL
+from engines.solr.config import SOLR_URL
 from aips.environment import AIPS_ZK_HOST
 import time
 import json

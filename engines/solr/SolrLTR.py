@@ -1,6 +1,6 @@
 from random import random
 from re import search
-from engines.solr.solr_environment import SOLR_URL
+from engines.solr.config import SOLR_URL
 from engines.solr.SolrCollection import SolrCollection
 from engines.LTR import LTR
 import json
@@ -12,23 +12,23 @@ class SolrLTR(LTR):
             raise TypeError("Only supports a SolrCollection")
         super().__init__(collection)
     
-    def enable_ltr(self, collection):
+    def enable_ltr(self, log=True):
         delete_parser = {"delete-queryparser": "ltr"}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_parser)
+        response = requests.post(f"{SOLR_URL}/{self.collection.name}/config", json=delete_parser)
 
         delete_transformer = {"delete-transformer": "features"}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_transformer)
+        response = requests.post(f"{SOLR_URL}/{self.collection.name}/config", json=delete_transformer)
         
-        print(f"Adding LTR QParser for {collection.name} collection")
+        print(f"Adding LTR QParser for {self.collection.name} collection")
         add_parser = {
             "add-queryparser": {
                 "name": "ltr",
                 "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
                 }
             }
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_parser)        
+        response = requests.post(f"{SOLR_URL}/{self.collection.name}/config", json=add_parser)        
 
-        print(f"Adding LTR Doc Transformer for {collection.name} collection")
+        print(f"Adding LTR Doc Transformer for {self.collection.name} collection")
         add_transformer =  {
             "add-transformer": {
                 "name": "features",
@@ -36,7 +36,7 @@ class SolrLTR(LTR):
                 "fvCacheName": "QUERY_DOC_FV"
                 }
             }
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_transformer)
+        response = requests.post(f"{SOLR_URL}/{self.collection.name}/config", json=add_transformer)
     
     def generate_feature(self, feature_name, params, 
                          feature_type="org.apache.solr.ltr.feature.SolrFeature"):
@@ -195,29 +195,3 @@ class SolrLTR(LTR):
 
         docs = response["response"]["docs"]    
         return {"docs": docs}
-    
-    def enable_ltr(self, collection):
-        delete_parser = {"delete-queryparser": "ltr"}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_parser)
-
-        delete_transformer = {"delete-transformer": "features"}
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=delete_transformer)
-        
-        print(f"Adding LTR QParser for {collection.name} collection")
-        add_parser = {
-            "add-queryparser": {
-                "name": "ltr",
-                "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
-                }
-            }
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_parser)        
-
-        print(f"Adding LTR Doc Transformer for {collection.name} collection")
-        add_transformer =  {
-            "add-transformer": {
-                "name": "features",
-                "class": "org.apache.solr.ltr.response.transform.LTRFeatureLoggerTransformerFactory",
-                "fvCacheName": "QUERY_DOC_FV"
-                }
-            }
-        response = requests.post(f"{SOLR_URL}/{collection.name}/config", json=add_transformer)

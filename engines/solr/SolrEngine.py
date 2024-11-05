@@ -1,7 +1,7 @@
 import requests
 from engines.Engine import Engine
 from engines.solr.SolrCollection import SolrCollection
-from engines.solr.solr_environment import SOLR_COLLECTIONS_URL, STATUS_URL, SOLR_URL
+from engines.solr.config import SOLR_COLLECTIONS_URL, STATUS_URL, SOLR_URL
 
 class SolrEngine(Engine):
     def __init__(self):
