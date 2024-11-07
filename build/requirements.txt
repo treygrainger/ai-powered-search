@@ -21,7 +21,7 @@ statsmodels==0.14.4
 networkx==3.3
 
 #Normal deps
-accelerate==0.30.0
+accelerate==0.34.2
 beautifulsoup4==4.12.3
 lxml
 datasets==3.0.1
@@ -31,6 +31,8 @@ nltk==3.9.1
 nmslib==2.1.1
 plotly==5.24.1
 plotnine==0.13.5
+openai-clip
+torchvision
 numpy==1.26.4
 scipy==1.14.1
 #scikit-learn==1.5.2

@@ -2,7 +2,7 @@ from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.solr.SolrCollection import SolrCollection
 from pyspark.sql.functions import collect_list, create_map
 from aips.spark.dataframe import from_sql
-
+from aips.spark import create_view_from_collection
 
 #Note to Daniel: abstraction here isn't great. This code wasn't running, so I made to below changes to get it to run (at least in  Solr).
 # it was passing in the two collections and then hard coding the view names ("products" and "normalized_signals_boosts")
@@ -18,17 +18,21 @@ from aips.spark.dataframe import from_sql
 # Let me know if you'd like to handle differently. 
 # -TG
 
-def load_dataframe(product_collection, boost_collection):
-    assert(type(product_collection) == type(boost_collection))
-    if isinstance(product_collection, SolrCollection):
+def load_dataframe(boosted_products_collection, boosts_collection):
+    create_view_from_collection(boosts_collection,
+                                boosts_collection.name)    
+    create_view_from_collection(boosted_products_collection,
+                                boosted_products_collection.name)    
+    assert(type(boosted_products_collection) == type(boosts_collection))
+    if isinstance(boosted_products_collection, SolrCollection):
         query = f"""SELECT p.*, b.signals_boosts FROM (
                     SELECT doc, CONCAT_WS(',', COLLECT_LIST(CONCAT(query, '|', boost)))
-                    AS signals_boosts FROM {boost_collection.name} GROUP BY doc
-                    ) b INNER JOIN {product_collection.name} p ON p.upc = b.doc"""
+                    AS signals_boosts FROM {boosts_collection.name} GROUP BY doc
+                    ) b INNER JOIN {boosted_products_collection.name} p ON p.upc = b.doc"""
         boosts_dataframe = from_sql(query)
-    elif isinstance(product_collection, OpenSearchCollection):
-        product_query = f"SELECT * FROM {product_collection.name}"
-        boosts_query = f"SELECT * FROM {normalized_signals_boosts.name}"
+    elif isinstance(boosted_products_collection, OpenSearchCollection):
+        product_query = f"SELECT * FROM {boosted_products_collection.name}"
+        boosts_query = f"SELECT * FROM {boosts_collection.name}"
 
         grouped_boosts = from_sql(boosts_query).groupBy("doc") \
             .agg(collect_list(create_map("query", "boost"))[0].alias("signals_boost")) \
@@ -36,6 +40,6 @@ def load_dataframe(product_collection, boost_collection):
 
         boosts_dataframe = from_sql(product_query).join(grouped_boosts, "upc")
     else:
-        raise Exception(f"Index time boost not implemented for {type(product_collection)}")
+        raise Exception(f"Index time boost not implemented for {type(boosted_products_collection)}")
 
     return boosts_dataframe
