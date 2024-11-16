@@ -1,10 +1,67 @@
 import random
+from re import search
 import requests
 from engines.Collection import Collection
 from engines.opensearch.config import OPENSEARCH_URL
 import time
 import json
 from pyspark.sql import Row, SparkSession
+import numbers
+
+def generate_vector_search_request(search_args):
+    vector = search_args.pop("query")
+    query_fields = search_args.pop("query_fields", [])
+    if not isinstance(query_fields, list):
+        raise TypeError("query_fields must be a list")
+    elif len(query_fields) == 0:
+        raise ValueError("You must specificy at least one field in query_fields")
+    else: 
+        field = query_fields[0]
+    k = search_args.pop("k", 10)
+    if "limit" in search_args: 
+        if int(search_args["limit"]) > k:
+            k = int(search_args["limit"]) #otherwise will only get k results
+    request = {"query": {"knn": {field: {"vector": vector,
+                                            "k": k}}},
+               "size": search_args.get("limit", 5)}             
+    if "log" in search_args:
+        print("Search Request:")
+        print(json.dumps(request, indent="  "))
+    return request
+        
+def create_filter(field, value):
+    if value != "*":
+        key = "terms" if isinstance(value, list) else "term"
+        return {key: {field: value}}
+    else:
+        return {"exists": {"field": field}}
+    
+def query_string_clause(search_args):
+    "Returns the query string from the args or from concatenating query clause strings"
+
+    def retrive_strings(c): return c if isinstance(c, str) else ""
+
+    query_string = "*"
+    if "query" in search_args:
+        if isinstance(search_args["query"], list):
+            query_string = " ".join(list(map(retrive_strings, search_args["query"])))
+        else:
+            query_string = search_args["query"]
+    return query_string.strip()
+
+def should_clauses(search_args):
+    return list(filter(lambda c: isinstance(c, dict) and "geo_distance" not in c,
+                       search_args["query"]))
+
+def must_clauses(search_args):
+    return list(filter(lambda c: isinstance(c, dict) and "geo_distance" in c,
+                       search_args["query"]))
+
+def is_vector_search(search_args):
+    return "query" in search_args and \
+           isinstance(search_args["query"], list) and \
+           len(search_args["query"]) == len(list(filter(lambda o: isinstance(o, numbers.Number),
+                                                        search_args["query"])))
 
 class OpenSearchCollection(Collection):
     def __init__(self, name, id_field="_id"):
@@ -16,7 +73,8 @@ class OpenSearchCollection(Collection):
 
     def write(self, dataframe, overwrite=True):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
-                "opensearch.net.ssl": "false"}
+                "opensearch.net.ssl": "false",
+                "opensearch.batch.size.entries": 500}
         if self.id_field != "_id":
             opts["opensearch.mapping.id"] = self.id_field
         mode = "overwrite" if overwrite else "append"
@@ -34,45 +92,21 @@ class OpenSearchCollection(Collection):
         #straightforward and effective is to use the query_string functionality
         #https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html
         #Does multimatching, supports default operator, does dis_max by default.
+        if is_vector_search(search_args):
+            return generate_vector_search_request(search_args)
         
-        def create_filter(field, value):
-            if value != "*":
-                key = "terms" if isinstance(value, list) else "term"
-                return {key: {field: value}}
-            else:
-                return {"exists": {"field": field}}
-
-        is_vector_search = "query" in search_args and isinstance(search_args["query"], list)
-        if is_vector_search:
-            vector = search_args.pop("query")
-            query_fields = search_args.pop("query_fields", [])
-            if not isinstance(query_fields, list):
-                raise TypeError("query_fields must be a list")
-            elif len(query_fields) == 0:
-                raise ValueError("You must specificy at least one field in query_fields")
-            else: 
-                field = query_fields[0]
-            k = search_args.pop("k", 10)
-            if "limit" in search_args: 
-                if int(search_args["limit"]) > k:
-                    k = int(search_args["limit"]) #otherwise will only get k results
-            request = {"query": {"knn": {field: {"vector": vector,
-                                                 "k": k}}},
-                       "size": search_args.get("limit", 5)}             
-            if "log" in search_args:
-                print("Search Request:")
-                print(json.dumps(request, indent="  "))
-            return request
-
-        query = ""
-        if "query" in search_args:
-            query = search_args["query"]
+        query = query_string_clause(search_args)
+        should = should_clauses(search_args)
+        must = must_clauses(search_args)
+        print(must)
         query_fields = {"fields": search_args["query_fields"]} if "query_fields" in search_args else {}
-        query_clause = {"query": (query or "*:*").strip(),
+        query_clause = {"query_string": {"query": query,
                         "boost": 0.454545454,
-                        "default_operator": search_args.get("default_operator", "OR")} | query_fields
-        request = {"query": {"bool": {"must": [{"query_string": query_clause}]}},
+                        "default_operator": search_args.get("default_operator", "OR")} | query_fields}
+        must.append(query_clause)
+        request = {"query": {"bool": {"must": must}},
                    "size": 10}
+        
         for name, value in search_args.items():
             match name:
                 case "return_fields":
@@ -88,18 +122,15 @@ class OpenSearchCollection(Collection):
                     boost_field = value[0] if isinstance(value, tuple) else "upc"
                     boost_string = value[1] if isinstance(value, tuple) else value
                     boosts = [(b.split("^")[0], b.split("^")[1])
-                             for b in boost_string.split(" ")]
-                    should = [{"match": {boost_field: {"query": b[0],
-                                                       "boost": b[1]}}}
+                              for b in boost_string.split(" ")]
+                    clauses = [{"match": {boost_field: {"query": b[0],
+                                                        "boost": b[1]}}}
                                for b in boosts]
-                    request["query"]["bool"]["should"] = should
-                case "rerank_query":
-                    raise Exception("To be implemented (only Ch10, Ch12 LTR)")
+                    should.extend(clauses)
                 case "min_match":
                     raise Exception("To be implemented (Only used in ch05)")
                 case "index_time_boost":
-                    should = {"query": {"rank_feature": {"field": f"{value[0]}.{value[1]}"}}}
-                    request["query"]["bool"]["should"] = should
+                    should.append({"rank_feature": {"field": f"{value[0]}.{value[1]}"}})
                 case "explain":
                     request["explain"] = value
                 case "hightlight":
@@ -107,7 +138,10 @@ class OpenSearchCollection(Collection):
                 case "ubi":
                     request["ext"] = {"ubi": value}
                 case _:
-                    pass                    
+                    pass
+
+        request["query"]["bool"]["should"] = should
+
         if "log" in search_args:
             print("Search Request:")
             print(json.dumps(request, indent="  "))

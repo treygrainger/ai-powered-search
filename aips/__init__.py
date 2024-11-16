@@ -7,9 +7,10 @@ from engines.solr.SolrCollection import SolrCollection
 from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 from engines.opensearch.OpenSearchLTR import OpenSearchLTR
+from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSemanticSearch
 
 import os
-from IPython.display import display,HTML
+from IPython.display import display, HTML
 import pandas
 import re
 
@@ -33,13 +34,15 @@ def get_ltr_engine(collection):
     return ltr_engine_map[type(collection)](collection)
 
 def get_semantic_knowledge_graph(collection):
-    return SolrSemanticKnowledgeGraph(collection)
+    return SolrSemanticKnowledgeGraph(get_engine("solr").get_collection(collection.name))
 
 def get_entity_extractor(collection):
-    return SolrEntityExtractor(collection)
+    return SolrEntityExtractor(get_engine("solr").get_collection(collection.name))
 
 def get_sparse_semantic_search():
-    return SolrSparseSemanticSearch()
+    SSS_map = {SolrEngine: SolrSparseSemanticSearch,
+               OpenSearchEngine: OpenSearchSparseSemanticSearch}
+    return SSS_map[type(get_engine())]()
 
 def healthcheck():
     try:

@@ -80,6 +80,7 @@ PRODUCTS_SCHEMA = basic_schema(
     "upc"
 )
 PRODUCTS_SCHEMA["schema"]["settings"] = {
+    "index": {"mapping": {"total_fields": {"limit": 100000}}},
     "analysis": {
         "filter": {
             "edge_ngram_filter": {"type": "edge_ngram",
@@ -150,6 +151,17 @@ SCHEMAS = {
     "scifi": body_title_schema(),
     "travel": body_title_schema(),
     "devops": body_title_schema(),
+    "reviews": basic_schema({
+        "id": text_field(),
+        "content": text_field(fielddata=True),
+        "categories": text_field(copy_to="doc_type", fielddata=True),
+        "doc_type": text_field(fielddata=True),
+        "stars_rating": integer_field(),
+        "city": text_field(fielddata=True),
+        "state": text_field(fielddata=True),
+        "business_name": text_field(fielddata=True),
+        "name": text_field(fielddata=True),
+        "location_coordinates": base_field("geo_point")}),
     "tmdb": basic_schema(
         {
             "title": text_field(),
