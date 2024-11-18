@@ -173,7 +173,7 @@ class OpenSearchLTR(LTR):
                 "size": 10,
                 "fields": return_fields}
             if "query_fields" in search_args:
-                request["query"]["multi_match"]["query"]["fields"] = search_args["query_fields"]
+                request["query"]["multi_match"]["fields"] = search_args["query_fields"]
         else:
             request = {"query": {"sltr": {"params": {"keywords": query},
                                           "model": model_name}},

@@ -72,7 +72,7 @@ def images_directory():
         relative = "../.."
     return f"{relative}/data/retrotech/images"
 
-def img_path_for_upc(product):
+def img_path_for_product(product):
     directory = images_directory()
     file = product.get("upc", "no-upc")
     if not os.path.exists(f"data/retrotech/images/{file}.jpg"):
@@ -112,7 +112,7 @@ def render_search_results(query, results):
 
         rendered = header_template.replace("${QUERY}", query.replace('"', '\"'))
         for result in results:
-            image_url = img_path_for_upc(result)
+            image_url = img_path_for_product(result)
             rendered += results_template.replace("${NAME}", result.get("name", "UNKNOWN")) \
                 .replace("${MANUFACTURER}", result.get("manufacturer", "UNKNOWN")) \
                 .replace("${IMAGE_URL}", image_url)
@@ -124,11 +124,11 @@ def fetch_products(doc_ids):
     request = {"query": " ".join([str(id) for id in doc_ids]),
                "query_fields": ["upc"],
                "limit": len(doc_ids)}
-    response = get_engine().get_collection("products").search(request)
+    response = get_engine().get_collection("products").search(**request)
     
     df = pandas.DataFrame(response["docs"])
     df['upc'] = df['upc'].astype('int64')
-    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_upc(row['upc']) + "\">", axis=1))
+    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_product(row) + "\">", axis=1))
     return df
 
 def render_judged(products, judged, grade_col='ctr', label=""):

@@ -51,11 +51,11 @@ def query_string_clause(search_args):
 
 def should_clauses(search_args):
     return list(filter(lambda c: isinstance(c, dict) and "geo_distance" not in c,
-                       search_args["query"]))
+                       search_args.get("query", [])))
 
 def must_clauses(search_args):
     return list(filter(lambda c: isinstance(c, dict) and "geo_distance" in c,
-                       search_args["query"]))
+                       search_args.get("query", [])))
 
 def is_vector_search(search_args):
     return "query" in search_args and \
@@ -98,7 +98,6 @@ class OpenSearchCollection(Collection):
         query = query_string_clause(search_args)
         should = should_clauses(search_args)
         must = must_clauses(search_args)
-        print(must)
         query_fields = {"fields": search_args["query_fields"]} if "query_fields" in search_args else {}
         query_clause = {"query_string": {"query": query,
                         "boost": 0.454545454,
