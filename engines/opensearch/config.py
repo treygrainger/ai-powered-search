@@ -202,7 +202,7 @@ SCHEMAS = {
         {"title": text_field(), "overview": text_field(), "movie_id": text_field(), "image_id": text_field()},
     ),
     "outdoors_with_embeddings": dense_vector_schema(
-        "title_embedding", 728, "innerproduct", "FLOAT32", {"title": text_field()},
+        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field()},
     ),
     "ubi_queries": basic_schema({
         "timestamp": date_field(), # signal_time
