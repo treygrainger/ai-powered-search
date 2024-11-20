@@ -108,9 +108,9 @@ PRODUCTS_SCHEMA = basic_schema("products",
 
 PRODUCT_BOOSTS_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
 PRODUCT_BOOSTS_SCHEMA["schema"]["class"] = "products_with_signals_boosts"
-PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
-        "type": "rank_features"
-    }
+#PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
+        #"type": "rank_features"
+    #}
 
 def signals_boosting_schema(collection_name):
     return basic_schema(collection_name, {
@@ -121,7 +121,7 @@ def signals_boosting_schema(collection_name):
 SCHEMAS = {
     "cat_in_the_hat": basic_schema("cat_in_the_hat",
         {
-            "id": text_field(),
+            "kid": text_field(),
             "title": text_field(),
             "description": text_field() | {"similarity": "BM25",
                                            "discount_overlaps": False},

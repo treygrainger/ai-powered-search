@@ -1,7 +1,7 @@
 import random
 import requests
 from engines.Collection import Collection
-from engines.weaviate.config import WEAVIATE_URL
+from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT, WEAVIATE_URL
 import time
 import json
 from pyspark.sql import SparkSession, Row
@@ -15,14 +15,11 @@ class WeaviateCollection(Collection):
         time.sleep(2)
 
     def write(self, dataframe, overwrite=True):
-        opts = {"batchSize": 500,
+        opts = {#"batchSize": 500,
                 "scheme": "http",
-                "host": "localhost:8080",
-                "id": "uuid",
-                "className": self.name,
-                "vector": "vector"}
-        if self.id_field != "_id":
-            opts["opensearch.mapping.id"] = self.id_field
+                "host": f"{WEAVIATE_HOST}:{WEAVIATE_PORT}",
+                #"id": "id",
+                "className": self.name} #"vector": "vector"
         mode = "overwrite" if overwrite else "append"
         dataframe.write.format("io.weaviate.spark.Weaviate").options(**opts).mode(mode).save(self.name)
         self.commit()
@@ -42,20 +39,21 @@ class WeaviateCollection(Collection):
         args = [Argument(name="limit", value=10),
                 Argument(name="bm25", value=[Argument(name="query", value=query)])]
         score = Field(name="_additional", fields=["score"])
-        request = Operation(name="Get", queries=[Query(name="products", arguments=args, 
-                                                    fields=["id", "title", "description", score])],
-                        )
-        print(request.render())
+        gql_request = Operation(name="Get", queries=[Query(name="products", arguments=args, 
+                                                    fields=["id", "title", "description", score])])
         request = {}
         for name, value in search_args.items():
             match name:
                 case "query":
+                    pass
                 case _:
                     pass
 
         if "log" in search_args:
             print("Search Request:")
             print(json.dumps(request, indent="  "))
+        query = gql_request.render()
+        request = {"query": request}
         return request
     
     def transform_response(self, search_response):
@@ -71,7 +69,7 @@ class WeaviateCollection(Collection):
         return response
         
     def native_search(self, request=None, data=None):
-        return requests.post(f"{WEAVIATE_URL}/{self.name}/_search", json=request, data=data).json()
+        return requests.post(f"{WEAVIATE_URL}/v1/graphql", request=request).json()
 
     def search(self, **search_args):
         request = self.transform_request(**search_args)

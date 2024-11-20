@@ -13,6 +13,7 @@ services:
       - 2345:2345 # Search Webserver
     networks:
       - solr-network
+      - weaviate-network
       - opensearch-network
     restart: unless-stopped
     environment:
@@ -95,17 +96,21 @@ services:
       - --host
       - 0.0.0.0
       - --port
-      - '8080'
+      - '8090'
       - --scheme
       - http
     image: cr.weaviate.io/semitechnologies/weaviate:1.27.3
     container_name: aips-weaviate
     hostname: aips-weaviate
     ports:
-      - 8090:8080
+      - 8090:8090
       - 50051:50051
+    expose:
+      - 8090:8090
+    networks:
+      - weaviate-network
     volumes:
-      - weaviate_data:/var/lib/weaviate
+      - weaviate-data:/var/lib/weaviate
     restart: on-failure:0
     environment:
       QUERY_DEFAULTS_LIMIT: 25
@@ -148,9 +153,10 @@ services:
 
 volumes:
   opensearch-data:
-  weaviate_data:
+  weaviate-data:
   
 networks:
   zk-solr:  
   solr-network:
   opensearch-network:
+  weaviate-network:

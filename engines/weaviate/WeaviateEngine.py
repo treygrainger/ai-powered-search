@@ -13,7 +13,7 @@ STATUS_URL = f"{WEAVIATE_URL}/v1/.well-known/live"
 
 class WeaviateEngine(Engine):
     def __init__(self):
-        super().__init__("OpenSearch")
+        super().__init__("Weaviate")
 
     def health_check(self):
         return requests.get(STATUS_URL).json()["status"] == "green"
@@ -25,18 +25,20 @@ class WeaviateEngine(Engine):
 
     def create_collection(self, name, log=False):
         print(f'Wiping "{name}" collection')
-        response = requests.delete(f"{WEAVIATE_URL}/{name}").json()
+        requests.delete(f"{WEAVIATE_URL}/v1/schema/{name.capitalize()}")
 
         print(f'Creating "{name}" collection')
-        collection = self.get_collection(name)
         request = SCHEMAS[name]["schema"] if name in SCHEMAS else {}
-        response = requests.post(f"{WEAVIATE_URL}/v1/schema", json=request).json()
+        response = requests.post(f"{WEAVIATE_URL}/v1/schema", json=request)
         if log: 
             print("Schema:", json.dumps(request, indent=2))
-            print("Status:", json.dumps(response, indent=2))
+            print("Status:", response)
+            print("Response:", response)
+        collection = self.get_collection(name)
         return collection
 
     def get_collection(self, name):
         "Returns initialized object for a given collection"
         #id_field = SCHEMAS.get(name, {}).get("id_field", "_id")
+        name = name.capitalize()
         return WeaviateCollection(name)#, id_field)
