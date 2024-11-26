@@ -1,7 +1,16 @@
 from abc import ABC, abstractmethod
+import numbers
 import aips.environment as env
 import json
 
+DEFAULT_SEARCH_SIZE = 10
+DEFAULT_NEIGHBORS = 10
+
+def is_vector_search(search_args):
+    return "query" in search_args and \
+           isinstance(search_args["query"], list) and \
+           len(search_args["query"]) == len(list(filter(lambda o: isinstance(o, numbers.Number),
+                                                        search_args["query"])))
 class Collection(ABC):
     def __init__(self, name):
         self.name = name

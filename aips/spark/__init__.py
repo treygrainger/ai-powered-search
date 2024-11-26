@@ -6,6 +6,8 @@ from engines.solr.SolrCollection import SolrCollection
 from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.opensearch.config import OPENSEARCH_URL
 
+from engines.weaviate.WeaviateCollection import WeaviateCollection
+from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT
 
 def create_view_from_collection(collection, view_name, spark=None):
     if not spark:
@@ -17,5 +19,11 @@ def create_view_from_collection(collection, view_name, spark=None):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
                 "opensearch.net.ssl": "false"}
         spark.read.format("opensearch").options(**opts).load(collection.name).createOrReplaceTempView(view_name)
+    elif isinstance(collection, WeaviateCollection):
+        opts = {"scheme": "http",
+                "host": f"{WEAVIATE_HOST}:{WEAVIATE_PORT}",
+                #"id": "id",
+                "className": collection.name} #"vector": "vector"
+        spark.read.format("io.weaviate.spark.Weaviate").options(**opts).load().createOrReplaceTempView(view_name)
     else:
         raise NotImplementedError(type(collection))
