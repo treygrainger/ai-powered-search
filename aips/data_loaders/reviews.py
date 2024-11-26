@@ -6,6 +6,7 @@ def load_dataframe(csv_file):
     spark = SparkSession.builder.appName("AIPS").getOrCreate()
     dataframe = spark.read.csv(csv_file, inferSchema=True, header=True, multiLine=True, escape="\"") \
         .select(col("id"), col("name_t").alias("business_name"),
+                col("name_s").alias("name"),
                 col("city_t").alias("city"),
                 col("state_t").alias("state"), col("text_t").alias("content"),
                 col("categories_t").alias("categories"), col("stars_i").alias("stars_rating"),

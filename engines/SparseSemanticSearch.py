@@ -17,7 +17,7 @@ class SparseSemanticSearch(ABC):
     def transform_query(self, query_tree):
         "Transforms the query tree into an engine specific query tree"
         pass
-
+    
     @abstractmethod
     def generate_basic_query(self, query):
         "Creates a basic engine specific search query"

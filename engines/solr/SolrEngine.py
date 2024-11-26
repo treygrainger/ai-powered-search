@@ -1,13 +1,11 @@
-import json
-import random
 import requests
-from aips.environment import STATUS_URL, SOLR_COLLECTIONS_URL, SOLR_URL
 from engines.Engine import Engine
 from engines.solr.SolrCollection import SolrCollection
+from engines.solr.config import SOLR_COLLECTIONS_URL, STATUS_URL, SOLR_URL
 
 class SolrEngine(Engine):
     def __init__(self):
-        pass
+        super().__init__("Solr")
 
     def health_check(self):
         return requests.get(STATUS_URL).json()["responseHeader"]["status"] == 0

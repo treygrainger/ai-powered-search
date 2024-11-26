@@ -2,9 +2,17 @@ import random
 from numpy import isin
 import requests
 from engines.Collection import Collection
-from aips.environment import SOLR_URL, AIPS_ZK_HOST
+from engines.solr.config import SOLR_URL
+from aips.environment import AIPS_ZK_HOST
 import time
 import json
+import numbers
+
+def is_vector_search(search_args):
+    return "query" in search_args and \
+           isinstance(search_args["query"], list) and \
+           len(search_args["query"]) == len(list(filter(lambda o: isinstance(o, numbers.Number),
+                                                        search_args["query"])))
 
 class SolrCollection(Collection):
     def __init__(self, name):
@@ -40,8 +48,8 @@ class SolrCollection(Collection):
             "params": {}     
         }
         #handle before standard handling search arg to prevent conflicting request params
-        is_vector_search = "query" in search_args and isinstance(search_args["query"], list)
-        if is_vector_search:
+
+        if is_vector_search(search_args):
             vector = search_args.pop("query")
             query_fields = search_args.pop("query_fields", [])
             if not isinstance(query_fields, list):
@@ -63,7 +71,8 @@ class SolrCollection(Collection):
                     request.pop("query")
                     request["params"]["q"] = value
                 case "query":
-                    request["query"] = value if value else "*:*"
+                    query = " ".join(value) if isinstance(value, list) and isinstance(value[0], str) else value
+                    request["query"] = query if query else "*:*"
                 case "rerank_query":
                     rerank_count = value.pop("rerank_count", 500)
                     rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={rerank_count} reRankWeight=1' + "}"
@@ -135,10 +144,13 @@ class SolrCollection(Collection):
     def spell_check(self, query, log=False):
         request = {"query": query,
                    "params": {"q.op": "and", "indent": "on"}}
-        if log:
+        if log: 
             print("Solr spellcheck basic request syntax: ")
             print(json.dumps(request, indent="  "))
         response = requests.post(f"{SOLR_URL}/{self.name}/spell", json=request).json()
-        return {r["collationQuery"]: r["hits"]
-                for r in response["spellcheck"]["collations"]
-                if r != "collation"}
+        suggestions = {}
+        if "spellcheck" in response:
+            suggestions =  {r["collationQuery"]: r["hits"]
+                            for r in response["spellcheck"]["collations"]
+                            if r != "collation"}
+        return suggestions
