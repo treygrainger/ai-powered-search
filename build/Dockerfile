@@ -24,6 +24,13 @@ RUN cd /usr/local/spark/lib/ && \
     echo "5b9ae056b6ac21ae009f79a3a761774c7178b995fbe035572a4f35d5738e055d02828d2ec0ff98dd063ffffe37f4c48dc9a418d71269fc560f65b33c94493f2d *${SPARK_OS_JAR}" \
     | sha512sum -c - && chmod a+rwx $SPARK_OS_PATH
 
+ENV SPARK_WV8_VERSION=1.3.3
+ENV SPARK_WV8_JAR=spark-connector-assembly-${SPARK_WV8_VERSION}.jar
+ENV SPARK_WV8_PATH=/usr/local/spark/lib/${SPARK_WV8_JAR}
+RUN cd /usr/local/spark/lib/ && \
+    wget https://github.com/weaviate/spark-connector/releases/download/v${SPARK_WV8_VERSION}/${SPARK_WV8_JAR} -O $SPARK_WV8_PATH && \
+    chmod a+rwx $SPARK_WV8_PATH
+
 WORKDIR /home/$NB_USER
 
 # Install Python dependencies
@@ -56,7 +63,7 @@ USER $NB_USER
 
 # Spark Config
 ENV SPARK_OPTS="$SPARK_OPTS --driver-java-options=\"-DXlint:none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer -Dlog4j.logger.org.apache.spark.repl.Main=ERROR\" --spark.ui.showConsoleProgress=False" \
-    PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH,$SPARK_OS_PATH pyspark-shell" \
+    PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH,$SPARK_OS_PATH,$SPARK_WV8_PATH pyspark-shell" \
     PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-*-src.zip:%PYTHONPATH% \
     DOCKER_STACKS_JUPYTER_CMD=lab
 

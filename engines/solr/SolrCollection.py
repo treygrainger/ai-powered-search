@@ -1,7 +1,7 @@
 import random
 from numpy import isin
 import requests
-from engines.Collection import Collection
+from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 from engines.solr.config import SOLR_URL
 from aips.environment import AIPS_ZK_HOST
 import time
@@ -44,7 +44,7 @@ class SolrCollection(Collection):
     def transform_request(self, **search_args):
         request = {
             "query": "*:*",
-            "limit": 10,
+            "limit": search_args.get("limit", DEFAULT_SEARCH_SIZE),
             "params": {}     
         }
         #handle before standard handling search arg to prevent conflicting request params
@@ -58,10 +58,9 @@ class SolrCollection(Collection):
                 raise ValueError("You must specificy at least one field in query_fields")
             else: 
                 field = query_fields[0]
-            k = search_args.pop("k", 10)
-            if "limit" in search_args: 
-                if int(search_args["limit"]) > k:
-                    k = int(search_args["limit"]) #otherwise will only get k results
+            k = search_args.pop("k", DEFAULT_NEIGHBORS)
+            if request["limit"] > k:
+                k = request["limit"] #otherwise will only get k results
             request["query"] = "{!knn " + f'f={field} topK={k}' + "}" + str(vector)
             request["params"]["defType"] = "lucene"
         
@@ -76,7 +75,7 @@ class SolrCollection(Collection):
                 case "rerank_query":
                     rerank_count = value.pop("rerank_count", 500)
                     rq = "{" + f'!rerank reRankQuery=$rq_query reRankDocs={rerank_count} reRankWeight=1' + "}"
-                    k = str(value.pop("k", 10))
+                    k = str(value.pop("k", DEFAULT_NEIGHBORS))
                     query_field = value["query_fields"][0]
                     query = str(value["query"])
                     request["params"]["rq"] = rq
@@ -92,8 +91,6 @@ class SolrCollection(Collection):
                     for f in value:
                         filter_value = f'({" ".join(f[1])})' if isinstance(f[1], list) else f[1] 
                         request["filter"].append(f"{f[0]}:{filter_value}")
-                case "limit":
-                    request["limit"] = value
                 case "order_by":
                     request["sort"] = ", ".join([f"{column} {sort}" for (column, sort) in value])  
                 case "default_operator":

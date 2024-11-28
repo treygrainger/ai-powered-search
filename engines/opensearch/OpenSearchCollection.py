@@ -1,7 +1,7 @@
 import random
 from re import search
 import requests
-from engines.Collection import Collection
+from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 from engines.opensearch.config import OPENSEARCH_URL
 import time
 import json
@@ -17,13 +17,13 @@ def generate_vector_search_request(search_args):
         raise ValueError("You must specificy at least one field in query_fields")
     else: 
         field = query_fields[0]
-    k = search_args.pop("k", 10)
+    k = search_args.pop("k", DEFAULT_NEIGHBORS)
     if "limit" in search_args: 
         if int(search_args["limit"]) > k:
             k = int(search_args["limit"]) #otherwise will only get k results
     request = {"query": {"knn": {field: {"vector": vector,
-                                            "k": k}}},
-               "size": search_args.get("limit", 5)}             
+                                         "k": k}}},
+               "size": search_args.get("limit", DEFAULT_SEARCH_SIZE)}             
     if "log" in search_args:
         print("Search Request:")
         print(json.dumps(request, indent="  "))
@@ -56,12 +56,6 @@ def should_clauses(search_args):
 def must_clauses(search_args):
     return list(filter(lambda c: isinstance(c, dict) and "geo_distance" in c,
                        search_args.get("query", [])))
-
-def is_vector_search(search_args):
-    return "query" in search_args and \
-           isinstance(search_args["query"], list) and \
-           len(search_args["query"]) == len(list(filter(lambda o: isinstance(o, numbers.Number),
-                                                        search_args["query"])))
 
 class OpenSearchCollection(Collection):
     def __init__(self, name, id_field="_id"):
@@ -104,7 +98,7 @@ class OpenSearchCollection(Collection):
                         "default_operator": search_args.get("default_operator", "OR")} | query_fields}
         must.append(query_clause)
         request = {"query": {"bool": {"must": must}},
-                   "size": 10}
+                   "size": DEFAULT_SEARCH_SIZE}
         
         for name, value in search_args.items():
             match name:
