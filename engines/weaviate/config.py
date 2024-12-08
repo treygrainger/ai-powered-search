@@ -6,9 +6,17 @@ WEAVIATE_HOST = os.getenv("AIPS_WEAVIATE_HOST") or "aips-weaviate"
 WEAVIATE_PORT = os.getenv("AIPS_OPENSEARCH_PORT") or "8090"
 WEAVIATE_URL = f"http://{WEAVIATE_HOST}:{WEAVIATE_PORT}"
 
-def base_field(type, **kwargs):
-    return {"type": type, "store": True} | kwargs
 
+def schema_contains_id_field(collection_name): 
+    #For hack $WV8_001 
+    collection_name = collection_name.lower()
+    return collection_name in SCHEMAS and \
+        any(filter(lambda p: p["name"] == "__id",
+                   SCHEMAS[collection_name]["schema"]["properties"]))
+
+def base_field(type, **kwargs):
+    return {"dataType": [type]} | kwargs
+#"indexSearchable": True
 def text_field(**kwargs):
     return base_field("text", **kwargs)
 
@@ -16,25 +24,21 @@ def boolean_field():
     return base_field("boolean")
 
 def double_field():
-    return base_field("double")
+    return base_field("number")
 
 def integer_field():
-    return base_field("integer")
-
-def keyword_field(**kwargs):
-    return base_field("keyword", **kwargs)
+    return base_field("int")
 
 # {"multiValued": "true", "docValues": "true"}
 def date_field():
     return base_field("date")
 
 def generate_property_list(field_mappings):
-    return [{"name": name, "dataType": [value["type"]]}
+    return [{"name": name} | value
             for name, value in field_mappings.items()]
 
-def basic_schema(collection_name, field_mappings, id_field="_id"):
+def basic_schema(collection_name, field_mappings):
     return {
-        "id_field": id_field,
         "schema": {"class": collection_name, 
                    "properties": generate_property_list(field_mappings)}}
 
@@ -71,18 +75,17 @@ def dense_vector_schema(collection_name, field_name, dimensions,
 
 PRODUCTS_SCHEMA = basic_schema("products",
     {
-        "upc": text_field(fielddata=True),
+        "upc": text_field(), #fielddata=True
         "_text_": text_field(),
-        "name_ngram": text_field(analyzer="bigram_analyzer", fielddata=True),
-        "name_fuzzy": text_field(analyzer="shingle_analyzer", fielddata=True),
-        "short_description_ngram": text_field(analyzer="bigram_analyzer"),
-        "name": text_field(copy_to=["name_ngram", "_text_", "name_fuzzy"], fielddata=True),
-        "short_description": text_field(copy_to=["short_description_ngram", "_text_"]),
-        "long_description": text_field(copy_to="_text_"),
-        "manufacturer": text_field(copy_to="_text_"),
+        "name_ngram": text_field(), #analyzer="bigram_analyzer", fielddata=True
+        "name_fuzzy": text_field(), #analyzer="shingle_analyzer", fielddata=True
+        "short_description_ngram": text_field(), #analyzer="bigram_analyzer"
+        "name": text_field(), #copy_to=["name_ngram", "_text_", "name_fuzzy"], fielddata=True
+        "short_description": text_field(), #copy_to=["short_description_ngram", "_text_"]
+        "long_description": text_field(), #copy_to="_text_"
+        "manufacturer": text_field(), #copy_to="_text_"
         "has_promotion": boolean_field()
-    },
-    "upc"
+    }
 )
 #PRODUCTS_SCHEMA["schema"]["settings"] = {
 #    "index": {"mapping": {"total_fields": {"limit": 100000}}},
@@ -114,19 +117,18 @@ PRODUCT_BOOSTS_SCHEMA["schema"]["class"] = "products_with_signals_boosts"
 
 def signals_boosting_schema(collection_name):
     return basic_schema(collection_name, {
-        "query": keyword_field(),
+        "query": text_field(),
         "doc": text_field(),
         "boost": integer_field()})
 
 SCHEMAS = {
     "cat_in_the_hat": basic_schema("cat_in_the_hat",
         {
-            "kid": text_field(),
+            "__id": text_field(),
             "title": text_field(),
             "description": text_field() | {"similarity": "BM25",
-                                           "discount_overlaps": False},
-        },
-        "id"
+                                           "discount_overlaps": False}
+        }
     ),
     "products": PRODUCTS_SCHEMA,
     "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
@@ -139,12 +141,11 @@ SCHEMAS = {
     ),
     "signals": basic_schema("signals",
         {
-            "query": text_field(),
+            "query_id": text_field(),
             "user": text_field(),
             "type": text_field(),
             "target": text_field(),
-            "signal_time": date_field(),
-            "id": integer_field()
+            "signal_time": date_field()
         }
     ),
     "signals_boosting": signals_boosting_schema("signals_boosting"),
@@ -159,7 +160,7 @@ SCHEMAS = {
     "travel": body_title_schema("travel"),
     "devops": body_title_schema("devops"),
     "reviews": basic_schema("reviews", {
-        "id": text_field(),
+        "__id": text_field(),
         "content": text_field(fielddata=True),
         "categories": text_field(copy_to="doc_type", fielddata=True),
         "doc_type": text_field(fielddata=True),
@@ -178,21 +179,19 @@ SCHEMAS = {
     ),
     "outdoors": basic_schema("outdoors",
         {
-            "id": text_field(),
+            "__id": text_field(),
             "post_type": text_field(),
             "accepted_answer_id": integer_field(),
-            "parent_id": integer_field(),
+            "parent_id": text_field(), #integer fields 
             "creation_date": text_field(),
             "score": integer_field(),  # rename?
             "view_count": integer_field(),
             "body": text_field(fielddata=True),
             "owner_user_id": text_field(),
             "title": text_field(fielddata=True),
-            "tags": keyword_field(),
             "url": text_field(),
             "answer_count": integer_field(),
-        },
-        "id"
+        }
     ),
     "tmdb_with_embeddings": dense_vector_schema("tmdb_with_embeddings",
         "image_embedding",
@@ -210,20 +209,5 @@ SCHEMAS = {
     ),
     "outdoors_with_embeddings": dense_vector_schema("outdoors_with_embeddings",
         "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field()},
-    ),
-    "ubi_queries": basic_schema("ubi_queries",{
-        "timestamp": date_field(), # signal_time
-        "query_id": keyword_field(),
-        "client_id": text_field()
-    }),
-    "ubi_aips_events": basic_schema("ubi_aips_events", {
-        "application": text_field(),
-        "action_name": text_field(),
-        "query_id": keyword_field(), #linked, linked to queries.query_id
-        "client_id": text_field(), #the user, linked to queries.client_id 
-        "timestamp": date_field(), # signal_time
-        "message_type": text_field(), # type
-        "message": text_field(),
-        #"event_attributes": {}
-    })
+    )
 }

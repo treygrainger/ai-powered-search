@@ -117,7 +117,8 @@ class SolrCollection(Collection):
         return request
     
     def transform_response(self, search_response):
-        response = {"docs": search_response["response"]["docs"]}
+        response = {"docs": search_response["response"]["docs"]} 
+        
         if "highlighting" in search_response:
             response["highlighting"] = search_response["highlighting"]
 
