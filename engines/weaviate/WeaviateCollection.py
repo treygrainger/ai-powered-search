@@ -1,10 +1,11 @@
 from xml.dom import NotFoundErr
 import requests
+from aips.spark import get_spark_session
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT, WEAVIATE_URL, schema_contains_id_field
 import time
 import json
-from pyspark.sql import SparkSession, Row
+from pyspark.sql import Row
 from graphql_query import Query, Argument, Field, Operation    
 
 def rename_id_field(dataframe): #Hack $WV8_001
@@ -70,8 +71,7 @@ class WeaviateCollection(Collection):
         print(f"Successfully written {dataframe.count()} documents")
     
     def add_documents(self, docs, commit=True):
-        spark = SparkSession.builder.appName("AIPS").getOrCreate()
-        dataframe = spark.createDataFrame(Row(**d) for d in docs)
+        dataframe = get_spark_session().createDataFrame(Row(**d) for d in docs)
         dataframe = rename_id_field(dataframe)
         self.write(dataframe, overwrite=False)
 

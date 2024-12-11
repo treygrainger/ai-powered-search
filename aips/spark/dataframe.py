@@ -1,10 +1,10 @@
-from pyspark.sql import SparkSession
+from aips.spark import get_spark_session
 from pyspark.sql.functions import lit
 
 def from_csv(file, more_opts=False, log=True):    
     if log:
         print(f"Loading {file}")
-    spark = SparkSession.builder.appName("AIPS").getOrCreate()
+    spark = get_spark_session()
     reader = spark.read.format("csv").option("header", "true").option("inferSchema", "true")
     if more_opts:
         reader = reader.option("charset", "utf-8").option("quote", "\"").option("escape", "\"").option("multiLine","true").option("delimiter", ",")
@@ -23,5 +23,5 @@ def from_csv(file, more_opts=False, log=True):
 
 def from_sql(query, spark=None):
     if not spark:
-        spark = SparkSession.builder.appName("AIPS").getOrCreate()
+        spark = get_spark_session()
     return spark.sql(query)

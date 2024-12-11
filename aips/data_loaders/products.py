@@ -1,9 +1,9 @@
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, udf, lit
+from aips.spark import get_spark_session
 
 def load_dataframe(csv_file):
     print("Loading Products")
-    spark = SparkSession.builder.appName("AIPS").getOrCreate()
+    spark = get_spark_session()
     dataframe = spark.read.csv(csv_file, header=True, inferSchema=True)
     dataframe = dataframe.withColumn("upc", udf(str)(col("upc")))
     dataframe = dataframe.withColumn("_text_", lit("stub"))

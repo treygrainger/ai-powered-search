@@ -5,7 +5,8 @@ from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE
 from engines.opensearch.config import OPENSEARCH_URL
 import time
 import json
-from pyspark.sql import Row, SparkSession
+from pyspark.sql import Row
+from aips.spark import get_spark_session
 import numbers
 
 def generate_vector_search_request(search_args):
@@ -77,8 +78,7 @@ class OpenSearchCollection(Collection):
         print(f"Successfully written {dataframe.count()} documents")
     
     def add_documents(self, docs, commit=True):
-        spark = SparkSession.builder.appName("AIPS").getOrCreate()
-        dataframe = spark.createDataFrame(Row(**d) for d in docs)
+        dataframe = get_spark_session().createDataFrame(Row(**d) for d in docs)
         self.write(dataframe, overwrite=False)
     
     def transform_request(self, **search_args):

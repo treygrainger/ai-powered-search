@@ -59,6 +59,8 @@ RUN rm -rf work/
 # Change to notebook user
 RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
 RUN fix-permissions /home/$NB_USER
+RUN mkdir /tmp/spark-events
+RUN chown -R $NB_UID:$NB_UID /tmp/spark-events
 USER $NB_USER
 
 # Spark Config

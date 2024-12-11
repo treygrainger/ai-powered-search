@@ -1,3 +1,4 @@
+from pyspark.conf import SparkConf
 from pyspark.sql import SparkSession
 
 from aips.environment import AIPS_ZK_HOST
@@ -7,11 +8,20 @@ from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.opensearch.config import OPENSEARCH_URL
 
 from engines.weaviate.WeaviateCollection import WeaviateCollection
-from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT
+
+def get_spark_session():
+    conf = SparkConf()
+    conf.set("spark.driver.memory", "8g")
+    conf.set("spark.executor.memory", "8g")
+    conf.set("spark.dynamicAllocation.enabled", "true")
+    conf.set("spark.ui.port", "4040")
+    conf.set("spark.dynamicAllocation.executorMemoryOverhead", "8g")
+    spark = SparkSession.builder.appName("AIPS").config(conf=conf).getOrCreate()
+    return spark
 
 def create_view_from_collection(collection, view_name, spark=None):
     if not spark:
-        spark = SparkSession.builder.appName("AIPS").getOrCreate()
+        spark = get_spark_session()
     if isinstance(collection, SolrCollection):
         opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    
         spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
