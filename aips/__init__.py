@@ -1,5 +1,5 @@
-from gc import collect
 import aips.environment as environment
+
 from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
 from engines.solr.SolrEngine import SolrEngine
 from engines.solr.SolrCollection import SolrCollection
@@ -9,13 +9,16 @@ from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 from engines.opensearch.OpenSearchLTR import OpenSearchLTR
 from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSemanticSearch
 
+from engines.weaviate.WeaviateEngine import WeaviateEngine
+
 import os
 from IPython.display import display, HTML
 import pandas
 import re
 
 engine_type_map = {"SOLR": SolrEngine(),
-                   "OPENSEARCH": OpenSearchEngine()}
+                   "OPENSEARCH": OpenSearchEngine(),
+                   "WEAVIATE": WeaviateEngine()}
 
 def get_engine(override=None):
     engine_name = override.upper() if override else environment.get("AIPS_SEARCH_ENGINE", "SOLR")
@@ -52,7 +55,7 @@ def healthcheck():
         print("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
         
 def num2str(number):
-    return str(round(number,4)) #round to 4 decimal places for readibility
+    return str(round(number, 4)) #round to 4 decimal places for readibility
 
 def vec2str(vector):
     return "[" + ", ".join(map(num2str,vector)) + "]"

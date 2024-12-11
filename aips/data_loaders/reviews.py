@@ -1,9 +1,9 @@
-from pyspark.sql import SparkSession
+from aips.spark import get_spark_session
 from pyspark.sql.functions import col
 
 def load_dataframe(csv_file):
     print("\nLoading Reviews...")
-    spark = SparkSession.builder.appName("AIPS").getOrCreate()
+    spark = get_spark_session()
     dataframe = spark.read.csv(csv_file, inferSchema=True, header=True, multiLine=True, escape="\"") \
         .select(col("id"), col("name_t").alias("business_name"),
                 col("name_s").alias("name"),
