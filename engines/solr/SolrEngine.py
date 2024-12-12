@@ -8,7 +8,11 @@ class SolrEngine(Engine):
         super().__init__("Solr")
 
     def health_check(self):
-        return requests.get(STATUS_URL).json()["responseHeader"]["status"] == 0
+        status = requests.get(STATUS_URL).json()["responseHeader"]["status"] == 0
+        if status:
+            print("Solr is up and responding.")
+            print("Zookeeper is up and responding.")
+        return status
     
     def print_status(self, response):        
         print("Status: Success" if response["responseHeader"]["status"] == 0 else

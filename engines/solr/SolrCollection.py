@@ -23,6 +23,9 @@ class SolrCollection(Collection):
         #    raise ValueError(f"Collection name invalid. '{name}' does not exists.")
         super().__init__(name)
         
+    def get_engine_name(self):
+        return "solr"
+    
     def commit(self):
         requests.post(f"{SOLR_URL}/{self.name}/update?commit=true&waitSearcher=true")
         time.sleep(5)

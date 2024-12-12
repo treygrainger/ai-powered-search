@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../..')
 from aips import get_entity_extractor, get_sparse_semantic_search
-from .query_tree import enrich
+from .query_tree import enrich, to_queries
 
 def generate_tagged_query(extracted_entities):
     query = extracted_entities["query"]
@@ -62,7 +62,7 @@ def process_semantic_query(collection, entities_collection, query):
     return {
         "tagged_query": tagged_query,
         "parsed_query": enriched_query,
-        "transformed_query": [node["query"] for node in transformed],
+        "transformed_query": to_queries(transformed),
         "tagger_data": entities
     }
 

@@ -39,12 +39,12 @@ def create_filter(field, value):
 def query_string_clause(search_args):
     "Returns the query string from the args or from concatenating query clause strings"
 
-    def retrive_strings(c): return c if isinstance(c, str) else ""
+    def retrieve_strings(c): return c if isinstance(c, str) else ""
 
     query_string = "*"
     if "query" in search_args:
         if isinstance(search_args["query"], list):
-            query_string = " ".join(list(map(retrive_strings, search_args["query"])))
+            query_string = " ".join(list(map(retrieve_strings, search_args["query"])))
         else:
             query_string = search_args["query"]
     return query_string.strip()
@@ -68,8 +68,13 @@ class OpenSearchCollection(Collection):
         super().__init__(name)
         self.id_field = id_field
         
+    def get_engine_name(self):
+        return "opensearch"
+    
     def commit(self):
-        time.sleep(2)
+        response = requests.post(f"{OPENSEARCH_URL}/{self.name}/_flush")
+        print(response)
+        print(response.json())
 
     def write(self, dataframe, overwrite=True):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
@@ -148,7 +153,8 @@ class OpenSearchCollection(Collection):
     
     def transform_response(self, search_response):
         def format_doc(doc):
-            formatted = doc["_source"] | {"id": doc["_id"],
+            id = doc.get("id", doc["_id"])
+            formatted = doc["_source"] | {"id": id,
                                           "score": doc["_score"]}
             if "_explanation" in doc:
                 formatted["[explain]"] = doc["_explanation"]
