@@ -7,8 +7,7 @@ class FeatureLogger:
         ...Building up a training set...
     """
 
-    def __init__(self, engine, index, feature_set, drop_missing=True, id_field='id'):
-        self.engine=engine
+    def __init__(self, index, feature_set, drop_missing=True, id_field='id'):
         self.index=index
         self.feature_set=feature_set
         self.drop_missing=drop_missing

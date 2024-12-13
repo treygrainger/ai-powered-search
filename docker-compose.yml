@@ -10,11 +10,10 @@ services:
       - 8081:8081 # Spark Worker UI
       - 4041:4041 # Spark UI
       - 8888:8888 # Jupyter Notebook UI 
-      - 2345:2345 # Search Webserver 
-    depends_on:
-      - solr
+      - 2345:2345 # Search Webserver
     networks:
       - solr-network
+      - opensearch-network
     restart: unless-stopped
     environment:
       #PYSPARK_SUBMIT_ARGS: '--jars /usr/local/spark/lib/spark-solr-4.0.0-shaded.jar pyspark-shell'
@@ -28,6 +27,10 @@ services:
       - type: bind
         source: "."
         target: "/tmp/notebooks/"
+    profiles:
+      - all
+      - ""
+
   solr:
     build:
       context: ./engines/solr/build/
@@ -45,6 +48,62 @@ services:
     restart: unless-stopped
     depends_on:
       - zookeeper
+      - notebooks
+    profiles:
+      - all
+      - ""
+
+  opensearch:
+    build:
+      context: ./engines/opensearch/build/
+      dockerfile: engine-Dockerfile
+    container_name: opensearch-node1
+    hostname: aips-opensearch
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node1
+      - discovery.type=single-node
+      - network.host=0.0.0.0
+      - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
+      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=''"
+      - "DISABLE_SECURITY_PLUGIN=true"
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 262114 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
+        hard: 262114
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600 # required for Performance Analyzer
+    expose:
+      - 9200:9200
+    networks:
+      - opensearch-network
+    depends_on:
+      - notebooks
+      - opensearch-dashboards
+    profiles:
+      - all
+      
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.14.0
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    expose:
+      - 5601:5601
+    environment:
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+      OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
+    networks:
+      - opensearch-network
+    profiles:
+      - all
 
   zookeeper:
     image: zookeeper:3.5.8
@@ -56,7 +115,14 @@ services:
       - zk-solr
       - solr-network
     restart: unless-stopped
+    profiles:
+      - all
+      - ""
 
+volumes:
+  opensearch-data:
+  
 networks:
   zk-solr:  
   solr-network:
+  opensearch-network:

@@ -7,6 +7,11 @@ class Collection(ABC):
         self.name = name
         
     @abstractmethod 
+    def get_engine_name(self):
+        "Returns the name of the search engine for the collection"
+        pass  
+
+    @abstractmethod 
     def commit(self):
         "Force the collection to commit all uncommited data into the collection"
         pass  

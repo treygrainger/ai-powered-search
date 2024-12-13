@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
 class Engine(ABC):
-    def __init__(self):
-        pass
+    def __init__(self, name):
+        self.name = name
     
     @abstractmethod
     def health_check(self):
@@ -22,9 +22,4 @@ class Engine(ABC):
     @abstractmethod
     def get_collection(self, name):
         "Returns initialized object for a given collection"
-        pass
-    
-    @abstractmethod
-    def apply_schema_for_collection(self, collection):
-        "Applies the appriorate schema for a given collection"
         pass

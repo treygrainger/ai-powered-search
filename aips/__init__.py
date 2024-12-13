@@ -1,50 +1,57 @@
 import aips.environment as environment
-from aips.environment import SOLR_URL
 from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
 from engines.solr.SolrEngine import SolrEngine
+from engines.solr.SolrCollection import SolrCollection
+
+from engines.opensearch.OpenSearchCollection import OpenSearchCollection
+from engines.opensearch.OpenSearchEngine import OpenSearchEngine
+from engines.opensearch.OpenSearchLTR import OpenSearchLTR
+from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSemanticSearch
 
 import os
-from IPython.display import display,HTML
+from IPython.display import display, HTML
 import pandas
 import re
-import requests
 
-engine_type_map = {"SOLR": SolrEngine()}
+engine_type_map = {"SOLR": SolrEngine(),
+                   "OPENSEARCH": OpenSearchEngine()}
 
-def get_engine():
-    return engine_type_map[environment.get("AIPS_SEARCH_ENGINE", "SOLR")]
+def get_engine(override=None):
+    engine_name = override.upper() if override else environment.get("AIPS_SEARCH_ENGINE", "SOLR")
+    return engine_type_map[engine_name]
 
-def set_engine(engine_name):    
+def set_engine(engine_name):
     engine_name = engine_name.upper()
     if engine_name not in engine_type_map:
         raise ValueError(f"No search engine implementation found for {engine_name}")
     else:
         environment.set("AIPS_SEARCH_ENGINE", engine_name)
 
-def get_ltr_engine(collection):
-    return SolrLTR(collection)
+def get_ltr_engine(collection):    
+    ltr_engine_map = {SolrCollection: SolrLTR,
+                      OpenSearchCollection: OpenSearchLTR}
+    return ltr_engine_map[type(collection)](collection)
 
 def get_semantic_knowledge_graph(collection):
-    return SolrSemanticKnowledgeGraph(collection)
+    return SolrSemanticKnowledgeGraph(get_engine("solr").get_collection(collection.name))
 
 def get_entity_extractor(collection):
-    return SolrEntityExtractor(collection)
+    return SolrEntityExtractor(get_engine("solr").get_collection(collection.name))
 
 def get_sparse_semantic_search():
-    return SolrSparseSemanticSearch()
+    SSS_map = {SolrEngine: SolrSparseSemanticSearch,
+               OpenSearchEngine: OpenSearchSparseSemanticSearch}
+    return SSS_map[type(get_engine())]()
 
 def healthcheck():
     try:
         if get_engine().health_check():
-            print("Solr is up and responding.")
-            print("Zookeeper is up and responding.\n")
             print("All Systems are ready. Happy Searching!")
+        else:
+            print("The search engine is not in a ready state.")
     except:
         print("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
-
-def print_status(solr_response):
-      print("Status: Success" if solr_response["responseHeader"]["status"] == 0 else "Status: Failure; Response:[ " + str(solr_response) + " ]" )
-      
+        
 def num2str(number):
     return str(round(number,4)) #round to 4 decimal places for readibility
 
@@ -66,7 +73,7 @@ def images_directory():
         relative = "../.."
     return f"{relative}/data/retrotech/images"
 
-def img_path_for_upc(product):
+def img_path_for_product(product):
     directory = images_directory()
     file = product.get("upc", "no-upc")
     if not os.path.exists(f"data/retrotech/images/{file}.jpg"):
@@ -106,7 +113,7 @@ def render_search_results(query, results):
 
         rendered = header_template.replace("${QUERY}", query.replace('"', '\"'))
         for result in results:
-            image_url = img_path_for_upc(result)
+            image_url = img_path_for_product(result)
             rendered += results_template.replace("${NAME}", result.get("name", "UNKNOWN")) \
                 .replace("${MANUFACTURER}", result.get("manufacturer", "UNKNOWN")) \
                 .replace("${IMAGE_URL}", image_url)
@@ -115,15 +122,14 @@ def render_search_results(query, results):
     return rendered
 
 def fetch_products(doc_ids):
-    doc_ids = ["%s" % doc_id for doc_id in doc_ids]
-    query = "upc:( " + " OR ".join(doc_ids) + " )"
-    params = {'q':  query, 'wt': 'json', 'rows': len(doc_ids)}
-    resp = requests.get(f"{SOLR_URL}/products/select", params=params)
-    df = pandas.DataFrame(resp.json()['response']['docs'])
+    request = {"query": " ".join([str(id) for id in doc_ids]),
+               "query_fields": ["upc"],
+               "limit": len(doc_ids)}
+    response = get_engine().get_collection("products").search(**request)
+    
+    df = pandas.DataFrame(response["docs"])
     df['upc'] = df['upc'].astype('int64')
-
-    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_upc(row) + "\">", axis=1))
-
+    df.insert(0, 'image', df.apply(lambda row: "<img height=\"100\" src=\"" + img_path_for_product(row) + "\">", axis=1))
     return df
 
 def render_judged(products, judged, grade_col='ctr', label=""):

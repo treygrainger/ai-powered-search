@@ -3,6 +3,11 @@ from abc import ABC, abstractmethod
 class LTR(ABC):
     def __init__(self, collection):
         self.collection = collection
+    
+    @abstractmethod
+    def enable_ltr(self, log=False):
+        "Initializes LTR dependencies for a given collection"
+        pass
 
     @abstractmethod
     def generate_feature(self, feature_name, params, feature_type):
@@ -79,9 +84,4 @@ class LTR(ABC):
     def search_with_model(self, model_name, **search_args):
         """Search a collection using an uploaded model.
            See engines.Collection.search() for information on parameters"""
-        pass
-
-    @abstractmethod
-    def enable_ltr(self, collection):
-        "Initializes LTR dependencies for a given collection"
         pass

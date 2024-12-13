@@ -11,8 +11,8 @@ def popularity(query, position):
 def location_distance(query, position):
     return semantic_functions.location_distance(query, position)
 
-def to_query_string(query_tree):
-    return " ".join([node["query"] for node in query_tree])
+def to_queries(query_tree):
+    return [node["query"] for node in query_tree]
  
 def process_semantic_functions(query_tree):
     position = 0
