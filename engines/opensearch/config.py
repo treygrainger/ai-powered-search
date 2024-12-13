@@ -136,8 +136,7 @@ SCHEMAS = {
             "user": text_field(),
             "type": text_field(),
             "target": text_field(),
-            "signal_time": date_field(),
-            "id": integer_field()
+            "signal_time": date_field()
         }
     ),
     "signals_boosting": SIGNALS_BOOSTING_SCHEMA,

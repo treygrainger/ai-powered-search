@@ -1,5 +1,4 @@
 import aips.environment as environment
-
 from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
 from engines.solr.SolrEngine import SolrEngine
 from engines.solr.SolrCollection import SolrCollection
@@ -51,6 +50,8 @@ def healthcheck():
     try:
         if get_engine().health_check():
             print("All Systems are ready. Happy Searching!")
+        else:
+            print("The search engine is not in a ready state.")
     except:
         print("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
         

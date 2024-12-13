@@ -13,7 +13,10 @@ class OpenSearchEngine(Engine):
         super().__init__("OpenSearch")
 
     def health_check(self):
-        return requests.get(STATUS_URL).json()["status"] == "green"
+        status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
+        if status:
+            print("OpenSearch engine is online")
+        return status
     
     def print_status(self, response):
         #print(json.dumps(response, indent=2))
