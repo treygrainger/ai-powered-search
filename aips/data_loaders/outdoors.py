@@ -1,6 +1,7 @@
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import coalesce, col, lit, udf
 from pyspark.sql.types import ArrayType, StringType 
+from aips.spark import get_spark_session
+
 import html
 import re
 
@@ -21,7 +22,7 @@ def load_dataframe(csv_file):
     generate_url_udf = udf(lambda id: f"https://outdoors.stackexchange.com/questions/{id}", StringType())
     post_type_udf = udf(lambda type_id: "question" if type_id == 1 else "answer", StringType())
 
-    spark = SparkSession.builder.appName("AIPS").getOrCreate()
+    spark = get_spark_session()
     dataframe = spark.read.csv(csv_file, header=True, inferSchema=True)
     dataframe = dataframe.filter((dataframe.post_type_id == 1) | (dataframe.post_type_id == 2))
     dataframe = dataframe.withColumn("post_type", post_type_udf(col("post_type_id")))
@@ -33,5 +34,5 @@ def load_dataframe(csv_file):
     dataframe = dataframe.withColumn("url", generate_url_udf(col("id"))) 
     dataframe = dataframe.drop("post_type_id", "deletion_date", "owner_display_name", "last_editor_user_id",
                                "last_editor_display_name", "last_edit_date", "last_activity_date", "comment_count",
-                               "favorite_count", "closed_date", "community_owned_date")
+                               "favorite_count", "closed_date", "community_owned_date", "tags")
     return dataframe
