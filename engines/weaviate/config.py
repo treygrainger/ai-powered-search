@@ -14,6 +14,12 @@ def schema_contains_id_field(collection_name):
         any(filter(lambda p: p["name"] == "__id",
                    SCHEMAS[collection_name]["schema"]["properties"]))
 
+def get_vector_field_name(collection_name):
+    return SCHEMAS.get(collection_name.lower(), {}).get("vector_field", None)
+
+def schema_contains_custom_vector_field(collection_name):
+    return (get_vector_field_name(collection_name) is not None)
+
 def base_field(type, **kwargs):
     return {"dataType": [type]} | kwargs
 #"indexSearchable": True
@@ -37,41 +43,16 @@ def generate_property_list(field_mappings):
     return [{"name": name} | value
             for name, value in field_mappings.items()]
 
-def basic_schema(collection_name, field_mappings):
-    return {
-        "schema": {"class": collection_name, 
-                   "properties": generate_property_list(field_mappings)}}
+def basic_schema(collection_name, field_mappings, vector_field=None):
+    schema = {"schema": {"class": collection_name, 
+                         "properties": generate_property_list(field_mappings)}}
+    if vector_field:
+        schema["vector_field"] = vector_field
+    return schema
 
 def body_title_schema(collection_name):
     return basic_schema(collection_name,
                         {"title": text_field(), "body": text_field()})
-
-def dense_vector_schema(collection_name, field_name, dimensions,
-                        similarity_score, quantization_size, additional_fields={}
-):
-    datatype_map = {"FLOAT32": "float", "BINARY": "byte"}
-    schema = {
-        "schema": {
-            "settings": {"index": {"knn": True, "knn.algo_param.ef_search": 100}},
-            "mappings": {
-                "properties": {
-                    field_name: {
-                        "type": "knn_vector",
-                        "dimension": dimensions,
-                        #"data_type": data_type_map.get(quantization_size, "float"),
-                        "method": {
-                            "name": "hnsw",
-                            "engine": "nmslib",
-                            "space_type": similarity_score or "l2",                            
-                            "parameters": {"ef_construction": 128, "m": 24},
-                        }
-                    }
-                }
-            }
-        }
-    }
-    schema["schema"]["mappings"]["properties"] | additional_fields
-    return schema
 
 PRODUCTS_SCHEMA = basic_schema("products",
     {
@@ -109,8 +90,8 @@ PRODUCTS_SCHEMA = basic_schema("products",
 #    }
 #}
 
-PRODUCT_BOOSTS_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
-PRODUCT_BOOSTS_SCHEMA["schema"]["class"] = "products_with_signals_boosts"
+#PRODUCT_BOOSTS_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
+#PRODUCT_BOOSTS_SCHEMA["schema"]["class"] = "products_with_signals_boosts"
 #PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
         #"type": "rank_features"
     #}
@@ -131,7 +112,7 @@ SCHEMAS = {
         }
     ),
     "products": PRODUCTS_SCHEMA,
-    "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
+    #"products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
     "jobs": basic_schema("jobs",
         {
             "company_country": text_field(),
@@ -172,9 +153,17 @@ SCHEMAS = {
         "location_coordinates": base_field("geo_point")}),
     "tmdb": basic_schema("tmdb",
         {
+            "__id": text_field(),
             "title": text_field(),
             "overview": text_field(),
-            "release_year": double_field(),
+            "cast": text_field(),
+            "release_date": text_field(),
+            "release_year": text_field(),
+            "poster_file": text_field(),
+            "poster_path": text_field(),
+            "vote_average": integer_field(),
+            "vote_count": integer_field(),
+            "movie_image_ids": text_field()
         }
     ),
     "outdoors": basic_schema("outdoors",
@@ -193,21 +182,21 @@ SCHEMAS = {
             "answer_count": integer_field(),
         }
     ),
-    "tmdb_with_embeddings": dense_vector_schema("tmdb_with_embeddings",
-        "image_embedding",
-        512,
-        "innerproduct",
-        "FLOAT32",
-        {"title": text_field(), "movie_id": text_field(), "image_id": text_field()},
+    "tmdb_with_embeddings": basic_schema("tmdb_with_embeddings",
+        {
+            "title": text_field(),
+            "movie_id": text_field(),
+            "image_id": text_field()
+        },
+        "image_embedding"),
+    "tmdb_lexical_plus_embeddings": basic_schema(
+        "tmdb_lexical_plus_embeddings",
+        {"title": text_field(), "overview": text_field(),
+         "movie_id": text_field(), "image_id": text_field()},
+         "image_embedding"
     ),
-    "tmdb_lexical_plus_embeddings": dense_vector_schema("tmdb_lexical_plus_embeddings",
-        "image_embedding",
-        512,
-        "innerproduct",
-        "FLOAT32",
-        {"title": text_field(), "overview": text_field(), "movie_id": text_field(), "image_id": text_field()},
-    ),
-    "outdoors_with_embeddings": dense_vector_schema("outdoors_with_embeddings",
-        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field()},
-    )
+    "outdoors_with_embeddings": basic_schema("outdoors_with_embeddings",
+                                             {"__id": text_field(),
+                                              "title": text_field()},
+                                             "title_embedding"),
 }

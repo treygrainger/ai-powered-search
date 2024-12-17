@@ -2,7 +2,7 @@ from xml.dom import NotFoundErr
 import requests
 from aips.spark import get_spark_session
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
-from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT, WEAVIATE_URL, schema_contains_id_field
+from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT, WEAVIATE_URL, get_vector_field_name, schema_contains_custom_vector_field, schema_contains_id_field, SCHEMAS
 import time
 import json
 from pyspark.sql import Row
@@ -21,10 +21,18 @@ class WeaviateCollection(Collection):
     def commit(self):
         time.sleep(2)
 
+    def get_engine_name(self):
+        return "weaviate"
+    
     def generate_return_fields(self, search_args):
         if "return_fields" in search_args:
-            return_fields = search_args["return_fields"]
+            return_fields = search_args["return_fields"].copy()
             additional_fields = []
+            vector_field = get_vector_field_name(self.name)
+            if vector_field and vector_field in return_fields:
+                additional_fields.append("vector")
+                return_fields.remove(vector_field)
+                additional_fields.append("distance")
             if "score" in return_fields:
                 return_fields.remove("score")
                 additional_fields.append("score")
@@ -32,8 +40,7 @@ class WeaviateCollection(Collection):
                 return_fields.remove("id")
                 if schema_contains_id_field(self.name): #Must appropriately apply id or __id for $WV8_001
                     return_fields.append("__id")
-                else:
-                    additional_fields.append("id")
+                additional_fields.append("id")
             if additional_fields:
                 return_fields.append(Field(name="_additional", fields=additional_fields))
             return return_fields
@@ -54,25 +61,31 @@ class WeaviateCollection(Collection):
     def get_collection_field_names(self):
         response = requests.get(f"{WEAVIATE_URL}/v1/schema/{self.name}")
         if response.status_code == 200:
-            return list(map(lambda p: p["name"], response.json()["properties"]))
+            fields = list(map(lambda p: p["name"], response.json()["properties"]))
+            vector_field = SCHEMAS.get(self.name.lower(), {}).get("vector_field", None)
+            if vector_field:
+                fields.append(vector_field)
         else:
             raise NotFoundErr(f"Collection {self.name} not found")
+        return fields
 
-    def write(self, dataframe, overwrite=False):
+    def write(self, dataframe, overwrite=False): 
         opts = {#"batchSize": 500,
                 "scheme": "http",
                 "host": f"{WEAVIATE_HOST}:{WEAVIATE_PORT}",
                 #"id": "id",
-                "className": self.name} #"vector": "vector"
+                "className": self.name}
+        vector_field = SCHEMAS.get(self.name.lower(), {}).get("vector_field", None)
+        if vector_field:
+            opts["vector"] = vector_field
         mode = "overwrite" if overwrite else "append"
-        dataframe = rename_id_field(dataframe)
+        dataframe = rename_id_field(dataframe)  #.drop("id")
         dataframe.write.format("io.weaviate.spark.Weaviate").options(**opts).mode(mode).save(self.name)
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
     
     def add_documents(self, docs, commit=True):
         dataframe = get_spark_session().createDataFrame(Row(**d) for d in docs)
-        dataframe = rename_id_field(dataframe)
         self.write(dataframe, overwrite=False)
 
     #https://weaviate.io/developers/weaviate/search/basics
@@ -94,7 +107,9 @@ class WeaviateCollection(Collection):
             after_arg = Argument(name="after", value=f'"{search_args["after"]}"')
             collection_query_args.append(after_arg)        
         if is_vector_search(search_args):
-            pass
+            query_vector = f"[{','.join(map(str, search_args['query']))}]"
+            query_arguments = [Argument(name="vector", value=query_vector)]
+            collection_query_args.append(Argument(name="nearVector", value=query_arguments)) 
         elif "query" in search_args and search_args["query"] not in ["", "*"]:
             query = '"' + search_args["query"] + '"' #never null here, needs quotes for proper graphql rendering
             query_arguments = [Argument(name="query", value=query)]
@@ -119,13 +134,25 @@ class WeaviateCollection(Collection):
     
     def transform_response(self, search_response):
         def format_doc(doc):
-            additional = doc.get("_additional", {})
-            doc.pop("_additional", {})
-            if schema_contains_id_field(self.name) and "__id" in doc: # ID Hack 
-                doc["id"] = doc["__id"]
-                doc.pop("__id")
-            return doc | additional
-            
+            additional = doc.pop("_additional", {})   
+            if schema_contains_id_field(self.name):
+                if "__id" in doc: # ID Hack 
+                    if "id" in additional: 
+                        doc["wv8_id"] = additional["id"]
+                    doc["id"] = doc["__id"]
+                    doc.pop("__id")
+            elif "id" in additional:
+                doc["id"] = additional["id"]
+            if "score" in additional:
+                doc["score"] = additional["score"]
+            if schema_contains_custom_vector_field(self.name) and \
+                "vector" in additional:
+                doc[get_vector_field_name(self.name)] = additional["vector"]
+                # Scale the score to equal the cosine similarity 
+                if "distance" in additional and additional["distance"] is not None:
+                    doc["score"] = 1 - additional["distance"]
+            return doc
+        
         if not search_response or "errors" in search_response:
             raise ValueError(search_response)
         response = {"docs": [format_doc(d)
