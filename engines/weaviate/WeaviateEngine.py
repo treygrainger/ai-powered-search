@@ -13,7 +13,7 @@ STATUS_URL = f"{WEAVIATE_URL}/v1/.well-known/live"
 
 class WeaviateEngine(Engine):
     def __init__(self):
-        super().__init__("Weaviate")
+        super().__init__("weaviate")
 
     def health_check(self):
         return requests.get(STATUS_URL).json()["status"] == "green"

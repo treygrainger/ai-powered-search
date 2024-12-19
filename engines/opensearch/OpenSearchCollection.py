@@ -142,8 +142,10 @@ class OpenSearchCollection(Collection):
     def transform_response(self, search_response):
         def format_doc(doc):
             id = doc.get("id", doc["_id"])
+            is_vector_search = False #Stubbed for future normalization
+            score = doc["_score"] if not is_vector_search else doc["_score"] * 2
             formatted = doc["_source"] | {"id": id,
-                                          "score": doc["_score"]}
+                                          "score": score}
             if "_explanation" in doc:
                 formatted["[explain]"] = doc["_explanation"]
             return formatted

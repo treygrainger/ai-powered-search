@@ -32,7 +32,12 @@ def generate_filter_clause(search_args):
     def generate_filter_argument(name, operator, value):
         value_type = "valueText"
         if isinstance(value, list):
+            operator = "ContainsAny"
             value = "[" + ", ".join(['"' + v + '"' for v in value]) + "]"
+        elif value == "*":
+            value = 0
+            operator = "NotEqual"
+            value_type = "valueInt"
         else:
             value = value if value[0] == '"' else '"' + value + '"'
         return [Argument(name="path", value=['"' + name + '"']),
@@ -61,10 +66,12 @@ def generate_sort_clause(search_args):
     sort_clause = None
     if not is_bm25_query(search_args): #sorting not implemented for bm25
         if "order_by" in search_args:
-            for item in search_args["order_by"]:
-                name = item[0] if item[0] != "score" else "_score"
-                sorts.append([Argument(name="path", value='"' + name + '"'),
-                            Argument(name="order", value=item[1])])
+            #score is not a sort option?
+            #skip sorting when first sorting by score
+            if search_args["order_by"][0][0] != "score":
+                for item in search_args["order_by"]:
+                    sorts.append([Argument(name="path", value='"' + item[0] + '"'),
+                                  Argument(name="order", value=item[1])])
     if len(sorts) > 0:
         sort_clause = Argument(name="sort", value=sorts)
     return sort_clause
@@ -100,11 +107,15 @@ class WeaviateCollection(Collection):
                 return_fields.append(Field(name="_additional", fields=additional_fields))
             return return_fields
         else:
-            return [Field(name="_additional", fields=["id", "score"])]
+            fields = self.get_collection_field_names()
+            fields.append(Field(name="_additional", fields=["id", "score"]))
+            return fields
         
     def generate_query_fields(self, search_args):
         if "query_fields" in search_args:
             fields = search_args["query_fields"]
+            if isinstance(fields, str):
+                fields = [fields]
             if "id" in fields and schema_contains_id_field(self.name): #Hacky hacky - $WV8_001
                 fields.remove("id")
                 fields.append("__id")
@@ -120,10 +131,10 @@ class WeaviateCollection(Collection):
             return fields
         return None
     
-    # Weaviate does not support query time, to achieve this stuff the query with expanded boost terms
     def generate_bm25_query(self, search_args):
         query = search_args["query"]
         if "query_boosts" in search_args:
+            # Weaviate does not support query time boosting, to achieve this stuff the query with expanded boost terms
             boost_string = search_args["query_boosts"][1] if isinstance(search_args["query_boosts"], tuple) else search_args["query_boosts"]
             boosts = [(str(b.split("^")[0][1:-1]), int(b.split("^")[1])) for b in boost_string.split(" ")]
             max_boost = max(b[1] for b in boosts)
