@@ -102,7 +102,8 @@ class SolrCollection(Collection):
                     request["params"]["boost"] = f"sum(1,query({clause}))"
                     request["params"]["boost_query"] = value
                 case "index_time_boost":
-                    request["params"]["boost"] = f'payload({value[0]}, "{value[1]}", 1, first)'
+                    term = value[1].strip('"')
+                    request["params"]["boost"] = f'payload({value[0]}, {term}, 1, first)'
                 case "explain":
                     if "fields" not in request:
                         request["fields"] = []

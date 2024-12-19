@@ -1,11 +1,15 @@
 from datetime import date
 import os
 import copy
+from pydoc import text
 
 WEAVIATE_HOST = os.getenv("AIPS_WEAVIATE_HOST") or "aips-weaviate"
 WEAVIATE_PORT = os.getenv("AIPS_OPENSEARCH_PORT") or "8090"
 WEAVIATE_URL = f"http://{WEAVIATE_HOST}:{WEAVIATE_PORT}"
+DEFAULT_BOOST_FIELD = "boosts"
 
+def get_boost_field(collection_name):
+    return SCHEMAS.get(collection_name.lower(), {}).get("boost_field", DEFAULT_BOOST_FIELD)
 
 def schema_contains_id_field(collection_name): 
     #For hack $WV8_001 
@@ -52,55 +56,48 @@ def basic_schema(collection_name, field_mappings, vector_field=None):
 
 def body_title_schema(collection_name):
     return basic_schema(collection_name,
-                        {"title": text_field(), "body": text_field()})
-
-PRODUCTS_SCHEMA = basic_schema("products",
-    {
-        "upc": text_field(), #fielddata=True
-        "_text_": text_field(),
-        "name_ngram": text_field(), #analyzer="bigram_analyzer", fielddata=True
-        "name_fuzzy": text_field(), #analyzer="shingle_analyzer", fielddata=True
-        "short_description_ngram": text_field(), #analyzer="bigram_analyzer"
-        "name": text_field(), #copy_to=["name_ngram", "_text_", "name_fuzzy"], fielddata=True
-        "short_description": text_field(), #copy_to=["short_description_ngram", "_text_"]
-        "long_description": text_field(), #copy_to="_text_"
-        "manufacturer": text_field(), #copy_to="_text_"
-        "has_promotion": boolean_field()
-    }
-)
-#PRODUCTS_SCHEMA["schema"]["settings"] = {
-#    "index": {"mapping": {"total_fields": {"limit": 100000}}},
-#    "analysis": {
-#        "filter": {
-#            "edge_ngram_filter": {"type": "edge_ngram",
-#                                  "min_gram": 1,
-#                                  "max_gram": 20}
-#        },
-#        "analyzer": {
-#            "bigram_analyzer": {
-#                "type": "custom",
-#                "tokenizer": "standard",
-#                "filter": ["lowercase", "edge_ngram_filter"],
-#            },
-#            "shingle_analyzer": {
-#                "tokenizer": "standard",
-#                "filter": ["lowercase", "shingle"]
-#            }
-#        }
-#    }
-#}
-
-#PRODUCT_BOOSTS_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
-#PRODUCT_BOOSTS_SCHEMA["schema"]["class"] = "products_with_signals_boosts"
-#PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
-        #"type": "rank_features"
-    #}
+                        {"post_type_id": text_field(),
+                         "accepted_answer_id": text_field(),
+                         "parent_id": text_field(),
+                         "creation_date": text_field(),
+                         "deletion_date": text_field(),
+                         "score": text_field(),
+                         "view_count": text_field(),
+                         "body": text_field(),
+                         "owner_user_id": text_field(),
+                         "owner_display_name": text_field(),
+                         "last_editor_user_id": text_field(),
+                         "last_editor_display_name": text_field(),
+                         "last_edit_date": text_field(),
+                         "last_activity_date": text_field(),
+                         "title": text_field(),
+                         "tags": text_field(),
+                         "answer_count": text_field(),
+                         "comment_count": text_field(),
+                         "favorite_count": text_field(),
+                         "closed_date": text_field(),
+                         "community_owned_date": text_field(),
+                         "category": text_field()})
 
 def signals_boosting_schema(collection_name):
     return basic_schema(collection_name, {
         "query": text_field(),
         "doc": text_field(),
         "boost": integer_field()})
+
+PRODUCTS_SCHEMA_PROPERTIES = {"upc": text_field(indexSearchable=True),
+                             "name": text_field(),
+                             "short_description": text_field(),
+                             "long_description": text_field(),
+                             "manufacturer": text_field(),
+                             #"has_promotion": boolean_field()
+                             }
+PRODUCTS_SCHEMA = basic_schema("products", PRODUCTS_SCHEMA_PROPERTIES)
+PRODUCTS_SCHEMA["boost_field"] = "upc"
+
+PRODUCT_BOOSTS_SCHEMA = basic_schema("products_with_signals_boosts",
+                                     PRODUCTS_SCHEMA_PROPERTIES | {"signals_boosts": text_field()})
+PRODUCT_BOOSTS_SCHEMA["boost_field"] = "upc"
 
 SCHEMAS = {
     "cat_in_the_hat": basic_schema("cat_in_the_hat",
@@ -112,12 +109,38 @@ SCHEMAS = {
         }
     ),
     "products": PRODUCTS_SCHEMA,
-    #"products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
+    "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
     "jobs": basic_schema("jobs",
         {
-            "company_country": text_field(),
+            "job_title": text_field(),
             "job_description": text_field(),
+            "job_type": text_field(),
+            "category": text_field(),
+            "job_location": text_field(),
+            "job_city": text_field(),
+            "job_state": text_field(),
+            "job_country": text_field(),
+            "job_zip_code": text_field(),
+            "job_address": text_field(),
+            "min_salary": text_field(),
+            "max_salary": text_field(),
+            "salary_period": text_field(),
+            "apply_url": text_field(),
+            "apply_email": text_field(),
+            "num_employees": text_field(),
+            "industry": text_field(),
+            "company_name": text_field(),
+            "company_email": text_field(),
+            "company_website": text_field(),
+            "company_phone": text_field(),
+            "company_logo": text_field(),
             "company_description": text_field(),
+            "company_location": text_field(),
+            "company_city": text_field(),
+            "company_state": text_field(),
+            "company_country": text_field(),
+            "company_zip_code": text_field(),
+            "job_date": text_field()
         }
     ),
     "signals": basic_schema("signals",
@@ -126,14 +149,26 @@ SCHEMAS = {
             "user": text_field(),
             "type": text_field(),
             "target": text_field(),
-            "signal_time": date_field()
+            "signal_time": text_field()
         }
     ),
     "signals_boosting": signals_boosting_schema("signals_boosting"),
+    "basic_signals_boosts": signals_boosting_schema("basic_signals_boosts"),
+    "normalized_signals_boosts": signals_boosting_schema("normalized_signals_boosts"),
     "signals_boosts_with_spam": signals_boosting_schema("signals_boosts_with_spam"),
     "signals_boosts_anti_spam": signals_boosting_schema("signals_boosts_anti_spam"),
     "signals_boosts_weighted_types": signals_boosting_schema("signals_boosts_weighted_types"),
     "signals_boosts_time_weighted": signals_boosting_schema("signals_boosts_time_weighted"),
+    "user_product_implicit_preferences": basic_schema(
+        "user_product_implicit_preferences",
+        {"user": text_field(),
+         "product": text_field(),
+         "rating": integer_field()}),
+    "user_item_recommendations": basic_schema(
+        "user_item_recommendations",
+        {"user": text_field(),
+         "product": text_field(),
+         "boost": integer_field()}),
     "stackexchange": body_title_schema("stackexchange"),
     "health": body_title_schema("health"),
     "cooking": body_title_schema("cooking"),

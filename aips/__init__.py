@@ -36,10 +36,10 @@ def get_ltr_engine(collection):
     return ltr_engine_map[type(collection)](collection)
 
 def get_semantic_knowledge_graph(collection):
-    return SolrSemanticKnowledgeGraph(get_engine("solr").get_collection(collection.name))
+    return SolrSemanticKnowledgeGraph(get_engine("solr").get_collection(collection.name.lower()))
 
 def get_entity_extractor(collection):
-    return SolrEntityExtractor(get_engine("solr").get_collection(collection.name))
+    return SolrEntityExtractor(get_engine("solr").get_collection(collection.name.lower()))
 
 def get_sparse_semantic_search():
     SSS_map = {SolrEngine: SolrSparseSemanticSearch,
