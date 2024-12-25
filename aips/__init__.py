@@ -1,9 +1,6 @@
 import aips.environment as environment
 from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
 from engines.solr.SolrEngine import SolrEngine
-from engines.solr.SolrCollection import SolrCollection
-
-from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 from engines.opensearch.OpenSearchLTR import OpenSearchLTR
 from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSemanticSearch
@@ -34,7 +31,7 @@ def get_engine(override=None):
     return engine_type_map[engine_name.lower()]()
 
 def set_engine(engine_name):
-    engine_name = engine_name.upper()
+    engine_name = engine_name.lower()
     if engine_name not in engine_type_map:
         raise ValueError(f"No search engine implementation found for {engine_name}")
     else:

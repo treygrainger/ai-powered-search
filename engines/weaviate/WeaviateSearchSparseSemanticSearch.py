@@ -1,3 +1,4 @@
+from graphql_query import Argument
 from engines.SparseSemanticSearch import SparseSemanticSearch
 
 def escape_quotes(text):
@@ -15,21 +16,27 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
                 query["query_tree"][position] = {
                     "type": "transformed",
                     "syntax": "weaviate",
-                    "query": {}}
+                    "query": self.create_geo_filter(next_entity['location_coordinates'],
+                                            "location_coordinates", 50)}
                 return True
         return False
 
     def create_geo_filter(self, coordinates, field, distance_KM):
-        return {"geo_distance": {"distance": f"{distance_KM}km",
-                                           field: {"lat": coordinates.split(",")[0],
-                                                   "lon": coordinates.split(",")[1]}}}
+        lat_lon = [Argument(name="latitude", value=coordinates.split(",")[0]),
+                   Argument(name="longitude", value=coordinates.split(",")[1])]
+        return [Argument(name="operator", value="WithinGeoRange"),
+                Argument(name="valueGeoRange",
+                         value=[Argument(name="geoCoordinates", value=lat_lon),
+                                Argument(name="distance", 
+                                         value=[Argument(name="max", value=distance_KM * 1000)])]),
+                Argument(name="path", value=[field])]
 
     def popularity(self, query, position):
         if len(query["query_tree"]) -1 > position:
             query["query_tree"][position] = {
                 "type": "transformed",
                 "syntax": "weaviate",
-                "query": {}}
+                "query": {"filter": {}}}
             return True
         return False
         

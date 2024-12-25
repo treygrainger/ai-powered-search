@@ -136,11 +136,13 @@ class WeaviateCollection(Collection):
         if "query_boosts" in search_args:
             # Weaviate does not support query time boosting, to achieve this stuff the query with expanded boost terms
             boost_string = search_args["query_boosts"][1] if isinstance(search_args["query_boosts"], tuple) else search_args["query_boosts"]
-            boosts = [(str(b.split("^")[0][1:-1]), int(b.split("^")[1])) for b in boost_string.split(" ")]
+            boosts = [(str(b.split("^")[0][1:-1]),
+                       int(float(b.split("^")[1]))) for b in boost_string.split(" ")]
             max_boost = max(b[1] for b in boosts)
             query = (query + " ") * max_boost
             for boost in boosts:
-                query = query + " " + ((boost[0] + " ") * boost[1])
+                quantity = int(boost[1] * 100 if isinstance(boost[1], float) else boost[1])
+                query = query + " " + ((boost[0] + " ") * quantity)
         if "index_time_boost" in search_args:
             query += " " + search_args["index_time_boost"][1]
         query = query.replace('"', '\\"')

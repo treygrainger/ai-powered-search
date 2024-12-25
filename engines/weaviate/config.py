@@ -168,7 +168,7 @@ SCHEMAS = {
         "user_item_recommendations",
         {"user": text_field(),
          "product": text_field(),
-         "boost": integer_field()}),
+         "boost": double_field()()}),
     "stackexchange": body_title_schema("stackexchange"),
     "health": body_title_schema("health"),
     "cooking": body_title_schema("cooking"),

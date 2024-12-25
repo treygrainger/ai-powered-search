@@ -1,5 +1,4 @@
 from random import random
-from engines.weaviate.config import SOLR_URL
 from engines.weaviate.WeaviateCollection import WeaviateCollection
 from engines.LTR import LTR
 import json
