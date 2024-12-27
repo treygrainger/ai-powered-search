@@ -135,6 +135,7 @@ class WeaviateCollection(Collection):
         query = search_args["query"]
         if "query_boosts" in search_args:
             # Weaviate does not support query time boosting, to achieve this stuff the query with expanded boost terms
+            # Parses a boost string into a data structure, supports ints and floats
             boost_string = search_args["query_boosts"][1] if isinstance(search_args["query_boosts"], tuple) else search_args["query_boosts"]
             boosts = [(str(b.split("^")[0][1:-1]),
                        int(float(b.split("^")[1]))) for b in boost_string.split(" ")]
