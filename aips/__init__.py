@@ -17,22 +17,21 @@ import re
 engine_type_map = {"solr": SolrEngine,
                    "opensearch": OpenSearchEngine,
                    "weaviate": WeaviateEngine}
-
 ltr_engine_map = {"solr": SolrLTR,
                    "opensearch": OpenSearchLTR,
                    "weaviate": WeaviateLTR}
-
 SSS_map = {"solr": SolrSparseSemanticSearch,
            "opensearch": OpenSearchSparseSemanticSearch,
            "weaviate": WeaviateSearchSparseSemanticSearch}
 
-def get_engine(override=None):
+def get_engine(override=None, host_override=None):
     engine_name = override if override else environment.get("AIPS_SEARCH_ENGINE", "solr")
-    return engine_type_map[engine_name.lower()]()
+    engine_type = engine_type_map[engine_name.lower()]
+    return engine_type() if not host_override else engine_type(host_override)
 
 def set_engine(engine_name):
     engine_name = engine_name.lower()
-    if engine_name not in engine_type_map:
+    if engine_name not in ltr_engine_map:
         raise ValueError(f"No search engine implementation found for {engine_name}")
     else:
         environment.set("AIPS_SEARCH_ENGINE", engine_name)
@@ -40,14 +39,24 @@ def set_engine(engine_name):
 def get_ltr_engine(collection):    
     return ltr_engine_map[collection.get_engine_name()](collection)
 
+def get_semantic_engine(log=False):
+    if get_engine().name == "solr":
+        return get_engine("solr")
+    else:
+        engine = get_engine("solr", "localhost")
+        if not engine.health_check(log):
+            environment.shutdown_semantic_engine(log)
+            environment.initialize_embedded_semantic_engine(log)
+        return engine
+
 def get_sparse_semantic_search():
     return SSS_map[get_engine().name.lower()]()
-
+    
 def get_semantic_knowledge_graph(collection):
-    return SolrSemanticKnowledgeGraph(get_engine("solr").get_collection(collection.name.lower()))
+    return SolrSemanticKnowledgeGraph(get_semantic_engine().get_collection(collection.name.lower()))
 
 def get_entity_extractor(collection):
-    return SolrEntityExtractor(get_engine("solr").get_collection(collection.name.lower()))
+    return SolrEntityExtractor(get_semantic_engine().get_collection(collection.name.lower()))
 
 def healthcheck():
     try:

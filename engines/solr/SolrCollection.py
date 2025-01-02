@@ -2,30 +2,35 @@ import random
 from numpy import isin
 import requests
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
-from engines.solr.config import SOLR_URL
-from aips.environment import AIPS_ZK_HOST
+import engines.solr.config as config
+from aips.environment import AIPS_ZK_URL
 import time
 import json
-import numbers
 
 class SolrCollection(Collection):
-    def __init__(self, name):
+    def __init__(self, name, solr_url=config.SOLR_URL):
         #response = requests.get(f"{SOLR_COLLECTIONS_URL}/?action=LIST")
         #print(response)
         #collections = response.json()["collections"]
         #if name.lower() not in [s.lower() for s in collections]:
         #    raise ValueError(f"Collection name invalid. '{name}' does not exists.")
+        self.solr_url = solr_url
+        if solr_url.find("localhost") != -1:
+            self.zk_url = "localhost:2181"
+        else:
+            self.zk_url = AIPS_ZK_URL
+        print(self.zk_url)
         super().__init__(name)
 
     def get_engine_name(self):
         return "solr"
 
     def commit(self):
-        requests.post(f"{SOLR_URL}/{self.name}/update?commit=true&waitSearcher=true")
+        requests.post(f"{self.solr_url}/{self.name}/update?commit=true&waitSearcher=true")
         time.sleep(5)
 
     def write(self, dataframe):
-        opts = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
+        opts = {"zkhost": self.zk_url, "collection": self.name,
                 "gen_uniq_key": "true", "commit_within": "5000"}
         dataframe.write.format("solr").options(**opts).mode("overwrite").save()
         self.commit()
@@ -33,7 +38,7 @@ class SolrCollection(Collection):
 
     def add_documents(self, docs, commit=True):
         print(f"\nAdding Documents to '{self.name}' collection")
-        response = requests.post(f"{SOLR_URL}/{self.name}/update?commit=true", json=docs).json()
+        response = requests.post(f"{self.solr_url}/{self.name}/update?commit=true", json=docs).json()
         if commit:
             self.commit()
         return response
@@ -134,7 +139,7 @@ class SolrCollection(Collection):
         return response
 
     def native_search(self, request=None, data=None):
-        response = requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
+        response = requests.post(f"{self.solr_url}/{self.name}/select", json=request, data=data).json()
         return response
 
     def spell_check(self, query, log=False):
@@ -143,7 +148,7 @@ class SolrCollection(Collection):
         if log:
             print("Solr spellcheck basic request syntax: ")
             print(json.dumps(request, indent="  "))
-        response = requests.post(f"{SOLR_URL}/{self.name}/spell", json=request).json()
+        response = requests.post(f"{self.solr_url}/{self.name}/spell", json=request).json()
         suggestions = {}
         if "spellcheck" in response:
             suggestions =  {r["collationQuery"]: r["hits"]

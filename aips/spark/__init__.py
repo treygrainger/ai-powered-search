@@ -1,10 +1,8 @@
-from engines.weaviate.config import get_vector_field_name
 from pyspark.sql.functions import col, udf
 from pyspark.sql.types import StringType 
 from pyspark.conf import SparkConf
 from pyspark.sql import SparkSession
 
-from aips.environment import AIPS_ZK_HOST
 from engines.opensearch.config import OPENSEARCH_URL
 
 def get_spark_session():
@@ -22,7 +20,7 @@ def create_view_from_collection(collection, view_name, spark=None):
         spark = get_spark_session()
     match collection.get_engine_name():
         case "solr":
-            opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    
+            opts = {"zkhost": collection.zk_host, "collection": collection.name}    
             spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
         case "opensearch":
             parse_id_udf = udf(lambda s: s["_id"], StringType())

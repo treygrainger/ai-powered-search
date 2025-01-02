@@ -24,6 +24,7 @@ RUN cd /usr/local/spark/lib/ && \
     echo "5b9ae056b6ac21ae009f79a3a761774c7178b995fbe035572a4f35d5738e055d02828d2ec0ff98dd063ffffe37f4c48dc9a418d71269fc560f65b33c94493f2d *${SPARK_OS_JAR}" \
     | sha512sum -c - && chmod a+rwx $SPARK_OS_PATH
 
+# Install Spark-Weaviate
 ENV SPARK_WV8_VERSION=1.3.3
 ENV SPARK_WV8_JAR=spark-connector-assembly-${SPARK_WV8_VERSION}.jar
 ENV SPARK_WV8_PATH=/usr/local/spark/lib/${SPARK_WV8_JAR}
@@ -53,7 +54,9 @@ COPY engines/ /home/$NB_USER/engines
 COPY ltr/ /home/$NB_USER/ltr
 COPY semantic_search/ /home/$NB_USER/semantic_search
 COPY webserver/ /home/$NB_USER/webserver
-COPY build/ipython_kernel_config.py /etc/ipython/
+COPY build/install-text-tagger-deps.sh /home/$NB_USER/install-text-tagger-deps.sh
+RUN chmod a+rwx /home/$NB_USER/install-text-tagger-deps.sh
+RUN ./install-text-tagger-deps.sh
 RUN rm -rf work/
 
 # Change to notebook user
@@ -68,10 +71,6 @@ ENV SPARK_OPTS="$SPARK_OPTS --driver-java-options=\"-DXlint:none -Dlog4j.logLeve
     PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH,$SPARK_OS_PATH,$SPARK_WV8_PATH pyspark-shell" \
     PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-*-src.zip:%PYTHONPATH% \
     DOCKER_STACKS_JUPYTER_CMD=lab
-
-# If you want to edit the notebooks and have your changes persist, 
-# uncomment the line below and restart with `docker compose up --build`
-#WORKDIR /tmp/notebooks
 
 # Mark all notebooks as trusted by default
 RUN find . -name \*.ipynb -print0|xargs -0 jupyter-trust -y

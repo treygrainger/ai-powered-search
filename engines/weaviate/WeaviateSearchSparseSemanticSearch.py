@@ -16,8 +16,8 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
                 query["query_tree"][position] = {
                     "type": "transformed",
                     "syntax": "weaviate",
-                    "query": self.create_geo_filter(next_entity['location_coordinates'],
-                                            "location_coordinates", 50)}
+                    "query": {"filter": self.create_geo_filter(next_entity['location_coordinates'],
+                                            "location_coordinates", 50)}}
                 return True
         return False
 
@@ -36,10 +36,10 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
             query["query_tree"][position] = {
                 "type": "transformed",
                 "syntax": "weaviate",
-                "query": {"filter": {}}}
+                "query": {"vector_search": {"popularity": [5]}}}
             return True
         return False
-        
+    
     def transform_query(self, query_tree):
         for i, item in enumerate(query_tree):
             match item["type"]:

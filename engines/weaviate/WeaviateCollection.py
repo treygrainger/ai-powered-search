@@ -10,72 +10,6 @@ from pyspark.sql import Row
 
 from graphql_query import Query, Argument, Field, Operation    
 
-def rename_id_field(dataframe): #Hack $WV8_001
-    #Must exist because Weaviate reserves the 'id' field (and also the _id field??)
-    if "id" in dataframe.columns:
-        return dataframe.withColumnRenamed("id", "__id")
-    return dataframe
-
-def is_query_by_id(search_args):
-    #hacks for sort by not existing in bm25.
-    #Will catch all queries that can be done without using BM25 handler
-    return len(search_args.get("query_fields", [])) == 1 and \
-           len(search_args.get("order_by", [])) == 1 and \
-           search_args["order_by"][0][0] == "boost"
-
-def is_bm25_query(search_args):
-    return "query" in search_args and \
-           search_args["query"] not in ["", "*"] and \
-           not is_query_by_id(search_args)
-
-def generate_filter_clause(search_args):    
-    def generate_filter_argument(name, operator, value):
-        value_type = "valueText"
-        if isinstance(value, list):
-            operator = "ContainsAny"
-            value = "[" + ", ".join(['"' + v + '"' for v in value]) + "]"
-        elif value == "*":
-            value = 0
-            operator = "NotEqual"
-            value_type = "valueInt"
-        else:
-            value = value if value[0] == '"' else '"' + value + '"'
-        return [Argument(name="path", value=['"' + name + '"']),
-                Argument(name="operator", value=operator),
-                Argument(name=value_type, value=value)]
-    filters = []
-    filter_clause = None
-    if is_query_by_id(search_args):
-        id_filter = generate_filter_argument(search_args["query_fields"][0],
-                                             "Equal", search_args["query"])
-        filters.append(id_filter)
-    if "filters" in search_args and len(search_args["filters"]) > 0:
-        for filter in search_args["filters"]:
-            operator = "Equal" if filter[0][0] != "-" else "NotEqual"
-            filter_arg = generate_filter_argument(filter[0].strip("-"),
-                                                  operator, filter[1])
-            filters.append(filter_arg)
-    if len(filters) > 0:
-        filter_clause = Argument(name="where", value=[
-            Argument(name="operator", value="And"),
-            Argument(name="operands", value=filters)])
-    return filter_clause
-    
-def generate_sort_clause(search_args):
-    sorts = []
-    sort_clause = None
-    if not is_bm25_query(search_args): #sorting not implemented for bm25
-        if "order_by" in search_args:
-            #score is not a sort option?
-            #skip sorting when first sorting by score
-            if search_args["order_by"][0][0] != "score":
-                for item in search_args["order_by"]:
-                    sorts.append([Argument(name="path", value='"' + item[0] + '"'),
-                                  Argument(name="order", value=item[1])])
-    if len(sorts) > 0:
-        sort_clause = Argument(name="sort", value=sorts)
-    return sort_clause
-
 class WeaviateCollection(Collection):
     def __init__(self, name):
         super().__init__(name)
@@ -85,7 +19,86 @@ class WeaviateCollection(Collection):
 
     def get_engine_name(self):
         return "weaviate"
-    
+        
+    def rename_id_field(self, dataframe): #Hack $WV8_001
+        #Must exist because Weaviate reserves the 'id' field (and also the _id field??)
+        if "id" in dataframe.columns:
+            return dataframe.withColumnRenamed("id", "__id")
+        return dataframe
+
+    def is_query_by_id(self, search_args):
+        #hacks for sort by not existing in bm25.
+        #Will catch all queries that can be done without using BM25 handler
+        return len(search_args.get("query_fields", [])) == 1 and \
+            len(search_args.get("order_by", [])) == 1 and \
+            search_args["order_by"][0][0] == "boost"
+
+    def is_bm25_search(self, search_args):
+        return "query" in search_args and \
+            search_args["query"] not in ["", "*"] and \
+            not self.is_query_by_id(search_args)
+
+    def is_hybrid_search(self, search_args):
+        #This ensures at least one vector and one lexical search
+        return "query" in search_args and isinstance(search_args["query"], list)
+
+    def generate_filter_clause(self, search_args):    
+        def generate_filter_argument(name, operator, value):
+            value_type = "valueText"
+            if isinstance(value, bool):
+                #value_type = "valueBoolean"
+                value = str(value).lower()
+            if isinstance(value, list):
+                operator = "ContainsAny"
+                value = "[" + ", ".join(['"' + v + '"' for v in value]) + "]"
+            elif value == "*":
+                value = 0
+                operator = "NotEqual"
+                value_type = "valueInt"
+            elif isinstance(value, str):
+                value = value if value[0] == '"' else '"' + value + '"'
+            return [Argument(name="path", value=['"' + name + '"']),
+                    Argument(name="operator", value=operator),
+                    Argument(name=value_type, value=value)]
+        filters = []
+        filter_clause = None
+        if self.is_query_by_id(search_args):
+            id_filter = generate_filter_argument(search_args["query_fields"][0],
+                                                "Equal", search_args["query"])
+            filters.append(id_filter)
+        if "filters" in search_args and len(search_args["filters"]) > 0:
+            for filter in search_args["filters"]:
+                operator = "Equal" if filter[0][0] != "-" else "NotEqual"
+                filter_arg = generate_filter_argument(filter[0].strip("-"),
+                                                    operator, filter[1])
+                filters.append(filter_arg)
+        if "query" in search_args and isinstance(search_args["query"], list):
+            for query_clause in search_args["query"]:
+                if isinstance(query_clause, dict):
+                    filter_clause = query_clause.get("filter", None)
+                    if filter_clause:
+                        filters.append(filter_clause)
+        if len(filters) > 0:
+            filter_clause = Argument(name="where", value=[
+                Argument(name="operator", value="And"),
+                Argument(name="operands", value=filters)])
+        return filter_clause
+        
+    def generate_sort_clause(self, search_args):
+        sorts = []
+        sort_clause = None
+        if not self.is_bm25_search(search_args): #sorting not implemented for bm25
+            if "order_by" in search_args:
+                #score is not a sort option?
+                #skip sorting when first sorting by score
+                if search_args["order_by"][0][0] != "score":
+                    for item in search_args["order_by"]:
+                        sorts.append([Argument(name="path", value='"' + item[0] + '"'),
+                                    Argument(name="order", value=item[1])])
+        if len(sorts) > 0:
+            sort_clause = Argument(name="sort", value=sorts)
+        return sort_clause
+
     def generate_return_fields(self, search_args):
         if "return_fields" in search_args:
             return_fields = search_args["return_fields"].copy()
@@ -148,7 +161,7 @@ class WeaviateCollection(Collection):
             query += " " + search_args["index_time_boost"][1]
         query = query.replace('"', '\\"')
         query = '"' + query + '"' #never null here, needs quotes for proper graphql rendering
-        return query           
+        return query
 
     def get_collection_field_names(self):
         response = requests.get(f"{WEAVIATE_URL}/v1/schema/{self.name}")
@@ -162,6 +175,10 @@ class WeaviateCollection(Collection):
         return fields
     
     def update_dataframe_with_missing_columns(self, dataframe):
+        #Weaviate needs data for all fields in the collection and
+        # does not have support for copy fields
+        if self.name.lower().find("products") == 0:
+            pass
         if self.name.lower() == "products_with_signals_boosts" and \
            "signals_boosts" not in dataframe.columns:
             dataframe = dataframe.withColumn("signals_boosts", lit(""))
@@ -177,7 +194,7 @@ class WeaviateCollection(Collection):
         if vector_field:
             opts["vector"] = vector_field
         mode = "overwrite" if overwrite else "append"
-        dataframe = rename_id_field(dataframe)
+        dataframe = self.rename_id_field(dataframe)
         dataframe = self.update_dataframe_with_missing_columns(dataframe)
         dataframe.write.format("io.weaviate.spark.Weaviate").options(**opts).mode(mode).save(self.name)
         self.commit()
@@ -207,8 +224,22 @@ class WeaviateCollection(Collection):
         if is_vector_search(search_args):
             query_vector = f"[{','.join(map(str, search_args['query']))}]"
             query_arguments = [Argument(name="vector", value=query_vector)]
-            collection_query_args.append(Argument(name="nearVector", value=query_arguments)) 
-        elif is_bm25_query(search_args):
+            collection_query_args.append(Argument(name="nearVector", value=query_arguments))
+        elif self.is_hybrid_search(search_args):
+            #"query" #to be used by bm25
+                #"targetVectors": "named property vector",
+                #alpha: 0.25
+                #fusionType: relativeScoreFusion
+                #properties: ["property^5"],
+                #vector: [5]
+            query_vector = list(filter(lambda qc: "vector_search" in qc, search_args["query"]))[0]["vector_search"]
+            query_vector = query_vector[list(query_vector.keys())[0]]
+            text_query = list(filter(lambda qc: isinstance(qc, str), search_args["query"]))[0]
+            query_arg = Argument(name="query", value='"' + text_query.replace('"', "") + '"')
+            vector_arg = Argument(name="vector", value=f"[{','.join(map(str, query_vector))}]")
+            hybrid_args = [query_arg, vector_arg]
+            collection_query_args.append(Argument(name="hybrid", value=hybrid_args))
+        elif self.is_bm25_search(search_args):
             query = self.generate_bm25_query(search_args)
             query_arguments = [Argument(name="query", value=query)]
             if "query_fields" in search_args:
@@ -218,11 +249,11 @@ class WeaviateCollection(Collection):
         else: #unbound search
             pass
 
-        filter_clause = generate_filter_clause(search_args)
+        filter_clause = self.generate_filter_clause(search_args)
         if filter_clause:
             collection_query_args.append(filter_clause)
 
-        sort_clause = generate_sort_clause(search_args)
+        sort_clause = self.generate_sort_clause(search_args)
         if sort_clause:
             collection_query_args.append(sort_clause)
 
@@ -232,7 +263,7 @@ class WeaviateCollection(Collection):
         root_operation = Operation(type="Get", queries=[collection_query])
 
         if "explain" in search_args:
-            pass
+            pass #_additional.explainScore
 
         if "log" in search_args:
             print("Search Request:")

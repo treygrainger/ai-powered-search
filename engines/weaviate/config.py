@@ -90,7 +90,7 @@ PRODUCTS_SCHEMA_PROPERTIES = {"upc": text_field(indexSearchable=True),
                              "short_description": text_field(),
                              "long_description": text_field(),
                              "manufacturer": text_field(),
-                             #"has_promotion": boolean_field()
+                             "has_promotion": text_field()
                              }
 PRODUCTS_SCHEMA = basic_schema("products", PRODUCTS_SCHEMA_PROPERTIES)
 PRODUCTS_SCHEMA["boost_field"] = "upc"
@@ -168,7 +168,7 @@ SCHEMAS = {
         "user_item_recommendations",
         {"user": text_field(),
          "product": text_field(),
-         "boost": double_field()()}),
+         "boost": double_field()}),
     "stackexchange": body_title_schema("stackexchange"),
     "health": body_title_schema("health"),
     "cooking": body_title_schema("cooking"),
@@ -177,14 +177,15 @@ SCHEMAS = {
     "devops": body_title_schema("devops"),
     "reviews": basic_schema("reviews", {
         "__id": text_field(),
-        "business_name": text_field(fielddata=True),
-        "name": text_field(fielddata=True),
-        "city": text_field(fielddata=True),
-        "state": text_field(fielddata=True),
-        "content": text_field(fielddata=True),
-        "categories": text_field(copy_to="doc_type", fielddata=True),
+        "business_name": text_field(),
+        "name": text_field(),
+        "city": text_field(),
+        "state": text_field(),
+        "content": text_field(),
+        "categories": text_field(copy_to="doc_type"),
         "stars_rating": integer_field(),
-        "location_coordinates": text_field()}), #base_field("geoCoordinates")}),
+        "location_coordinates": base_field("geoCoordinates")},
+        "popularity_vector"), #base_field("geoCoordinates")}),
     "entities": basic_schema("entities",
                              {"__id": text_field(),
                               "surface_form": text_field(),
@@ -216,9 +217,9 @@ SCHEMAS = {
             "creation_date": text_field(),
             "score": integer_field(),  # rename?
             "view_count": integer_field(),
-            "body": text_field(fielddata=True),
+            "body": text_field(),
             "owner_user_id": text_field(),
-            "title": text_field(fielddata=True),
+            "title": text_field(),
             "url": text_field(),
             "answer_count": integer_field(),
         }
@@ -239,5 +240,5 @@ SCHEMAS = {
     "outdoors_with_embeddings": basic_schema("outdoors_with_embeddings",
                                              {"__id": text_field(),
                                               "title": text_field()},
-                                             "title_embedding"),
+                                             "title_embedding")
 }

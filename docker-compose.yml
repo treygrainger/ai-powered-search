@@ -17,13 +17,8 @@ services:
       - opensearch-network
     restart: unless-stopped
     environment:
-      #PYSPARK_SUBMIT_ARGS: '--jars /usr/local/spark/lib/spark-solr-4.0.0-shaded.jar pyspark-shell'
-      #NB_USER: 'aips'
-      #NB_UID: 1010
-      #NB_GID: 1020
-      #CHOWN_HOME: 'yes'
-      #CHOWN_HOME_OPTS: -R    
       SOLR_HOST: 'aips-solr'
+      ZK_HOST: 'aips-zk:2181'
     volumes:
       - type: bind
         source: "."
@@ -39,10 +34,7 @@ services:
     container_name: aips-solr
     hostname: aips-solr
     ports:
-      - 8983:8983 
-    environment:
-      - ZK_HOST=aips-zk:2181
-      - SOLR_HOST=aips-solr
+      - 8983:8983
     networks:
       - zk-solr
       - solr-network
