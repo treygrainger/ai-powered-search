@@ -29,7 +29,7 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
                          value=[Argument(name="geoCoordinates", value=lat_lon),
                                 Argument(name="distance", 
                                          value=[Argument(name="max", value=distance_KM * 1000)])]),
-                Argument(name="path", value=[field])]
+                Argument(name="path", value=[f'"{field}"'])]
 
     def popularity(self, query, position):
         if len(query["query_tree"]) -1 > position:

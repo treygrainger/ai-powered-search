@@ -1,4 +1,4 @@
-UID=1000
+USERID=1000
 SOLR_VERSION="9.4.1"
 SOLR_DOWNLOAD_URL="https://archive.apache.org/dist/solr/solr/$SOLR_VERSION/solr-$SOLR_VERSION.tgz"
 set -ex
@@ -22,9 +22,9 @@ mkdir -p /var/solr/data /var/solr/logs /opt/solr/server/logs
 cp /opt/solr/server/resources/log4j2.xml /var/solr/log4j2.xml
 find /var/solr -type d -print0 | xargs -0 chmod 0770
 find /var/solr -type f -print0 | xargs -0 chmod 0660
-chown -R $UID:$UID /opt/solr-$SOLR_VERSION /docker-entrypoint-initdb.d /opt/docker-solr
-chown -R $UID:$UID /var/solr
-chown -R $UID:$UID /opt/solr
+chown -R $USERID:$USERID /opt/solr-$SOLR_VERSION /docker-entrypoint-initdb.d /opt/docker-solr
+chown -R $USERID:$USERID /var/solr
+chown -R $USERID:$USERID /opt/solr
 chmod 0770 /opt/solr/*
 
 set -ex
@@ -42,4 +42,4 @@ rm -rf $DISTRO_NAME.tar.gz
 mkdir -p /data/zk
 chmod 0770 $DISTRO_NAME/*
 printf "tickTime=2000\ninitLimit=10\nsyncLimit=5\ndataDir=/data/zk\nclientPort=2181" >> $DISTRO_NAME/conf/zoo.cfg
-chown $UID:$UID $DISTRO_NAME /data/zk
+chown $USERID:$USERID $DISTRO_NAME /data/zk

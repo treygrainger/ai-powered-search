@@ -1,11 +1,12 @@
 from xml.dom import NotFoundErr
 import requests
+from aips.data_loaders.reviews import transform_dataframe_for_weaviate
 from aips.spark import get_spark_session
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT, WEAVIATE_URL, get_vector_field_name, \
     schema_contains_custom_vector_field, schema_contains_id_field, SCHEMAS, get_boost_field
 import time
-from pyspark.sql.functions import lit
+from pyspark.sql.functions import col, lit, udf
 from pyspark.sql import Row
 
 from graphql_query import Query, Argument, Field, Operation    
@@ -94,35 +95,37 @@ class WeaviateCollection(Collection):
                 if search_args["order_by"][0][0] != "score":
                     for item in search_args["order_by"]:
                         sorts.append([Argument(name="path", value='"' + item[0] + '"'),
-                                    Argument(name="order", value=item[1])])
+                                      Argument(name="order", value=item[1])])
         if len(sorts) > 0:
             sort_clause = Argument(name="sort", value=sorts)
         return sort_clause
 
     def generate_return_fields(self, search_args):
+        fields = []
+        additional_fields = []
+        if search_args.get("explain", False):
+            additional_fields.append("explainScore")
         if "return_fields" in search_args:
-            return_fields = search_args["return_fields"].copy()
-            additional_fields = []
+            fields = search_args["return_fields"].copy()
             vector_field = get_vector_field_name(self.name)
-            if vector_field and vector_field in return_fields:
+            if vector_field and vector_field in fields:
                 additional_fields.append("vector")
-                return_fields.remove(vector_field)
+                fields.remove(vector_field)
                 additional_fields.append("distance")
-            if "score" in return_fields:
-                return_fields.remove("score")
+            if "score" in fields:
+                fields.remove("score")
                 additional_fields.append("score")
-            if "id" in return_fields:
-                return_fields.remove("id")
+            if "id" in fields:
+                fields.remove("id")
                 if schema_contains_id_field(self.name): #Must appropriately apply id or __id for $WV8_001
-                    return_fields.append("__id")
+                    fields.append("__id")
                 additional_fields.append("id")
-            if additional_fields:
-                return_fields.append(Field(name="_additional", fields=additional_fields))
-            return return_fields
         else:
             fields = self.get_collection_field_names()
-            fields.append(Field(name="_additional", fields=["id", "score"]))
-            return fields
+            additional_fields = ["id", "score"]
+        if additional_fields:
+            fields.append(Field(name="_additional", fields=additional_fields))
+        return fields
         
     def generate_query_fields(self, search_args):
         if "query_fields" in search_args:
@@ -144,8 +147,14 @@ class WeaviateCollection(Collection):
             return fields
         return None
     
+    def parse_query_functions(self, query):
+        if query.find("{!func}") != -1:
+            query = query.replace('{!func}query("', "").replace(')"', "")
+        return query
+
     def generate_bm25_query(self, search_args):
         query = search_args["query"]
+        query = self.parse_query_functions(query)
         if "query_boosts" in search_args:
             # Weaviate does not support query time boosting, to achieve this stuff the query with expanded boost terms
             # Parses a boost string into a data structure, supports ints and floats
@@ -157,6 +166,7 @@ class WeaviateCollection(Collection):
             for boost in boosts:
                 quantity = int(boost[1] * 100 if isinstance(boost[1], float) else boost[1])
                 query = query + " " + ((boost[0] + " ") * quantity)
+        #'{!func}query("the") {!func}query("cat") {!func}query("in") {!func}query("the") {!func}query("hat")'
         if "index_time_boost" in search_args:
             query += " " + search_args["index_time_boost"][1]
         query = query.replace('"', '\\"')
@@ -174,14 +184,28 @@ class WeaviateCollection(Collection):
             raise NotFoundErr(f"Collection {self.name} not found")
         return fields
     
-    def update_dataframe_with_missing_columns(self, dataframe):
+    def apply_weaviate_specific_transformations(self, dataframe):
         #Weaviate needs data for all fields in the collection and
         # does not have support for copy fields
+
+        def generate_fuzzy_name(name):
+            name = name.replace(" ", "_")
+            fuzzy_name = ""
+            for i in range(len(name) - 2):
+                fuzzy_name += name[i:i + 2] + " "
+            return fuzzy_name
+            
+        fuzzy_udf = udf(generate_fuzzy_name)
+
         if self.name.lower().find("products") == 0:
-            pass
+            dataframe = dataframe.withColumn("name_fuzzy", fuzzy_udf(col("name")))
+            if "has_promotion" not in dataframe.columns:
+                dataframe = dataframe.withColumn("has_promotion", lit("false"))
         if self.name.lower() == "products_with_signals_boosts" and \
            "signals_boosts" not in dataframe.columns:
             dataframe = dataframe.withColumn("signals_boosts", lit(""))
+        elif self.name.lower() == "reviews":
+            dataframe = transform_dataframe_for_weaviate(dataframe)
         return dataframe
 
     def write(self, dataframe, overwrite=False): 
@@ -195,7 +219,7 @@ class WeaviateCollection(Collection):
             opts["vector"] = vector_field
         mode = "overwrite" if overwrite else "append"
         dataframe = self.rename_id_field(dataframe)
-        dataframe = self.update_dataframe_with_missing_columns(dataframe)
+        dataframe = self.apply_weaviate_specific_transformations(dataframe)
         dataframe.write.format("io.weaviate.spark.Weaviate").options(**opts).mode(mode).save(self.name)
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")

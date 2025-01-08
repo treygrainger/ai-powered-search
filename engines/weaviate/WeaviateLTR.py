@@ -34,16 +34,15 @@ class WeaviateLTR(LTR):
     def generate_fuzzy_query_feature(self, feature_name, field_name):
         #will use a field built with bigrams
         config = {"request": {"query": "$keywords", "query_fields": field_name}}
-        return self.generate_feature(feature_name, config, "query")
+        return self.generate_feature(feature_name, config, "fuzzy_query")
     
     def generate_bigram_query_feature(self, feature_name, field_name):
         #use a bigram field packed with bigrams and searched with by grams
         config = {"request": {"query": "$keywords", "query_fields": field_name}}
-        return self.generate_feature(feature_name, config, "query")
+        return self.generate_feature(feature_name, config, "bigram_query")
         
     def generate_field_value_feature(self, feature_name, field_name):
-        config = {"request": {"query": "$keywords", "query_fields": field_name}}
-        return self.generate_feature(feature_name, config, "query")
+        return self.generate_feature(feature_name, {"field_name": field_name}, "field_value")
         
     def generate_field_length_feature(self, feature_name, field_name):
         pass
@@ -64,12 +63,27 @@ class WeaviateLTR(LTR):
         self.delete_model(model["name"], log=log)
         self.upload_model(model, log=log)
 
+    def generate_bigram_query(self, query):
+        split_query = query.split(" ")
+        for i, word in enumerate(split_query):
+            if i < len(split_query) - 1:
+                query += f'"{word} {split_query[i + 1]}"'
+        return query
+
+    def generate_fuzzy_query(self, query):
+        query = query.replace(" ", "_")
+        fuzzy_query = ""
+        for i in range(len(query) - 2):
+            fuzzy_query += query[i:i + 2] + " "
+        return fuzzy_query
+
     def get_logged_features(self, model_name, doc_ids, options={},
                             id_field="upc", fields=None, log=False):
         model_features = self.model_store.load_features_for_model(model_name, log)
         if "keywords" not in options:
             raise Exception("keywords are required to log features")
-        request = {"filters": [("upc", doc_ids)], "limit": 500}
+        request = {"query": options["keywords"],
+                   "filters": [("upc", doc_ids)], "limit": 500}
         if log:
             request["log"] = True
         logged_docs = self.collection.search(**request)["docs"]
@@ -77,19 +91,34 @@ class WeaviateLTR(LTR):
             d["[features]"] = {}
 
         for feature in model_features:
-            match feature["type"]:
-                case "query":
-                    feature_request = request | feature["params"]["request"]
+            feature_request = request | feature["params"]["request"]
+            if feature["type"] != "field_value":
+                if feature["type"] == "query":
                     if feature_request["query"] == "$keywords":
-                        feature_request["query"] = options["keywords"] #.replace("$keywords", )
-                    scored_docs = self.collection.search(**feature_request)["docs"]
-                    keyed_docs = {d[id_field]: d for d in scored_docs}
-                    for d in logged_docs:
-                        feature_score = keyed_docs.get(d[id_field], {"score": 0})["score"]
-                        if feature_score != 0:
-                            feature_score = feature.get("constant_score", feature_score)
-                        d["[features]"][feature["name"]] = float(feature_score)
+                        feature_request["query"] = options["keywords"]
+                elif feature["type"] == "bigram_query":
+                    feature_request["query"] = self.generate_bigram_query(options["keywords"])
+                elif feature["type"] == "fuzzy_query":
+                    feature_request["query"] = self.generate_fuzzy_query(options["keywords"])
+                    feature_request["query_fields"] += "_fuzzy"
+                scored_docs = self.collection.search(**feature_request)["docs"]
+                scored_docs = {d[id_field]: d for d in scored_docs}
+                field = "score"
+            else:
+                scored_docs = {d[id_field]: d for d in logged_docs}
+                field = None
+            for d in logged_docs: 
+                scored_doc = scored_docs.get(d[id_field], {})                     
+                d["[features]"][feature["name"]] = self.get_feature_score(scored_doc, feature, field)                 
         return logged_docs
+    
+    def get_feature_score(self, doc, feature, field=None):
+        if not field:
+            field = feature["params"]["field_name"]
+        feature_score = doc.get(field, 0)
+        if feature_score != 0:
+            feature_score = feature.get("constant_score", feature_score)
+        return float(feature_score)
     
     def generate_model(self, model_name, feature_names, means, std_devs, weights):
         linear_model = {"name": model_name,
@@ -97,10 +126,11 @@ class WeaviateLTR(LTR):
         for i, name in enumerate(feature_names):
             linear_model["features"][name] = {"avg": float(means[i]),
                                               "std": float(std_devs[i]),
-                                              "weight": float(weights[i])}    
+                                              "weight": float(weights[i])}
         return linear_model
     
-    def get_explore_candidate(self, query, explore_vector, feature_config, log=False):
+    def get_explore_candidate(self, query,
+                              explore_vector, feature_config, log=False):
         request = {"query": query or "*",
                    "limit": 1,
                    "return_fields": ["upc", "name", "manufacturer", "short_description", "long_description", "has_promotion"],
@@ -109,7 +139,7 @@ class WeaviateLTR(LTR):
         docs = self.collection.search(**request)["docs"]
         if log and not docs:
             print(f"No exploration candidate matching query {query}")
-        return docs    
+        return docs
 
     def search_with_model(self, model_name, **search_args):
         ltr_model_data = self.model_store.load_model(model_name)

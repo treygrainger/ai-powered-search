@@ -1,6 +1,8 @@
 # syntax = docker/dockerfile:1.5
 FROM jupyter/pyspark-notebook:spark-3.3.1
 USER root
+ENV NB_USER=jovyan
+ENV NB_UID=1000
 
 # Install gcc, c++, and related dependencies needed for pip to build some python dependencies
 RUN sudo apt-get -y update && \
@@ -25,12 +27,11 @@ RUN cd /usr/local/spark/lib/ && \
     | sha512sum -c - && chmod a+rwx $SPARK_OS_PATH
 
 # Install Spark-Weaviate
-ENV SPARK_WV8_VERSION=1.3.3
-ENV SPARK_WV8_JAR=spark-connector-assembly-${SPARK_WV8_VERSION}.jar
+ENV SPARK_WV8_VERSION=1.3.4a
+ENV SPARK_WV8_JAR=spark-connector-${SPARK_WV8_VERSION}.jar
 ENV SPARK_WV8_PATH=/usr/local/spark/lib/${SPARK_WV8_JAR}
-RUN cd /usr/local/spark/lib/ && \
-    wget https://github.com/weaviate/spark-connector/releases/download/v${SPARK_WV8_VERSION}/${SPARK_WV8_JAR} -O $SPARK_WV8_PATH && \
-    chmod a+rwx $SPARK_WV8_PATH
+COPY engines/weaviate/build/$SPARK_WV8_JAR /usr/local/spark/lib/
+RUN chmod a+rwx $SPARK_WV8_PATH
 
 WORKDIR /home/$NB_USER
 

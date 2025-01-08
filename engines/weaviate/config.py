@@ -86,12 +86,12 @@ def signals_boosting_schema(collection_name):
         "boost": integer_field()})
 
 PRODUCTS_SCHEMA_PROPERTIES = {"upc": text_field(indexSearchable=True),
-                             "name": text_field(),
-                             "short_description": text_field(),
-                             "long_description": text_field(),
-                             "manufacturer": text_field(),
-                             "has_promotion": text_field()
-                             }
+                              "name": text_field(),
+                              "name_fuzzy": text_field(),
+                              "short_description": text_field(),
+                              "long_description": text_field(),
+                              "manufacturer": text_field(),
+                              "has_promotion": text_field()}
 PRODUCTS_SCHEMA = basic_schema("products", PRODUCTS_SCHEMA_PROPERTIES)
 PRODUCTS_SCHEMA["boost_field"] = "upc"
 
