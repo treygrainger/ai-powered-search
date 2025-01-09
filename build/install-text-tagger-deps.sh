@@ -34,11 +34,12 @@ apt-get update
 apt-get -y --no-install-recommends install acl lsof procps wget netcat gosu tini jattach openjdk-17-jre
 rm -rf /var/lib/apt/lists/*
 
+mkdir -p /opt/zk/data
+cd /opt/zk
 DISTRO_NAME=zookeeper-3.4.5
 wget -q "http://archive.apache.org/dist/zookeeper/$DISTRO_NAME/$DISTRO_NAME.tar.gz"
 tar -xzf "$DISTRO_NAME.tar.gz"
 rm -rf $DISTRO_NAME.tar.gz
-mkdir -p /data/zk
 chmod 0770 $DISTRO_NAME/*
-printf "tickTime=2000\ninitLimit=10\nsyncLimit=5\ndataDir=/data/zk\nclientPort=2181" >> $DISTRO_NAME/conf/zoo.cfg
-chown -R $NB_UID:$NB_GID $DISTRO_NAME /data/zk
+printf "tickTime=2000\ninitLimit=10\nsyncLimit=5\ndataDir=/opt/zk/data\nclientPort=2181" >> $DISTRO_NAME/conf/zoo.cfg
+chown -R $NB_UID:$NB_GID $DISTRO_NAME ./data

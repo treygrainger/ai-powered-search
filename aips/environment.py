@@ -18,8 +18,7 @@ WEBSERVER_URL = f"http://{AIPS_WEBSERVER_HOST}:{AIPS_WEBSERVER_PORT}"
 DEFAULT_CONFIG = {"AIPS_SEARCH_ENGINE": "SOLR",
                   "PRINT_REQUESTS": False}
 
-CONFIG_FILE_PATH = os.path.abspath(os.path.join(os.path.join(
-            os.path.dirname(__file__) , './'), 'system.config'))
+CONFIG_FILE_PATH = os.path.abspath(os.path.join(os.path.join(os.path.dirname(__file__) , './../data/'), 'system.config'))
 
 def write_config(config):
     with open(CONFIG_FILE_PATH, "w") as config_file:
@@ -51,7 +50,7 @@ def get(key, default=None):
         return config[key]
 
 def kill_process_using_port(port, log=False):
-    if log: print("shutting down on port")
+    if log: print(f"Shutting down process on port {port}")
     process = subprocess.Popen(["lsof", "-i", ":{0}".format(port)],
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, _ = process.communicate()

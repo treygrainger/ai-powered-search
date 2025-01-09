@@ -32,3 +32,11 @@ def boosted_product_search_request(query, collection, boost_field=None):
         signals_boosts = (boost_field, signals_boosts)
     boosted_request["query_boosts"] = signals_boosts
     return boosted_request
+
+def generate_fuzzy_text(text, min_chars=3, max_chars=6):
+    text = text.replace(" ", "_")
+    fuzzy_text = ""
+    for n in range(min_chars, max_chars + 1):
+        for i in range(len(text) - n):
+            fuzzy_text += text[i:i + n] + " "
+    return fuzzy_text

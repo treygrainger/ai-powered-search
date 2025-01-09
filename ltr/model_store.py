@@ -6,7 +6,7 @@ DEFAULT_LTR_CONFIG = {"models": {}, "features": {}}
 class ModelStore:        
     def __init__(self, file_name="ltr_storage.cfg"):
         self.config_file_path = os.path.abspath(os.path.join(os.path.join(
-            os.path.dirname(__file__) , './'), file_name))
+            os.path.dirname(__file__) , "./../data/"), file_name))
     
     def write_ltr_config(self, config):
         with open(self.config_file_path, "w") as config_file:

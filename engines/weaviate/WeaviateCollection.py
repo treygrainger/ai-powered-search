@@ -1,7 +1,7 @@
 from xml.dom import NotFoundErr
 import requests
 from aips.data_loaders.reviews import transform_dataframe_for_weaviate
-from aips import generate_fuzzy_text
+from aips.search_functions import generate_fuzzy_text
 from aips.spark import get_spark_session
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT, WEAVIATE_URL, get_vector_field_name, \

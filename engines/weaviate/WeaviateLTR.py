@@ -1,5 +1,5 @@
 from random import random
-from aips import generate_fuzzy_text
+from aips.search_functions import generate_fuzzy_text
 from engines.weaviate.WeaviateCollection import WeaviateCollection
 from engines.LTR import LTR
 from ltr.model_store import ModelStore

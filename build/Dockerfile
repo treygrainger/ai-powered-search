@@ -59,7 +59,7 @@ COPY webserver/ /home/$NB_USER/webserver
 COPY build/install-text-tagger-deps.sh /home/$NB_USER/install-text-tagger-deps.sh
 RUN chmod a+rwx /home/$NB_USER/install-text-tagger-deps.sh
 RUN ./install-text-tagger-deps.sh
-RUN rm -rf work/
+RUN rm -rf work/ ./install-text-tagger-deps.sh
 
 # Change to notebook user
 RUN mkdir /tmp/spark-events
