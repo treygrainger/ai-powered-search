@@ -3,6 +3,7 @@ FROM jupyter/pyspark-notebook:spark-3.3.1
 USER root
 ENV NB_USER=jovyan
 ENV NB_UID=1000
+ENV NB_GID=100
 
 # Install gcc, c++, and related dependencies needed for pip to build some python dependencies
 RUN sudo apt-get -y update && \
@@ -61,10 +62,10 @@ RUN ./install-text-tagger-deps.sh
 RUN rm -rf work/
 
 # Change to notebook user
-RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
-RUN fix-permissions /home/$NB_USER
 RUN mkdir /tmp/spark-events
-RUN chown -R $NB_UID:$NB_UID /tmp/spark-events
+COPY build/log4j.properties /var/solr/log4j2.xml
+RUN chown -R $NB_UID:$NB_GID /home/$NB_USER /tmp/spark-events
+RUN fix-permissions /home/$NB_USER
 USER $NB_USER
 
 # Spark Config

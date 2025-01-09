@@ -1,12 +1,13 @@
 from xml.dom import NotFoundErr
 import requests
 from aips.data_loaders.reviews import transform_dataframe_for_weaviate
+from aips import generate_fuzzy_text
 from aips.spark import get_spark_session
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT, WEAVIATE_URL, get_vector_field_name, \
     schema_contains_custom_vector_field, schema_contains_id_field, SCHEMAS, get_boost_field
 import time
-from pyspark.sql.functions import col, lit, udf
+from pyspark.sql.functions import col, lit, udf, monotonically_increasing_id
 from pyspark.sql import Row
 
 from graphql_query import Query, Argument, Field, Operation    
@@ -21,7 +22,7 @@ class WeaviateCollection(Collection):
     def get_engine_name(self):
         return "weaviate"
         
-    def rename_id_field(self, dataframe): #Hack $WV8_001
+    def rename_id_field(self, dataframe):
         #Must exist because Weaviate reserves the 'id' field (and also the _id field??)
         if "id" in dataframe.columns:
             return dataframe.withColumnRenamed("id", "__id")
@@ -65,7 +66,7 @@ class WeaviateCollection(Collection):
         filter_clause = None
         if self.is_query_by_id(search_args):
             id_filter = generate_filter_argument(search_args["query_fields"][0],
-                                                "Equal", search_args["query"])
+                                                 "Equal", search_args["query"])
             filters.append(id_filter)
         if "filters" in search_args and len(search_args["filters"]) > 0:
             for filter in search_args["filters"]:
@@ -115,11 +116,15 @@ class WeaviateCollection(Collection):
             if "score" in fields:
                 fields.remove("score")
                 additional_fields.append("score")
+            if "__weaviate_id" in fields:
+                fields.remove("__weaviate_id")
+                additional_fields.append("id")
             if "id" in fields:
                 fields.remove("id")
                 if schema_contains_id_field(self.name): #Must appropriately apply id or __id for $WV8_001
                     fields.append("__id")
-                additional_fields.append("id")
+                else:
+                    additional_fields.append("id")
         else:
             fields = self.get_collection_field_names()
             additional_fields = ["id", "score"]
@@ -148,6 +153,7 @@ class WeaviateCollection(Collection):
         return None
     
     def parse_query_functions(self, query):
+        #'{!func}query("one") {!func}query("two") {!func}query("three")
         if query.find("{!func}") != -1:
             query = query.replace('{!func}query("', "").replace(')"', "")
         return query
@@ -166,7 +172,6 @@ class WeaviateCollection(Collection):
             for boost in boosts:
                 quantity = int(boost[1] * 100 if isinstance(boost[1], float) else boost[1])
                 query = query + " " + ((boost[0] + " ") * quantity)
-        #'{!func}query("the") {!func}query("cat") {!func}query("in") {!func}query("the") {!func}query("hat")'
         if "index_time_boost" in search_args:
             query += " " + search_args["index_time_boost"][1]
         query = query.replace('"', '\\"')
@@ -187,25 +192,18 @@ class WeaviateCollection(Collection):
     def apply_weaviate_specific_transformations(self, dataframe):
         #Weaviate needs data for all fields in the collection and
         # does not have support for copy fields
-
-        def generate_fuzzy_name(name):
-            name = name.replace(" ", "_")
-            fuzzy_name = ""
-            for i in range(len(name) - 2):
-                fuzzy_name += name[i:i + 2] + " "
-            return fuzzy_name
-            
-        fuzzy_udf = udf(generate_fuzzy_name)
-
-        if self.name.lower().find("products") == 0:
-            dataframe = dataframe.withColumn("name_fuzzy", fuzzy_udf(col("name")))
+        if self.name.lower().find("products") != -1:
+            dataframe = dataframe.withColumn("name_fuzzy", udf(generate_fuzzy_text)(col("name")))
             if "has_promotion" not in dataframe.columns:
                 dataframe = dataframe.withColumn("has_promotion", lit("false"))
+        if self.name.lower() == "reviews":
+            dataframe = transform_dataframe_for_weaviate(dataframe)
         if self.name.lower() == "products_with_signals_boosts" and \
            "signals_boosts" not in dataframe.columns:
             dataframe = dataframe.withColumn("signals_boosts", lit(""))
-        elif self.name.lower() == "reviews":
-            dataframe = transform_dataframe_for_weaviate(dataframe)
+        elif self.name.lower().find("signals") != -1 and \
+            "id" not in dataframe.columns:
+            dataframe = dataframe.withColumn("id", monotonically_increasing_id())
         return dataframe
 
     def write(self, dataframe, overwrite=False): 
@@ -218,8 +216,8 @@ class WeaviateCollection(Collection):
         if vector_field:
             opts["vector"] = vector_field
         mode = "overwrite" if overwrite else "append"
-        dataframe = self.rename_id_field(dataframe)
         dataframe = self.apply_weaviate_specific_transformations(dataframe)
+        dataframe = self.rename_id_field(dataframe)
         dataframe.write.format("io.weaviate.spark.Weaviate").options(**opts).mode(mode).save(self.name)
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
@@ -286,9 +284,6 @@ class WeaviateCollection(Collection):
                                  fields=return_fields)
         root_operation = Operation(type="Get", queries=[collection_query])
 
-        if "explain" in search_args:
-            pass #_additional.explainScore
-
         if "log" in search_args:
             print("Search Request:")
             print(root_operation.render())
@@ -298,16 +293,15 @@ class WeaviateCollection(Collection):
     def transform_response(self, search_response):
         def format_doc(doc):
             additional = doc.pop("_additional", {})   
-            if schema_contains_id_field(self.name):
-                if "__id" in doc: # ID Hack 
-                    if "id" in additional: 
-                        doc["wv8_id"] = additional["id"]
-                    doc["id"] = doc["__id"]
-                    doc.pop("__id")
-            elif "id" in additional:
-                doc["id"] = additional["id"]
+            if "__id" in doc:
+                doc["id"] = doc["__id"]
+                doc.pop("__id")
+            if "id" in additional:
+                doc["__weaviate_id"] = additional["id"]
             if "score" in additional:
                 doc["score"] = additional["score"]
+            if "explainScore" in additional:
+                doc["[explain]"] = additional["explainScore"]
             if schema_contains_custom_vector_field(self.name) and \
                 "vector" in additional:
                 doc[get_vector_field_name(self.name)] = additional["vector"]

@@ -76,6 +76,14 @@ def vec2str(vector):
 def tokenize(text):
     return text.replace(".","").replace(",","").lower().split()
 
+def generate_fuzzy_text(text, min_chars=3, max_chars=6):
+    text = text.replace(" ", "_")
+    fuzzy_text = ""
+    for n in range(min_chars, max_chars + 1):
+        for i in range(len(text) - n):
+            fuzzy_text += text[i:i + n] + " "
+    return fuzzy_text
+
 def get_executing_notebook_path():
     return globals().get("__vsc_ipynb_file__", #only exists during a remote vscode kernel
                          globals().get("_dh", [None])[0])

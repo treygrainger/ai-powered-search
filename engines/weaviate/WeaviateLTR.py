@@ -1,9 +1,7 @@
 from random import random
+from aips import generate_fuzzy_text
 from engines.weaviate.WeaviateCollection import WeaviateCollection
 from engines.LTR import LTR
-import json
-import requests
-import pickle
 from ltr.model_store import ModelStore
 
 class WeaviateLTR(LTR):
@@ -70,13 +68,6 @@ class WeaviateLTR(LTR):
                 query += f'"{word} {split_query[i + 1]}"'
         return query
 
-    def generate_fuzzy_query(self, query):
-        query = query.replace(" ", "_")
-        fuzzy_query = ""
-        for i in range(len(query) - 2):
-            fuzzy_query += query[i:i + 2] + " "
-        return fuzzy_query
-
     def get_logged_features(self, model_name, doc_ids, options={},
                             id_field="upc", fields=None, log=False):
         model_features = self.model_store.load_features_for_model(model_name, log)
@@ -99,7 +90,7 @@ class WeaviateLTR(LTR):
                 elif feature["type"] == "bigram_query":
                     feature_request["query"] = self.generate_bigram_query(options["keywords"])
                 elif feature["type"] == "fuzzy_query":
-                    feature_request["query"] = self.generate_fuzzy_query(options["keywords"])
+                    feature_request["query"] = generate_fuzzy_text(options["keywords"])
                     feature_request["query_fields"] += "_fuzzy"
                 scored_docs = self.collection.search(**feature_request)["docs"]
                 scored_docs = {d[id_field]: d for d in scored_docs}

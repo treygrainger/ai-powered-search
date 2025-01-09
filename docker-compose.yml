@@ -17,8 +17,8 @@ services:
       - opensearch-network
     restart: unless-stopped
     environment:
-      SOLR_HOST: 'aips-solr'
-      ZK_HOST: 'aips-zk:2181'
+      AIPS_SOLR_HOST: 'aips-solr'
+      AIPS_ZK_HOST: 'aips-zk:2181'
     volumes:
       - type: bind
         source: "."

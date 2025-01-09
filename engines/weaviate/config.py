@@ -81,6 +81,7 @@ def body_title_schema(collection_name):
 
 def signals_boosting_schema(collection_name):
     return basic_schema(collection_name, {
+        "__id": text_field(),
         "query": text_field(),
         "doc": text_field(),
         "boost": integer_field()})
@@ -145,6 +146,7 @@ SCHEMAS = {
     ),
     "signals": basic_schema("signals",
         {
+            "__id": text_field(),
             "query_id": text_field(),
             "user": text_field(),
             "type": text_field(),

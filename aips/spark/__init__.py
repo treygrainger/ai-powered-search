@@ -36,7 +36,7 @@ def create_view_from_collection(collection, view_name, spark=None):
             #Weaviate's current spark connector read functionality not yet implemented
             #Resort to batch paged reading
             fields = collection.get_collection_field_names()
-            fields.append("id")
+            fields.append("__weaviate_id")            
             request = {"return_fields": fields,
                        "limit": 1000}
             all_documents = []
@@ -46,10 +46,7 @@ def create_view_from_collection(collection, view_name, spark=None):
                 if len(docs) != request["limit"]:
                     break
                 last_doc = docs[request["limit"] - 1]
-                if "wv8_id" not in last_doc and "id" not in last_doc:
-                    docs = collection.search(**{"return_fields": fields,
-                        "limit": 1000, "log": True})["docs"]
-                cursor_id = last_doc.get("wv8_id", last_doc["id"]) # id hack
+                cursor_id = last_doc["__weaviate_id"]
                 request["after"] = cursor_id
                 
             dataframe = spark.createDataFrame(data=all_documents)
