@@ -19,7 +19,6 @@ class SolrCollection(Collection):
             self.zk_url = "localhost:2181"
         else:
             self.zk_url = AIPS_ZK_URL
-        print(self.zk_url)
         super().__init__(name)
 
     def get_engine_name(self):
