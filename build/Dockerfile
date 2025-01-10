@@ -16,7 +16,7 @@ ENV SHADED_SOLR_JAR_PATH=/usr/local/spark/lib/spark-solr-${SPARK_SOLR_VERSION}-s
 RUN mkdir -p /usr/local/spark/lib/ && cd /usr/local/spark/lib/ && \
     wget -q https://repo1.maven.org/maven2/com/lucidworks/spark/spark-solr/${SPARK_SOLR_VERSION}/spark-solr-${SPARK_SOLR_VERSION}-shaded.jar -O $SHADED_SOLR_JAR_PATH && \
     echo "c5293f10257603bcf650780afcb91ed1bb118f09feb731502c2dc7ac14ba950e586a033cb2f50e5c122c5ec442dc0d2b55f76c4f6522b555e67f4981a38bca26 *spark-solr-${SPARK_SOLR_VERSION}-shaded.jar" \
-    | sha512sum -c - && chmod a+rwx $SHADED_SOLR_JAR_PATH
+    | sha512sum -c - && chmod 0777 $SHADED_SOLR_JAR_PATH
 
 # Install Spark-OpenSearch
 ENV SPARK_OS_VERSION=1.2.0
@@ -25,7 +25,7 @@ ENV SPARK_OS_PATH=/usr/local/spark/lib/${SPARK_OS_JAR}
 RUN cd /usr/local/spark/lib/ && \
     wget -q https://repo1.maven.org/maven2/org/opensearch/client/opensearch-spark-30_2.12/${SPARK_OS_VERSION}/${SPARK_OS_JAR} -O $SPARK_OS_PATH && \
     echo "5b9ae056b6ac21ae009f79a3a761774c7178b995fbe035572a4f35d5738e055d02828d2ec0ff98dd063ffffe37f4c48dc9a418d71269fc560f65b33c94493f2d *${SPARK_OS_JAR}" \
-    | sha512sum -c - && chmod a+rwx $SPARK_OS_PATH
+    | sha512sum -c - && chmod 0777 $SPARK_OS_PATH
 
 # Install Spark-Weaviate
 ENV SPARK_WV8_VERSION=1.3.4a

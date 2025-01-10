@@ -62,9 +62,9 @@ RUN bin/opensearch-plugin install file://$OPENSEARCH_HOME/$LTR_PLUGIN_FILE --bat
 COPY *.properties $OPENSEARCH_HOME/config/
 ARG ANALYZER_DIR=$OPENSEARCH_HOME/config/opensearch-performance-analyzer/
 RUN [ ! -d $ANALYZER_DIR ] || mv $OPENSEARCH_HOME/config/performance-analyzer.properties $ANALYZER_DIR
-COPY --chown=$UID:$UID --chmod=u+x *.sh $OPENSEARCH_HOME/
+COPY --chown=$UID:$UID --chmod=0770 *.sh $OPENSEARCH_HOME/
 RUN chown -R $UID:$GID $OPENSEARCH_HOME/data/
-RUN chmod u+x *.sh
+RUN chmod 0770 *.sh
 RUN ./opensearch-onetime-setup.sh
 
 EXPOSE 9200 9300 9600 9650
