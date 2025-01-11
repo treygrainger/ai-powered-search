@@ -12,7 +12,6 @@ def get_boost_field(collection_name):
     return SCHEMAS.get(collection_name.lower(), {}).get("boost_field", DEFAULT_BOOST_FIELD)
 
 def schema_contains_id_field(collection_name): 
-    #For hack $WV8_001 
     collection_name = collection_name.lower()
     return collection_name in SCHEMAS and \
         any(filter(lambda p: p["name"] == "__id",

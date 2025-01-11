@@ -8,7 +8,7 @@ import signal
 LOCAL_SOLR_PORT = 8983
 LOCAL_ZK_PORT = 2181
 SOLR_COMMAND = "/opt/solr/bin/solr"
-ZOOKEEPER_COMMAND = "/home/jovyan/zookeeper-3.4.5/bin/zkServer.sh"
+ZOOKEEPER_COMMAND = "/opt/zk/zookeeper-3.4.5/bin/zkServer.sh"
 
 AIPS_ZK_URL = os.getenv("AIPS_ZK_HOST") or "aips-zk:2181"
 

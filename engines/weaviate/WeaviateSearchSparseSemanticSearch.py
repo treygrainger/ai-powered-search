@@ -39,7 +39,7 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
                 "query": {"vector_search": {"popularity": [5]}}}
             return True
         return False
-    
+        
     def transform_query(self, query_tree):
         for i, item in enumerate(query_tree):
             match item["type"]:
@@ -49,21 +49,11 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
                     enrichments = item["enrichments"]  
                     if "term_vector" in enrichments:
                         query_string = enrichments["term_vector"]
-                        if "category" in enrichments:
-                            query_string += f' +doc_type:"{enrichments["category"]}"'
-                        transformed_query = '"' + escape_quotes(item["surface_form"]) + '"'
+                        transformed_query = escape_quotes(query_string)
                     else:
                         continue
-                case "color":
-                    transformed_query = f'+colors:"{item["canonical_form"]}"'
-                case "known_item" | "event":
-                    transformed_query = f'+name:"{item["canonical_form"]}"'
-                case "city":
-                    transformed_query = f'+city:"{item["canonical_form"]}"'
-                case "brand":
-                    transformed_query = f'+brand:"{item["canonical_form"]}"'
                 case _:
-                    transformed_query = '"' + escape_quotes(item["surface_form"]) + '"'
+                    transformed_query = escape_quotes(item["surface_form"])
             query_tree[i] = {"type": "transformed",
                              "syntax": "weaviate",
                              "query": transformed_query}                 

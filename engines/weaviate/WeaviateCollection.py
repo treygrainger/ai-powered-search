@@ -29,7 +29,7 @@ class WeaviateCollection(Collection):
         return dataframe
 
     def is_query_by_id(self, search_args):
-        #hacks for sort by not existing in bm25.
+        #hacks for sort by not existing in bm25. This function is very tightly coupled to the books query by id requirements
         #Will catch all queries that can be done without using BM25 handler
         return len(search_args.get("query_fields", [])) == 1 and \
             len(search_args.get("order_by", [])) == 1 and \
@@ -121,7 +121,7 @@ class WeaviateCollection(Collection):
                 additional_fields.append("id")
             if "id" in fields:
                 fields.remove("id")
-                if schema_contains_id_field(self.name): #Must appropriately apply id or __id for $WV8_001
+                if schema_contains_id_field(self.name):
                     fields.append("__id")
                 else:
                     additional_fields.append("id")
@@ -137,7 +137,7 @@ class WeaviateCollection(Collection):
             fields = search_args["query_fields"]
             if isinstance(fields, str):
                 fields = [fields]
-            if "id" in fields and schema_contains_id_field(self.name): #Hacky hacky - $WV8_001
+            if "id" in fields and schema_contains_id_field(self.name):
                 fields.remove("id")
                 fields.append("__id")
             if "query_boosts" in search_args:
@@ -175,7 +175,7 @@ class WeaviateCollection(Collection):
         if "index_time_boost" in search_args:
             query += " " + search_args["index_time_boost"][1]
         query = query.replace('"', '\\"')
-        query = '"' + query + '"' #never null here, needs quotes for proper graphql rendering
+        query = '"' + query + '"'
         return query
 
     def get_collection_field_names(self):
@@ -190,7 +190,7 @@ class WeaviateCollection(Collection):
         return fields
     
     def apply_weaviate_specific_transformations(self, dataframe):
-        #Weaviate needs data for all fields in the collection and
+        # Weaviate needs data for all fields in the collection and
         # does not have support for copy fields
         if self.name.lower().find("products") != -1:
             dataframe = dataframe.withColumn("name_fuzzy", udf(generate_fuzzy_text)(col("name")))
@@ -210,7 +210,6 @@ class WeaviateCollection(Collection):
         opts = {#"batchSize": 500,
                 "scheme": "http",
                 "host": f"{WEAVIATE_HOST}:{WEAVIATE_PORT}",
-                #"id": "id",
                 "className": self.name}
         vector_field = SCHEMAS.get(self.name.lower(), {}).get("vector_field", None)
         if vector_field:
@@ -226,17 +225,6 @@ class WeaviateCollection(Collection):
         dataframe = get_spark_session().createDataFrame(Row(**d) for d in docs)
         self.write(dataframe, overwrite=False)
 
-    #https://weaviate.io/developers/weaviate/search/basics
-    #https://weaviate.io/developers/weaviate/search/bm25
-    #https://graphql.org/learn/queries/
-    #https://github.com/denisart/graphql-query
-    #Rendering graphql strings with denisart's grahql library also requires:
-    #  wrapping string values in double quotes
-    #  encasing the rendered GQL query with an additional set of curly braces
-    #  wrapping field values in quotes
-    #score is handled as a different return field  
-    #id is handled as a different field
-    "https://weaviate.io/developers/weaviate/api/graphql/filters#where-filter"
     def transform_request(self, **search_args):
         limit = Argument(name="limit", value=search_args.get("limit", DEFAULT_SEARCH_SIZE))
         collection_query_args = [limit]
@@ -248,12 +236,6 @@ class WeaviateCollection(Collection):
             query_arguments = [Argument(name="vector", value=query_vector)]
             collection_query_args.append(Argument(name="nearVector", value=query_arguments))
         elif self.is_hybrid_search(search_args):
-            #"query" #to be used by bm25
-                #"targetVectors": "named property vector",
-                #alpha: 0.25
-                #fusionType: relativeScoreFusion
-                #properties: ["property^5"],
-                #vector: [5]
             query_vector = list(filter(lambda qc: "vector_search" in qc, search_args["query"]))[0]["vector_search"]
             query_vector = query_vector[list(query_vector.keys())[0]]
             text_query = list(filter(lambda qc: isinstance(qc, str), search_args["query"]))[0]
@@ -269,7 +251,7 @@ class WeaviateCollection(Collection):
                 query_arguments.append(Argument(name="properties", value=fields))
             collection_query_args.append(Argument(name="bm25", value=query_arguments)) 
         else: #unbound search
-            pass
+            pass #needs no additional collection query arguments
 
         filter_clause = self.generate_filter_clause(search_args)
         if filter_clause:
@@ -328,28 +310,6 @@ class WeaviateCollection(Collection):
             print(search_response)
         return self.transform_response(search_response)
     
-    #https://weaviate.io/developers/weaviate/modules/spellcheck
     def spell_check(self, query, log=False):
         #Needs the contextionary and text spell checker. Currently stubbed out
         return {'modes': 421, 'model': 159, 'modern': 139, 'modem': 56, 'mode6': 9}
-        request = """{
-  Get {
-    %s(nearText: {
-      concepts: ["%s"],
-      autocorrect: true
-    }) {
-      %s
-      _additional {
-        spellCheck {
-          changes {
-            corrected
-            original
-          }
-          didYouMean
-          location
-          originalText
-        }
-      }
-    }
-  }
-}""" % (self.name, query, "_text_")
