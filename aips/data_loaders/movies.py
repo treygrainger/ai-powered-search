@@ -1,5 +1,6 @@
 import json
 from pyspark.sql import SparkSession, Row
+from aips.spark import get_spark_session
 
 def load_dataframe(movie_file="data/tmdb.json", movie_image_ids={}):
     movies = []
@@ -17,10 +18,7 @@ def load_dataframe(movie_file="data/tmdb.json", movie_image_ids={}):
             movie = {"id": movieId,
                      "title": tmdbMovie["title"],
                      "overview": tmdbMovie["overview"],
-                     "tagline": tmdbMovie["tagline"],
-                     "directors": [director["name"] for director in tmdbMovie["directors"]],
                      "cast": " ".join([castMember["name"] for castMember in tmdbMovie["cast"]]),
-                     "genres": [genre["name"] for genre in tmdbMovie["genres"]],
                      "release_date": releaseDate,
                      "release_year": releaseYear,
                      "poster_file": (tmdbMovie["poster_path"] or "  ")[1:],
@@ -36,5 +34,5 @@ def load_dataframe(movie_file="data/tmdb.json", movie_image_ids={}):
             movies.append(movie)
         except KeyError as k: # Ignore any movies missing these attributes
             continue
-    spark = SparkSession.builder.appName("AIPS").getOrCreate()
+    spark = get_spark_session()
     return spark.createDataFrame(Row(**m) for m in movies)
