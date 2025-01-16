@@ -28,7 +28,11 @@ def generate_vector_search_request(search_args):
         print("Search Request:")
         print(json.dumps(request, indent="  "))
     return request
-        
+      
+def get_document_count(self):        
+    response = requests.get(f"{OPENSEARCH_URL}/{self.name}/_count").json()
+    return response.get("count", 0)
+
 def create_filter(field, value):
     if value != "*":
         key = "terms" if isinstance(value, list) else "term"

@@ -15,7 +15,17 @@ class Engine(ABC):
         pass
 
     @abstractmethod
-    def create_collection(self, name):
+    def does_collection_exist(self, name):
+        "Checks for the existance of the collection"
+        pass
+    
+    @abstractmethod
+    def is_collection_healthy(self, name, expected_count):
+        "Checks to see if the collection is properly populated"
+        pass
+
+    @abstractmethod
+    def create_collection(self, name, force_rebuild=True):
         "Create and initialize the schema for a collection, returns the initialized collection"
         pass
 

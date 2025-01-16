@@ -18,14 +18,23 @@ class OpenSearchEngine(Engine):
             print("OpenSearch engine is online")
         return status
     
+    def does_collection_exist(self, name):
+        "Checks for the existance of the collection"
+        pass
+    
+    def is_collection_healthy(self, name, expected_count):
+        "Checks to see if the collection is properly populated"
+        pass
+
     def print_status(self, response):
         #print(json.dumps(response, indent=2))
         "Prints the resulting status of a search engine request"
         pass
 
-    def create_collection(self, name, log=False):
-        print(f'Wiping "{name}" collection')
-        response = requests.delete(f"{OPENSEARCH_URL}/{name}").json()
+    def create_collection(self, name, force_rebuild=True, log=False):
+        if force_rebuild:
+            print(f'Wiping "{name}" collection')
+            response = requests.delete(f"{OPENSEARCH_URL}/{name}").json()
 
         print(f'Creating "{name}" collection')
         collection = self.get_collection(name)

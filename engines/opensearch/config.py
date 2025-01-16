@@ -74,8 +74,7 @@ PRODUCTS_SCHEMA = basic_schema(
         "name": text_field(copy_to=["name_ngram", "_text_", "name_fuzzy"], fielddata=True),
         "short_description": text_field(copy_to=["short_description_ngram", "_text_"]),
         "long_description": text_field(copy_to="_text_"),
-        "manufacturer": text_field(copy_to="_text_"),
-        "has_promotion": boolean_field()
+        "manufacturer": text_field(copy_to="_text_")
     },
     "upc"
 )
@@ -105,6 +104,10 @@ PRODUCT_BOOSTS_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
 PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
         "type": "rank_features"
     }
+PRODUCT_PROMO_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
+PRODUCT_PROMO_SCHEMA["schema"]["mappings"]["properties"]["has_promotion"] = {
+        "type": "boolean"
+    }
 
 SIGNALS_BOOSTING_SCHEMA = basic_schema({
     "query": keyword_field(),
@@ -122,6 +125,7 @@ SCHEMAS = {
         "id"
     ),
     "products": PRODUCTS_SCHEMA,
+    "products_with_promos": PRODUCT_PROMO_SCHEMA,
     "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
     "jobs": basic_schema(
         {
