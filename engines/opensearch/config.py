@@ -208,14 +208,13 @@ SCHEMAS = {
         "query_id": keyword_field(),
         "client_id": text_field()
     }),
-    "ubi_aips_events": basic_schema({
-        "application": text_field(),
-        "action_name": text_field(),
-        "query_id": keyword_field(), #linked, linked to queries.query_id
-        "client_id": text_field(), #the user, linked to queries.client_id 
+    "ubi_events": basic_schema({
+        "action_name": text_field(fielddata=True),
+        "client_id": text_field(fielddata=True), #the user, linked to queries.client_id 
+        "query_id": text_field(fielddata=True), #linked to queries.query_id
         "timestamp": date_field(), # signal_time
-        "message_type": text_field(), # type
-        "message": text_field(),
-        #"event_attributes": {}
+        "message_type": text_field(fielddata=True), # type
+        "message": text_field(fielddata=True),
+        "target": text_field(fielddata=True)
     })
 }
