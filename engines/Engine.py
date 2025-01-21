@@ -21,7 +21,7 @@ class Engine(ABC):
     
     @abstractmethod
     def is_collection_healthy(self, name, expected_count):
-        "Checks to see if the collection is properly populated"
+        "Checks to see if the collection exists and is correctly populated"
         pass
 
     @abstractmethod

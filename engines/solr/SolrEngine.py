@@ -2,7 +2,6 @@ import requests
 from engines.Engine import Engine
 from engines.solr.SolrCollection import SolrCollection
 from engines.solr.config import SOLR_COLLECTIONS_URL, STATUS_URL, SOLR_URL
-
 class SolrEngine(Engine):
     def __init__(self):
         super().__init__("Solr")
@@ -31,12 +30,13 @@ class SolrEngine(Engine):
         if log: print(f"Documents found: {document_count}")
         return collection_exists and document_count == expected_count
 
-    def create_collection(self, name, log=False):
+    def create_collection(self, name, force_rebuild=True,log=False):
         collection = self.get_collection(name)
-        wipe_collection_params = [("action", "delete"), ("name", name)]
-        print(f'Wiping "{name}" collection')
-        response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
-        requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
+        if force_rebuild:
+            wipe_collection_params = [("action", "delete"), ("name", name)]
+            print(f'Wiping "{name}" collection')
+            response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
+            requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
 
         create_collection_params = [("action", "CREATE"),
                                     ("name", name),
@@ -45,7 +45,7 @@ class SolrEngine(Engine):
         print(f'Creating "{name}" collection')
         response = requests.post(SOLR_COLLECTIONS_URL + "?commit=true", data=create_collection_params).json()
         if log:
-            display(response)
+            print(response)
         self.apply_schema_for_collection(collection, log=log)
         self.print_status(response)
         return collection

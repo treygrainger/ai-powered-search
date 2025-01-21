@@ -2,62 +2,72 @@ import tarfile
 from git import Repo
 import os
 import shutil
+
+import tqdm
 from aips.data_loaders import movies, outdoors, reviews, products, cities
 from aips.spark.dataframe import from_csv
 from git.remote import RemoteProgress
 
 class Progress(RemoteProgress):
-    def update(self, *args):
-        print(self._cur_line)
+    def __init__(self):
+        super().__init__()
+        self.progress_bar = None
+
+    def update(self, op_code, cur_count, max_count=None, message=""):
+        if not self.progress_bar:
+            self.progress_bar = tqdm.tqdm()
+        self.progress_bar.total = max_count
+        self.progress_bar.n = cur_count
+        self.progress_bar.refresh()
 
 dataset_info = {
     "products": {"url": "https://github.com/ai-powered-search/retrotech.git",
                  "count": 48194,
                  "loader_fn": products.load_dataframe},
     "products_with_promotions": {"url": "https://github.com/ai-powered-search/retrotech.git",
-                 "count": 48194,
-                 "loader_fn": products.load_dataframe,
-                 "data_file_name": "products.csv",
-                 "loader_params": {"with_promotion": True}},
+                                 "count": 48194,
+                                 "loader_fn": products.load_dataframe,
+                                 "data_file_name": "products.csv",
+                                 "loader_args": {"with_promotion": True}},
     "signals": {"url": "https://github.com/ai-powered-search/retrotech.git",
                 "count": 2172605,
                 "loader_fn": from_csv},
-                #,"copy_repository": "data/"},
+               #"copy_repository": "data/"},
     "jobs": {"url": "https://github.com/ai-powered-search/jobs.git",
              "count": 2103555,
              "loader_fn": from_csv,
-             "loader_params": {"additional_columns": {"category": "jobs"},
-                               "drop_id": True}},
+             "loader_args": {"additional_columns": {"category": "jobs"},
+                             "drop_id": True}},
     "health": {"url": "https://github.com/ai-powered-search/health.git",
                "count": 12892,
                "loader_fn": from_csv,
                "data_file_name": "posts.csv",
-               "loader_params": {"additional_columns": {"category": "health"},
-                                 "drop_id": True}},
+               "loader_args": {"additional_columns": {"category": "health"},
+                               "drop_id": True}},
     "cooking": {"url": "https://github.com/ai-powered-search/cooking.git",
-               "count": 79324,
-               "loader_fn": from_csv,
-               "data_file_name": "posts.csv",
-               "loader_params": {"additional_columns": {"category": "cooking"},
-                                 "drop_id": True}},
+                "count": 79324,
+                "loader_fn": from_csv,
+                "data_file_name": "posts.csv",
+                "loader_args": {"additional_columns": {"category": "cooking"},
+                                "drop_id": True}},
     "scifi": {"url": "https://github.com/ai-powered-search/scifi.git",
-               "count": 177547,
-               "loader_fn": from_csv,
-               "data_file_name": "posts.csv",
-               "loader_params": {"additional_columns": {"category": "scifi"},
-                                 "drop_id": True}},
+              "count": 177547,
+              "loader_fn": from_csv,
+              "data_file_name": "posts.csv",
+              "loader_args": {"additional_columns": {"category": "scifi"},
+                              "drop_id": True}},
     "travel": {"url": "https://github.com/ai-powered-search/travel.git",
                "count": 111130,
                "loader_fn": from_csv,
                "data_file_name": "posts.csv",
-               "loader_params": {"additional_columns": {"category": "travel"},
-                                 "drop_id": True}},
+               "loader_args": {"additional_columns": {"category": "travel"},
+                               "drop_id": True}},
     "devops": {"url": "https://github.com/ai-powered-search/devops.git",
                "count": 9216,
                "loader_fn": from_csv,
                "data_file_name": "posts.csv",
-               "loader_params": {"additional_columns": {"category": "devops"},
-                                 "drop_id": True}},
+               "loader_args": {"additional_columns": {"category": "devops"},
+                               "drop_id": True}},
     "stackexchange": {"source_datasets": ["health", "cooking", "scifi", "travel", "devops"]},
     "reviews": {"url": "https://github.com/ai-powered-search/reviews.git",
                 "count": 192138,
@@ -83,9 +93,21 @@ dataset_info = {
                   "destination": "."},
     "question-answering": {"url": "https://github.com/ai-powered-search/question-answering.git"},
     "movies_with_image_embeddings": {"url": "https://github.com/ai-powered-search/tmdb.git",
-                                   "data_file_name": "movies_with_image_embeddings.pickle"}}
+                                     "data_file_name": "movies_with_image_embeddings.pickle"}}
 
 def build_collection(engine, dataset, force_rebuild=False, log=False):
+    """
+    Attempts to build a collection in the search engine if necessary.
+
+    Parameters:
+    - engine: The search engine instance.
+    - dataset: The dataset key from `dataset_info`.
+    - force_rebuild: Boolean to force rebuild the collection.
+    - log: Boolean to enable logging.
+    
+    Returns:
+    - collection: The built or retrieved collection from the engine.
+    """
     source_datasets = dataset_info[dataset].get("source_datasets", [dataset])
     expected_count = sum([dataset_info[r]["count"] for r in source_datasets])
     if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, log=log):
@@ -93,8 +115,8 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
         collection = engine.create_collection(dataset, log=log)
         for dataset in source_datasets:
             csv_file_path = download_data_files(dataset, log=log)
-            loader_params = dataset_info[dataset].get("loader_params", {})
-            dataframe = dataset_info[dataset]["loader_fn"](csv_file_path, **loader_params)
+            loader_args = dataset_info[dataset].get("loader_args", {})
+            dataframe = dataset_info[dataset]["loader_fn"](csv_file_path, **loader_args)
             collection.write(dataframe)
     else:
         if log: print(f"Collection [{dataset}] is healthy")
@@ -102,6 +124,13 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
     return collection
 
 def copy_repository(dataset, log=False):
+    """
+    Copies a repository from the github source to the target directory.
+
+    Parameters:
+    - dataset: The dataset key from `dataset_info`.
+    - log: Boolean to enable logging.
+    """
     if "copy_repository" in dataset_info[dataset]:
         target_dir = dataset_info[dataset]["copy_repository"]
         repo_path = get_repo_path(dataset)
@@ -148,7 +177,7 @@ def download_data_files(dataset, log=False):
         untar_file(dataset, log=log)
     return file_path
 
-def pull_github_repository(dataset, log=False):
+def pull_github_repository(dataset, log=True):
     repo_path = get_repo_path(dataset)
     progress_logger = Progress() if log else None
     if os.path.isdir(repo_path):
