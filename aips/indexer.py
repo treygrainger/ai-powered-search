@@ -20,6 +20,19 @@ class Progress(RemoteProgress):
         self.progress_bar.n = cur_count
         self.progress_bar.refresh()
 
+# The following dataset definitions contain the necessary information
+# for populating collections and/or pulling data dependencies from github
+# 
+#             url: The github url containing the file(s) for populating the collection
+#           count: The number of documents  expected in the collection
+#       loader_fn: The function to call to process the data file(s)
+#  data_file_name: The name of the data file. Defaults to f"{dataset_name}.csv"
+#     loader_args: The arguments passed to the loader function. Defaults to no arguments.
+# source_datasets: A list of datasets to pull/populate the collection with. The
+#                  source dataset for a collection is typically just the dataset being
+#                  invoked (default). Data from every source dataset will be used to
+#                  populate the collection.
+
 dataset_info = {
     "products": {"url": "https://github.com/ai-powered-search/retrotech.git",
                  "count": 48194,
@@ -124,13 +137,6 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
     return collection
 
 def copy_repository(dataset, log=False):
-    """
-    Copies a repository from the github source to the target directory.
-
-    Parameters:
-    - dataset: The dataset key from `dataset_info`.
-    - log: Boolean to enable logging.
-    """
     if "copy_repository" in dataset_info[dataset]:
         target_dir = dataset_info[dataset]["copy_repository"]
         repo_path = get_repo_path(dataset)
