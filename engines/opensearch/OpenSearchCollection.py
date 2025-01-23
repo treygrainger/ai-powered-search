@@ -145,10 +145,7 @@ class OpenSearchCollection(Collection):
                     pass
 
         request["query"]["bool"]["should"] = should
-
-        if "log" in search_args:
-            print("Search Request:")
-            print(json.dumps(request, indent="  "))
+        if "log" in search_args: display(request)
         return request
     
     def transform_response(self, search_response):
@@ -174,6 +171,7 @@ class OpenSearchCollection(Collection):
     def search(self, **search_args):
         request = self.transform_request(**search_args)
         search_response = self.native_search(request=request)
+        if "log" in search_args: display(search_response)
         return self.transform_response(search_response)
     
     def spell_check(self, query, log=False):
