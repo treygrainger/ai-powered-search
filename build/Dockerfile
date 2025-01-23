@@ -33,10 +33,8 @@ RUN conda run --name ch5-spacy pip install -r ch5_spacy_requirements.txt
 RUN conda run --name ch5-spacy python -m spacy download en_core_web_sm
 RUN conda run --name ch5-spacy python -m ipykernel install --name ch5-spacy --display-name "[ONLY FOR CH5.1] spaCy experimental kernel"
 
-ENV BLIS_ARCH="generic" 
-ENV PIP_CACHE_DIR=/var/cache/pip
+ENV BLIS_ARCH="generic" PIP_CACHE_DIR=/var/cache/pip
 RUN mkdir -p $PIP_CACHE_DIR
-WORKDIR /home/$NB_USER
 COPY build/requirements.txt /home/$NB_USER
 RUN --mount=type=cache,target=$PIP_CACHE_DIR \
     pip install -r requirements.txt && \
