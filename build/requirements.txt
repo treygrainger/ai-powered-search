@@ -40,12 +40,4 @@ scikit-learn==1.2.1
 spacy==3.5.0
 faiss-cpu==1.9.0
 sentence-transformers==3.1.1
-
-#Only used in 5.1
-#Omitted because of version conflicts. Super old library, need virtual env or something
-# pretrained coreference model dependency. Will load latest supported version of spacy, and transformers
-#https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_coreference_web_trf-3.4.0a2-py3-none-any.whl
-
-#Only used in 7.14
-#Currently breaks Commented out until M.2 Issue is solved or avoided for onnxruntime-gpu
-#spladerunner==0.1.6
+spladerunner==0.1.6
