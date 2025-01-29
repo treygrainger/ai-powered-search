@@ -25,7 +25,12 @@ class Collection(ABC):
     def add_documents(self, docs, commit=True):
         "Adds a collection of documents into the collection"
         pass
-    
+
+    @abstractmethod
+    def get_document_count(self):
+        "Returns the number of documents in the index"
+        pass
+
     @abstractmethod
     def transform_request(self, **search_args):
         "Transforms a generic search request into a native search request"
