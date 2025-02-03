@@ -3,34 +3,32 @@ import json
 import requests
 
 from engines.Engine import Engine
-from engines.opensearch.config import OPENSEARCH_URL, SCHEMAS
+import engines.opensearch.config as config
 from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 
-STATUS_URL = f"{OPENSEARCH_URL}/_cluster/health"
-
 class OpenSearchEngine(Engine):
-    def __init__(self):
+    def __init__(self, os_url=config.OPENSEARCH_URL):
+        self.os_url = os_url
         super().__init__("opensearch")
 
     def health_check(self):
-        status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
+        status = requests.get(f"{self.os_url}/_cluster/health").json()["status"] in ["green", "yellow"]
         if status:
             print("OpenSearch engine is online")
         return status
     
     def print_status(self, response):
-        #print(json.dumps(response, indent=2))
         "Prints the resulting status of a search engine request"
-        pass
+        print(json.dumps(response, indent=2))
 
     def create_collection(self, name, log=False):
         print(f'Wiping "{name}" collection')
-        response = requests.delete(f"{OPENSEARCH_URL}/{name}").json()
+        response = requests.delete(f"{self.os_url}/{name}").json()
 
         print(f'Creating "{name}" collection')
         collection = self.get_collection(name)
-        request = SCHEMAS[name]["schema"] if name in SCHEMAS else {}
-        response = requests.put(f"{OPENSEARCH_URL}/{name}", json=request).json()
+        request = config.SCHEMAS[name]["schema"] if name in config.SCHEMAS else {}
+        response = requests.put(f"{self.os_url}/{name}", json=request).json()
         if log: 
             print("Schema:", json.dumps(request, indent=2))
         if log: 
@@ -39,5 +37,5 @@ class OpenSearchEngine(Engine):
 
     def get_collection(self, name):
         "Returns initialized object for a given collection"
-        id_field = SCHEMAS.get(name, {}).get("id_field", "_id")
+        id_field = config.SCHEMAS.get(name, {}).get("id_field", "_id")
         return OpenSearchCollection(name, id_field)

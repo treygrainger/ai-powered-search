@@ -3,16 +3,51 @@ from re import search
 from engines.opensearch.config import OPENSEARCH_URL
 from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.LTR import LTR
+from ltr.model_store import ModelStore
 import json
 import requests
 from IPython.display import display
 
-#https://github.com/o19s/elasticsearch-ltr-demo/tree/master/train
+class OpenSearchModelStore(ModelStore):
+    def delete_feature_store(self, name, log=False):
+        if log: display(f"Deleting features {name}")     
+        response = requests.delete(f"{OPENSEARCH_URL}/_ltr/_featureset/{name}").json()
+        if log: display(response)
+        return response
+    
+    def upload_features(self, features, model_name, log=False):
+        if log: display(f"Uploading Features {model_name}")
+        feature_request = {"featureset": {"name": model_name,
+                                          "features": features}}
+        response = requests.post(f"{OPENSEARCH_URL}/_ltr/_featureset/{model_name}",
+                                 json=feature_request)
+        if log: display(response.json())
+        return response
+    
+    def load_features_for_model(self, model_name, log=False):
+        pass
 
+    def delete_model(self, model_name, log=False):
+        if log: display(f"Delete model {model_name}")
+        response = requests.delete(f"{OPENSEARCH_URL}/_ltr/_model/{model_name}").json()
+        if log: display(json.dumps(response, indent=2))
+        return response
+    
+    def upload_model(self, model, log=False):
+        model_name = model["model"]["name"]
+        if log: display(f'Upload model {model_name}')
+        response = requests.post(f"{OPENSEARCH_URL}/_ltr/_featureset/{model_name}/_createmodel", json=model)
+        if log: display(response.json())
+        return response
+    
+    def load_model(self, model_name, log=False):
+        pass
 class OpenSearchLTR(LTR):
-    def __init__(self, collection):
+    #https://github.com/o19s/elasticsearch-ltr-demo/tree/master/train
+    def __init__(self, collection, model_store=OpenSearchModelStore()):
         if not isinstance(collection, OpenSearchCollection):
             raise TypeError("Only supports a OpenSearchCollection")
+        self.model_store = model_store
         super().__init__(collection)
     
     def enable_ltr(self, log=False):        
@@ -56,37 +91,21 @@ class OpenSearchLTR(LTR):
         return None
     
     def delete_feature_store(self, name, log=False):
-        if log: display(f"Deleting features {name}")     
-        response = requests.delete(f"{OPENSEARCH_URL}/_ltr/_featureset/{name}").json()
-        if log: display(response)
-        return response
+        return self.model_store.delete_feature_store(name, log=log)
 
-    def upload_features(self, features, model_name, log=False):
-        if log: display(f"Uploading Features {model_name}")
-        feature_request = {"featureset": {"name": model_name,
-                                          "features": features}}
-        response = requests.post(f"{OPENSEARCH_URL}/_ltr/_featureset/{model_name}",
-                                 json=feature_request)
-        if log: display(response.json())
-        return response
+    def upload_features(self, features, model_name, log=False):        
+        return self.model_store.upload_features(features, model_name, log=log)
 
     def delete_model(self, model_name, log=False):
-        if log: display(f"Delete model {model_name}")
-        response = requests.delete(f"{OPENSEARCH_URL}/_ltr/_model/{model_name}").json()
-        if log: display(json.dumps(response, indent=2))
-        return response
+        return self.model_store.delete_model(model_name, log=log)
     
     def upload_model(self, model, log=False):
-        model_name = model["model"]["name"]
-        if log: display(f'Upload model {model_name}')
-        response = requests.post(f"{OPENSEARCH_URL}/_ltr/_featureset/{model_name}/_createmodel", json=model)
-        if log: display(response.json())
-        return response
+        return self.model_store.upload_model(model, log=log)
     
     def upsert_model(self, model, log=False):
         self.delete_model(model["name"], log=log)
         self.upload_model(model, log=log)
-
+        
     def get_logged_features(self, model_name, doc_ids, options={},
                             id_field="id", fields=None, log=False):
         keywords = options.get("keywords", "*")

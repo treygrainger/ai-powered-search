@@ -1,12 +1,39 @@
+from abc import ABC, abstractmethod
 import json
 import os
 
 DEFAULT_LTR_CONFIG = {"models": {}, "features": {}}
 
-class ModelStore:        
+class ModelStore(ABC):
+    @abstractmethod
+    def delete_feature_store(self, name, log=False):
+        pass
+    
+    @abstractmethod
+    def upload_features(self, features, model_name, log=False):
+        pass
+    
+    @abstractmethod
+    def load_features_for_model(self, model_name, log=False):
+        pass
+    
+    @abstractmethod
+    def delete_model(self, model_name, log=False):
+        pass
+    
+    @abstractmethod
+    def upload_model(self, model, log=False):
+        pass
+    
+    @abstractmethod
+    def load_model(self, model_name, log=False):
+        pass
+
+class LocalModelStore(ModelStore):
     def __init__(self, file_name="ltr_storage.cfg"):
         self.config_file_path = os.path.abspath(os.path.join(os.path.join(
             os.path.dirname(__file__) , "./../data/"), file_name))
+        super().__init__()
     
     def write_ltr_config(self, config):
         with open(self.config_file_path, "w") as config_file:
@@ -61,4 +88,3 @@ class ModelStore:
         if model_name not in ltr_config["models"]:
             raise Exception(f"Model {model_name} not found.")
         return ltr_config["models"][model_name]
-    
