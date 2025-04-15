@@ -55,15 +55,18 @@ def must_clauses(search_args):
                        search_args.get("query", [])))
 
 class OpenSearchCollection(Collection):
-    def __init__(self, name, id_field="_id"):
+    def __init__(self, name, id_field="_id",
+                 headers={"Concent-Type": "application/json"}):
         super().__init__(name)
         self.id_field = id_field
+        self.__headers = headers
         
     def get_engine_name(self):
         return "opensearch"
     
     def commit(self):
-        response = requests.post(f"{OPENSEARCH_URL}/{self.name}/_flush")
+        response = requests.post(f"{OPENSEARCH_URL}/{self.name}/_flush",
+                                 headers=self.__headers)
 
     def write(self, dataframe, overwrite=True):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
@@ -159,7 +162,8 @@ class OpenSearchCollection(Collection):
         return response
         
     def native_search(self, request=None, data=None):
-        return requests.post(f"{OPENSEARCH_URL}/{self.name}/_search", json=request, data=data).json()
+        return requests.post(f"{OPENSEARCH_URL}/{self.name}/_search",
+                             headers=self.__headers, json=request, data=data).json()
 
     def search(self, **search_args):
         request = self.transform_request(**search_args)

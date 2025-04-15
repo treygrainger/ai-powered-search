@@ -21,8 +21,13 @@ def double_field():
 def integer_field():
     return base_field("integer")
 
-def keyword_field(**kwargs):
-    return base_field("keyword", **kwargs)
+def kkeyword_field():
+    return base_field("text", **{"fields": {"keyword": {"type": "keyword",
+                                                      "ignore_above": 256}}})
+
+def keyword_field():
+    return {"type": "keyword", "ignore_above": 256,
+					"store": True, "fielddata": True}
 
 # {"multiValued": "true", "docValues": "true"}
 def date_field():
@@ -66,7 +71,7 @@ def dense_vector_schema(
 
 PRODUCTS_SCHEMA = basic_schema(
     {
-        "upc": text_field(fielddata=True),
+        "upc": text_field(),
         "_text_": text_field(),
         "name_ngram": text_field(analyzer="bigram_analyzer", fielddata=True),
         "name_fuzzy": text_field(analyzer="shingle_analyzer", fielddata=True),
