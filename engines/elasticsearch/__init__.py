@@ -1,0 +1,3 @@
+# Elasticsearch engine module
+from engines.elasticsearch.ElasticsearchEngine import ElasticsearchEngine
+from engines.elasticsearch.ElasticsearchCollection import ElasticsearchCollection
