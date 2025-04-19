@@ -55,23 +55,34 @@ def must_clauses(search_args):
                        search_args.get("query", [])))
 
 class OpenSearchCollection(Collection):
-    def __init__(self, name, id_field="_id",
+    def __init__(self, name, id_field="_id", 
+                 os_url=OPENSEARCH_URL, access_key=None, secret_key=None,
                  headers={"Concent-Type": "application/json"}):
         super().__init__(name)
         self.id_field = id_field
+        self.os_url = os_url
+        self.__access_key = access_key
+        self.__secret_key = secret_key
         self.__headers = headers
         
     def get_engine_name(self):
         return "opensearch"
     
     def commit(self):
-        response = requests.post(f"{OPENSEARCH_URL}/{self.name}/_flush",
+        response = requests.post(f"{self.os_url}/{self.name}/_flush",
                                  headers=self.__headers)
 
     def write(self, dataframe, overwrite=True):
-        opts = {"opensearch.nodes": OPENSEARCH_URL,
-                "opensearch.net.ssl": "false",
-                "opensearch.batch.size.entries": 500}
+        print(self.os_url)
+        opts = {"opensearch.nodes": self.os_url,
+                "opensearch.net.ssl": "true",
+                "opensearch.port": "443",
+                "opensearch.nodes.wan.only": "true",
+                "opensearch.batch.size.entries": 50,
+                "opensearch.batch.size.bytes": "500kb",
+                "opensearch.net.http.auth.user": self.__access_key,
+                "opensearch.net.http.auth.pass": self.__secret_key,
+                "opensearch.net.ssl.cert.allow.self.signed": "true"}
         if self.id_field != "_id":
             opts["opensearch.mapping.id"] = self.id_field
         mode = "overwrite" if overwrite else "append"
@@ -162,7 +173,7 @@ class OpenSearchCollection(Collection):
         return response
         
     def native_search(self, request=None, data=None):
-        return requests.post(f"{OPENSEARCH_URL}/{self.name}/_search",
+        return requests.post(f"{self.os_url}/{self.name}/_search",
                              headers=self.__headers, json=request, data=data).json()
 
     def search(self, **search_args):
