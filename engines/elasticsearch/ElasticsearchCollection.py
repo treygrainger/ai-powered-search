@@ -176,6 +176,49 @@ class ElasticsearchCollection(Collection):
         if "min_match" in search_args:
             request["query"]["query_string"]["minimum_should_match"] = search_args["min_match"]
 
+        # Add query_boosts if specified
+        if "query_boosts" in search_args:
+            # Convert the query_boosts string to a list of boosted terms
+            boosts_str = search_args["query_boosts"]
+
+            # Check if we need to parse the string
+            if isinstance(boosts_str, str):
+                # Parse the boost string format: "term1^boost1 term2^boost2"
+                boost_terms = []
+                for term_boost in boosts_str.split():
+                    if "^" in term_boost:
+                        term, boost = term_boost.split("^", 1)
+                        # Remove quotes if present
+                        term = term.strip('"')
+                        boost = float(boost)
+                        boost_terms.append((term, boost))
+            else:
+                # Assume it's already a list of (term, boost) tuples
+                boost_terms = boosts_str
+
+            # Convert to a bool query with should clauses for boosting
+            if boost_terms:
+                # If we already have a bool query, add to it
+                if "bool" in request["query"]:
+                    # Add should clauses for boosting
+                    should_clauses = []
+                    for term, boost in boost_terms:
+                        should_clauses.append({"term": {"upc": {"value": term, "boost": boost}}})
+
+                    # Add should clauses to the existing bool query
+                    if "should" in request["query"]["bool"]:
+                        request["query"]["bool"]["should"].extend(should_clauses)
+                    else:
+                        request["query"]["bool"]["should"] = should_clauses
+                else:
+                    # Create a new bool query
+                    original_query = request["query"]
+                    should_clauses = []
+                    for term, boost in boost_terms:
+                        should_clauses.append({"term": {"upc": {"value": term, "boost": boost}}})
+
+                    request["query"] = {"bool": {"must": original_query, "should": should_clauses}}
+
         # Add explain if specified
         if "explain" in search_args:
             request["explain"] = search_args["explain"]
