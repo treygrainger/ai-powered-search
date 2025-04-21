@@ -17,31 +17,26 @@ class ElasticsearchEngine(Engine):
     def health_check(self):
         try:
             status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
-            if status:
-                print("Elasticsearch is up and responding.")
             return status
-        except Exception as e:
-            print(f"Elasticsearch health check failed: {e}")
+        except Exception:
             return False
 
     def print_status(self, response):
         if "acknowledged" in response and response["acknowledged"]:
             print("Status: Success")
         else:
-            print(f"Status: Failure; Response:[ {response} ]")
+            print("Status: Failure")
 
     def create_collection(self, name, log=False):
         collection = self.get_collection(name)
 
         # Delete index if it exists
         try:
-            print(f'Wiping "{name}" index')
             requests.delete(f"{ES_URL}/{name}")
         except:
             pass  # Ignore if index doesn't exist
 
         # Create new index
-        print(f'Creating "{name}" index')
         response = requests.put(f"{ES_URL}/{name}").json()
 
         if log:
@@ -60,7 +55,7 @@ class ElasticsearchEngine(Engine):
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
             case "products" | "products_with_signals_boosts":
-                self.upsert_text_field(collection, "upc")
+                self.upsert_field(collection, "upc", "text", {"fielddata": True})
                 self.upsert_text_field(collection, "manufacturer")
                 self.upsert_field(collection, "has_promotion", "boolean")
                 self.upsert_text_field(collection, "short_description")
@@ -122,6 +117,12 @@ class ElasticsearchEngine(Engine):
                 self.upsert_string_field(collection, "country")
                 self.upsert_field(collection, "name", "text")
                 self.upsert_integer_field(collection, "popularity")
+            case "signals":
+                self.upsert_text_field(collection, "query_id")
+                self.upsert_text_field(collection, "user")
+                self.upsert_text_field(collection, "type")
+                self.upsert_text_field(collection, "target")
+                self.upsert_field(collection, "signal_time", "date")
             case _:
                 pass
 

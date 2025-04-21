@@ -25,6 +25,7 @@ services:
       #CHOWN_HOME_OPTS: -R
       SOLR_HOST: 'aips-solr'
       AIPS_ES_HOST: 'aips-elasticsearch'
+      AIPS_OPENSEARCH_HOST: 'opensearch-node1'
     volumes:
       - type: bind
         source: "."
@@ -60,7 +61,7 @@ services:
       context: ./engines/opensearch/build/
       dockerfile: engine-Dockerfile
     container_name: opensearch-node1
-    hostname: aips-opensearch
+    hostname: opensearch-node1
     environment:
       - cluster.name=opensearch-cluster
       - node.name=opensearch-node1
