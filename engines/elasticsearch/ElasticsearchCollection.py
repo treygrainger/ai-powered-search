@@ -196,10 +196,10 @@ class ElasticsearchCollection(Collection):
                 "text": query,
                 "simple_phrase": {
                     "phrase": {
-                        "field": "_all",
+                        "field": "name",  # Using name field instead of _all which is deprecated
                         "size": 5,
                         "gram_size": 3,
-                        "direct_generator": [{"field": "_all", "suggest_mode": "always"}],
+                        "direct_generator": [{"field": "name", "suggest_mode": "always"}],
                         "highlight": {"pre_tag": "<em>", "post_tag": "</em>"},
                     }
                 },

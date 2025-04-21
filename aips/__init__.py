@@ -15,6 +15,10 @@ from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSe
 
 from engines.elasticsearch.ElasticsearchEngine import ElasticsearchEngine
 from engines.elasticsearch.ElasticsearchCollection import ElasticsearchCollection
+from engines.elasticsearch.ElasticsearchLTR import ElasticsearchLTR
+from engines.elasticsearch.ElasticsearchSparseSemanticSearch import (
+    ElasticsearchSparseSemanticSearch,
+)
 
 import os
 from IPython.display import display, HTML
@@ -42,10 +46,12 @@ def set_engine(engine_name):
 
 
 def get_ltr_engine(collection):
-    ltr_engine_map = {SolrCollection: SolrLTR, OpenSearchCollection: OpenSearchLTR}
+    ltr_engine_map = {
+        SolrCollection: SolrLTR,
+        OpenSearchCollection: OpenSearchLTR,
+        ElasticsearchCollection: ElasticsearchLTR,
+    }
     collection_type = type(collection)
-    if collection_type == ElasticsearchCollection:
-        raise NotImplementedError("LTR is not yet implemented for Elasticsearch")
     return ltr_engine_map[collection_type](collection)
 
 
@@ -61,10 +67,9 @@ def get_sparse_semantic_search():
     SSS_map = {
         SolrEngine: SolrSparseSemanticSearch,
         OpenSearchEngine: OpenSearchSparseSemanticSearch,
+        ElasticsearchEngine: ElasticsearchSparseSemanticSearch,
     }
     engine_type = type(get_engine())
-    if engine_type == ElasticsearchEngine:
-        raise NotImplementedError("Sparse Semantic Search is not yet implemented for Elasticsearch")
     return SSS_map[engine_type]()
 
 
