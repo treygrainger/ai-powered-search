@@ -92,7 +92,7 @@ dataset_info = {
     "cities": {"url": "https://github.com/ai-powered-search/reviews.git",
                "count": 137581,
                "loader_fn": cities.load_dataframe},
-    "tmdb": {"url": "https://github.com/ai-powered-search/tmdb.git",
+    "movies": {"url": "https://github.com/ai-powered-search/tmdb.git",
              "count": 65616,
              "destination": ".",
              "data_file_name": "tmdb.json",
