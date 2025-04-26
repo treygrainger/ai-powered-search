@@ -47,22 +47,45 @@ def body_title_schema():
     return basic_schema({"title": text_field(), "body": text_field()})
 
 
-def dense_vector_schema(field_name, dimensions, similarity_score, additional_fields={}):
+def dense_vector_schema(
+    field_name, dimensions, similarity_score, quantization_size=None, additional_fields={}
+):
+    """
+    Create a schema for dense vector fields in Elasticsearch.
+
+    In Elasticsearch 8.x, vector search is handled differently than in OpenSearch:
+    - Uses 'dense_vector' type instead of 'knn_vector'
+    - Similarity is either 'cosine' or 'l2_norm' (dot_product is mapped to cosine)
+    - HNSW parameters are configured differently
+    """
     similarity = "cosine" if similarity_score == "innerproduct" else "l2_norm"
+
+    # Configure vector field with HNSW algorithm (Elasticsearch's approach)
+    vector_field = {
+        "type": "dense_vector",
+        "dims": dimensions,
+        "index": True,
+        "similarity": similarity,
+    }
+
+    # Add HNSW parameters (Elasticsearch equivalent to OpenSearch's method.parameters)
+    vector_field["index_options"] = {
+        "type": "hnsw",
+        "m": 24,  # Equivalent to OpenSearch's m parameter
+        "ef_construction": 128,  # Equivalent to OpenSearch's ef_construction
+    }
+
     schema = {
         "schema": {
-            "mappings": {
-                "properties": {
-                    field_name: {
-                        "type": "dense_vector",
-                        "dims": dimensions,
-                        "index": True,
-                        "similarity": similarity,
-                    }
-                }
+            # Add basic settings for the index
+            "settings": {
+                "index": {"number_of_shards": 1, "number_of_replicas": 0, "refresh_interval": "1s"}
             },
+            "mappings": {"properties": {field_name: vector_field}},
         }
     }
+
+    # Add additional fields
     schema["schema"]["mappings"]["properties"].update(additional_fields)
     return schema
 

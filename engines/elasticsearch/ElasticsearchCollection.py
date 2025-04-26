@@ -110,6 +110,7 @@ class ElasticsearchCollection(Collection):
                 if int(search_args["limit"]) > k:
                     k = int(search_args["limit"])
 
+            # Use script_score for vector search in Elasticsearch 8.x
             request = {
                 "query": {
                     "script_score": {
@@ -122,6 +123,19 @@ class ElasticsearchCollection(Collection):
                 },
                 "size": k,
             }
+
+            # Add filters if specified
+            if "filters" in search_args and search_args["filters"]:
+                filter_clauses = []
+                for field_name, value in search_args["filters"]:
+                    if isinstance(value, list):
+                        filter_clauses.append({"terms": {field_name: value}})
+                    else:
+                        filter_clauses.append({"term": {field_name: value}})
+
+                # Convert to bool query with filter
+                request["query"] = {"bool": {"must": request["query"], "filter": filter_clauses}}
+
             return request
 
         # Basic query
