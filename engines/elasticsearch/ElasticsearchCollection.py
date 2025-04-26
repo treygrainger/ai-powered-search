@@ -16,8 +16,9 @@ def is_vector_search(search_args):
 
 
 class ElasticsearchCollection(Collection):
-    def __init__(self, name):
+    def __init__(self, name, id_field="_id"):
         super().__init__(name)
+        self.id_field = id_field
 
     def get_engine_name(self):
         return "elasticsearch"
@@ -227,7 +228,7 @@ class ElasticsearchCollection(Collection):
 
     def transform_response(self, search_response):
         def format_doc(doc):
-            id = doc.get("id", doc["_id"])
+            id = doc.get("id", doc[self.id_field])
             formatted = doc["_source"] | {"id": id, "score": doc["_score"]}
             if "_explanation" in doc:
                 formatted["[explain]"] = doc["_explanation"]
@@ -243,7 +244,7 @@ class ElasticsearchCollection(Collection):
             response["highlighting"] = {}
             for hit in search_response["hits"]["hits"]:
                 if "highlight" in hit:
-                    response["highlighting"][hit["_id"]] = hit["highlight"]
+                    response["highlighting"][hit[self.id_field]] = hit["highlight"]
 
         return response
 

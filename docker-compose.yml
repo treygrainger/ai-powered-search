@@ -25,7 +25,7 @@ services:
       #CHOWN_HOME_OPTS: -R
       SOLR_HOST: 'aips-solr'
       AIPS_ES_HOST: 'aips-elasticsearch'
-      AIPS_OPENSEARCH_HOST: 'opensearch-node1'
+      AIPS_OPENSEARCH_HOST: 'aips-opensearch'
     volumes:
       - type: bind
         source: "."
@@ -60,11 +60,11 @@ services:
     build:
       context: ./engines/opensearch/build/
       dockerfile: engine-Dockerfile
-    container_name: opensearch-node1
-    hostname: opensearch-node1
+    container_name: aips-opensearch
+    hostname: aips-opensearch
     environment:
       - cluster.name=opensearch-cluster
-      - node.name=opensearch-node1
+      - node.name=aips-opensearch
       - discovery.type=single-node
       - network.host=0.0.0.0
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
@@ -102,7 +102,7 @@ services:
       - 5601:5601
     environment:
       DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
-      OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
+      OPENSEARCH_HOSTS: '["http://aips-opensearch:9200"]'
     networks:
       - opensearch-network
     profiles:

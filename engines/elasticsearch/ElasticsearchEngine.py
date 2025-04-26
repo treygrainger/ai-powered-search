@@ -1,13 +1,8 @@
 import requests
-import os
+import json
 from engines.Engine import Engine
 from engines.elasticsearch.ElasticsearchCollection import ElasticsearchCollection
-
-# Get host and port from environment variables with fallbacks
-AIPS_ES_HOST = os.getenv("AIPS_ES_HOST") or "aips-elasticsearch"
-AIPS_ES_PORT = os.getenv("AIPS_ES_PORT") or "9200"
-ES_URL = f"http://{AIPS_ES_HOST}:{AIPS_ES_PORT}"
-STATUS_URL = f"{ES_URL}/_cluster/health"
+from engines.elasticsearch.config import ES_URL, STATUS_URL, SCHEMAS
 
 
 class ElasticsearchEngine(Engine):
@@ -17,6 +12,8 @@ class ElasticsearchEngine(Engine):
     def health_check(self):
         try:
             status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
+            if status:
+                print("Elasticsearch engine is online")
             return status
         except Exception:
             return False
@@ -28,28 +25,39 @@ class ElasticsearchEngine(Engine):
             print("Status: Failure")
 
     def create_collection(self, name, log=False):
-        collection = self.get_collection(name)
-
-        # Delete index if it exists
+        print(f'Wiping "{name}" collection')
         try:
             requests.delete(f"{ES_URL}/{name}")
         except:
             pass  # Ignore if index doesn't exist
 
-        # Create new index
-        response = requests.put(f"{ES_URL}/{name}").json()
+        print(f'Creating "{name}" collection')
+        collection = self.get_collection(name)
 
-        if log:
-            print(response)
+        # Get schema from config if available
+        if name in SCHEMAS:
+            schema = SCHEMAS[name]["schema"]
+            response = requests.put(f"{ES_URL}/{name}", json=schema).json()
+            if log:
+                print("Schema:", json.dumps(schema, indent=2))
+                print("Status:", json.dumps(response, indent=2))
+        else:
+            # Create empty index if no schema is defined
+            response = requests.put(f"{ES_URL}/{name}").json()
+            if log:
+                print(response)
 
-        self.apply_schema_for_collection(collection, log=log)
-        self.print_status(response)
+            # Apply schema manually for backward compatibility
+            self.apply_legacy_schema(collection, log=log)
+
         return collection
 
     def get_collection(self, name):
-        return ElasticsearchCollection(name)
+        id_field = SCHEMAS.get(name, {}).get("id_field", "_id")
+        return ElasticsearchCollection(name, id_field)
 
-    def apply_schema_for_collection(self, collection, log=False):
+    def apply_legacy_schema(self, collection, log=False):
+        """Legacy schema application method for backward compatibility"""
         match collection.name:
             case "cat_in_the_hat":
                 self.upsert_text_field(collection, "title")
