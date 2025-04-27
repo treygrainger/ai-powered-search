@@ -1,6 +1,9 @@
 # syntax = docker/dockerfile:1.5
 FROM jupyter/pyspark-notebook:spark-3.3.1
 USER root
+ENV NB_USER=jovyan
+ENV NB_UID=1000
+ENV NB_GID=100
 
 # Install gcc, c++, and related dependencies needed for pip to build some python dependencies
 RUN sudo apt-get -y update && \
@@ -23,6 +26,13 @@ RUN cd /usr/local/spark/lib/ && \
     wget -q https://repo1.maven.org/maven2/org/opensearch/client/opensearch-spark-30_2.12/${SPARK_OS_VERSION}/${SPARK_OS_JAR} -O $SPARK_OS_PATH && \
     echo "5b9ae056b6ac21ae009f79a3a761774c7178b995fbe035572a4f35d5738e055d02828d2ec0ff98dd063ffffe37f4c48dc9a418d71269fc560f65b33c94493f2d *${SPARK_OS_JAR}" \
     | sha512sum -c - && chmod 0777 $SPARK_OS_PATH
+
+# Install Spark-Weaviate
+ENV SPARK_WV8_VERSION=1.3.4a
+ENV SPARK_WV8_JAR=spark-connector-${SPARK_WV8_VERSION}.jar
+ENV SPARK_WV8_PATH=/usr/local/spark/lib/${SPARK_WV8_JAR}
+COPY engines/weaviate/build/$SPARK_WV8_JAR /usr/local/spark/lib/
+RUN chmod a+rwx $SPARK_WV8_PATH
 
 WORKDIR /home/$NB_USER
 
@@ -50,23 +60,23 @@ COPY engines/ /home/$NB_USER/engines
 COPY ltr/ /home/$NB_USER/ltr
 COPY semantic_search/ /home/$NB_USER/semantic_search
 COPY webserver/ /home/$NB_USER/webserver
-COPY build/ipython_kernel_config.py /etc/ipython/
-RUN rm -rf work/
+COPY build/install-text-tagger-deps.sh /home/$NB_USER/install-text-tagger-deps.sh
+RUN chmod a+rwx /home/$NB_USER/install-text-tagger-deps.sh
+RUN ./install-text-tagger-deps.sh
+RUN rm -rf work/ ./install-text-tagger-deps.sh
 
 # Change to notebook user
-RUN chown -R $NB_UID:$NB_UID /home/$NB_USER
+RUN mkdir /tmp/spark-events
+COPY build/log4j.properties /var/solr/log4j2.xml
+RUN chown -R $NB_UID:$NB_GID /home/$NB_USER /tmp/spark-events
 RUN fix-permissions /home/$NB_USER
 USER $NB_USER
 
 # Spark Config
 ENV SPARK_OPTS="$SPARK_OPTS --driver-java-options=\"-DXlint:none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer -Dlog4j.logger.org.apache.spark.repl.Main=ERROR\" --spark.ui.showConsoleProgress=False" \
-    PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH,$SPARK_OS_PATH pyspark-shell" \
+    PYSPARK_SUBMIT_ARGS="-c spark.driver.defaultJavaOptions=\"-DXlint=none -Dlog4j.logLevel=error -Dallow-access=java.nio.DirectByteBuffer\" -c spark.ui.showConsoleProgress=False --jars $SHADED_SOLR_JAR_PATH,$SPARK_OS_PATH,$SPARK_WV8_PATH pyspark-shell" \
     PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-*-src.zip:%PYTHONPATH% \
     DOCKER_STACKS_JUPYTER_CMD=lab
-
-# If you want to edit the notebooks and have your changes persist, 
-# uncomment the line below and restart with `docker compose up --build`
-#WORKDIR /tmp/notebooks
 
 # Mark all notebooks as trusted by default
 RUN find . -name \*.ipynb -print0|xargs -0 jupyter-trust -y

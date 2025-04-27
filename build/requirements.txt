@@ -6,11 +6,12 @@ patsy==0.5.6
 wcwidth==0.2.13
 pandas==2.2.3
 contourpy==1.0.7
-thinc==8.1.0
+thinc==8.1.12
 numba==0.60.0
 wrapit==0.3.0
 h5py==3.12.1
 gitpython==3.1.43
+graphql_query==1.1.1
 
 #Forced versions to prevent implicit dep version errors 
 #  (these sub packages are only used indirectly through normal deps)

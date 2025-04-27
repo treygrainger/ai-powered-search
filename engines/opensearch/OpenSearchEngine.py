@@ -10,7 +10,7 @@ STATUS_URL = f"{OPENSEARCH_URL}/_cluster/health"
 
 class OpenSearchEngine(Engine):
     def __init__(self):
-        super().__init__("OpenSearch")
+        super().__init__("opensearch")
 
     def health_check(self):
         status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
