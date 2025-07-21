@@ -20,11 +20,15 @@ class OpenSearchEngine(Engine):
     
     def does_collection_exist(self, name):
         "Checks for the existance of the collection"
-        pass
+        response = requests.post(f"{STATUS_URL}/{name}")
+        if response.status_code == 200:
+            return False
+        return False
     
-    def is_collection_healthy(self, name, expected_count):
+    def is_collection_healthy(self, name, expected_count, log=False):
         "Checks to see if the collection is properly populated"
-        pass
+        return self.does_collection_exist(name) and \
+               self.get_collection(name).get_document_count() == expected_count
 
     def print_status(self, response):
         #print(json.dumps(response, indent=2))
