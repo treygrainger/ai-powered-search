@@ -33,6 +33,9 @@ class Progress(RemoteProgress):
 #                  invoked (default). Data from every source dataset will be used to
 #                  populate the collection.
 
+def promo_products_fn(csv_file):
+    return products.load_dataframe(csv_file, with_promotion=True)
+
 dataset_info = {
     "products": {"url": "https://github.com/ai-powered-search/retrotech.git",
                  "count": 48194,
@@ -92,9 +95,10 @@ dataset_info = {
     "cities": {"url": "https://github.com/ai-powered-search/reviews.git",
                "count": 137581,
                "loader_fn": cities.load_dataframe},
-    "movies": {"url": "https://github.com/ai-powered-search/tmdb.git",
+    "tmdb": {"url": "https://github.com/ai-powered-search/tmdb.git",
              "count": 65616,
              "destination": ".",
+             "tar_file": "movies.tgz",
              "data_file_name": "tmdb.json",
              "loader_fn": movies.load_dataframe},
     "outdoors": {"url": "https://github.com/ai-powered-search/outdoors.git",
@@ -149,7 +153,7 @@ def copy_repository(dataset, log=False):
                 shutil.copytree(full_file_name, f"{target_dir}/{file_name}", dirs_exist_ok=True)
 
 def join_split_tar_file(tar_file_path):
-    if not not os.path.isfile(f"{tar_file_path}") and os.path.isfile(f"{tar_file_path}.part_a"):
+    if not os.path.isfile(f"{tar_file_path}") and os.path.isfile(f"{tar_file_path}.part_a"):
         char_i = 97 
         with open(tar_file_path, "wb") as merged_file:
             while True:

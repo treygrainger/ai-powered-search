@@ -1,3 +1,4 @@
+import json
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
 
@@ -6,8 +7,14 @@ def from_csv(file, additional_columns=False, drop_id=False, log=True):
         print(f"Loading {file}")
     spark = SparkSession.builder.appName("AIPS").getOrCreate()
     reader = spark.read.format("csv").option("header", "true").option("inferSchema", "true")
+    
+    #if additional_columns:
+    #    print("escaping")
+    #    reader = reader.option("charset", "utf-8").option("quote", "\"") \
+    #                   .option("escape", "\"").option("multiLine", "true").option("delimiter", ",")
+
+    #this is hacky still, used by SKG collections to apply static category
     dataframe = reader.load(file)
-     #this is hacky still, used by SKG collections to apply static category
     if additional_columns and "category" in additional_columns:
         dataframe = dataframe.withColumn("category", lit(additional_columns.get("category")))
     if drop_id:

@@ -206,17 +206,23 @@ class SolrEngine(Engine):
         self.delete_field(collection, field_name)
         return self.add_field(collection, field_name, type, additional_schema)
     
-    def add_field(self, collection, field_name, type, additional_schema={}):        
+    def add_field(self, collection, field_name, type, additional_schema={}, log=False):        
         field = {"name": field_name, "type": type,
                  "stored": "true", "indexed": "true", "multiValued": "false"}
         field.update(additional_schema)
         add_field = {"add-field": field}
-        return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field)
+        resp = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field)
+        if log:
+            print(resp.json())
+        return resp
     
-    def delete_field(self, collection, field_name):
+    def delete_field(self, collection, field_name, log=False):
         delete_field = {"delete-field": {"name": field_name}}
         try:
-            return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
+            resp = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
+            if log:
+                print(resp.json())
+            return resp
         except:
             return {}
     
