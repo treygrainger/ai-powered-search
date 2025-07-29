@@ -112,7 +112,8 @@ dataset_info = {
     "judgments": {"url": "https://github.com/ai-powered-search/tmdb.git",
                   "data_file_name": "ai_pow_search_judgments.txt",
                   "destination": "."},
-    "question-answering": {"url": "https://github.com/ai-powered-search/question-answering.git"},
+    "question-answering": {"url": "https://github.com/ai-powered-search/question-answering.git",
+                           "repository_destination": "data"},
     "movies_with_image_embeddings": {"url": "https://github.com/ai-powered-search/tmdb.git",
                                      "data_file_name": "movies_with_image_embeddings.pickle"}}
 
@@ -212,4 +213,5 @@ def get_repository_name(dataset):
     return repo_url.split("/")[-1].split(".")[0]
 
 def get_repo_path(dataset):
-    return f"data/repositories/{get_repository_name(dataset)}"
+    repository_directory = dataset_info[dataset].get("repository_destination", "data/repositories")
+    return f"{repository_directory}/{get_repository_name(dataset)}"

@@ -1,6 +1,7 @@
+from aips.spark import get_spark_session
+
 from pyspark.sql.types import StructType, StringType, IntegerType
 from pyspark.sql.functions import concat_ws, lit
-from pyspark.sql import SparkSession
 
 def load_dataframe(csv_file):
     print("Loading Geonames...")
@@ -25,7 +26,7 @@ def load_dataframe(csv_file):
           .add("timezone_s",StringType(),True) \
           .add("modification_date_s",StringType(),True)
 
-    spark = SparkSession.builder.appName("AIPS").getOrCreate()
+    spark = get_spark_session()
     dataframe = spark.read.csv(csv_file, schema=schema, multiLine=True, escape="\\", sep="\t") \
         .withColumn("type", lit("city")) \
         .withColumn("location_coordinates", concat_ws(",", "latitude_s", "longitude_s"))

@@ -1,4 +1,4 @@
-from pyspark.sql import SparkSession
+from aips.spark import get_spark_session
 from pyspark.sql.functions import col, udf
 
 promoted_products = [600603141003, 27242813908, 74108007469,
@@ -8,7 +8,7 @@ promoted_products = [600603141003, 27242813908, 74108007469,
 
 def load_dataframe(csv_file, with_promotion=False):
     print("Loading Products")
-    spark = SparkSession.builder.appName("AIPS").getOrCreate()
+    spark = get_spark_session()
     dataframe = spark.read.csv(csv_file, header=True, inferSchema=True)
     dataframe = dataframe.withColumn("upc", udf(str)(col("upc")))
     if with_promotion:

@@ -1,14 +1,24 @@
-from pyspark.sql import SparkSession
-
-from pyspark.sql.functions import col, udf
-from pyspark.sql.types import StringType 
-
 from aips.environment import AIPS_ZK_HOST
 from engines.opensearch.config import OPENSEARCH_URL
 
+from pyspark.conf import SparkConf
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, udf
+from pyspark.sql.types import StringType
+
+def get_spark_session():
+    conf = SparkConf()
+    conf.set("spark.driver.memory", "7g")
+    conf.set("spark.executor.memory", "7g")
+    conf.set("spark.dynamicAllocation.enabled", "true")
+    conf.set("spark.ui.port", "4040")
+    conf.set("spark.dynamicAllocation.executorMemoryOverhead", "7g")
+    spark = SparkSession.builder.appName("AIPS").config(conf=conf).getOrCreate()
+    return spark
+
 def create_view_from_collection(collection, view_name, spark=None):
     if not spark:
-        spark = SparkSession.builder.appName("AIPS").getOrCreate()
+        spark = get_spark_session()
     match collection.get_engine_name():
         case "solr":
             opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    
