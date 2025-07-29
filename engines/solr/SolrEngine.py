@@ -59,13 +59,13 @@ class SolrEngine(Engine):
                 self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
-            case "products" | "products_with_signals_boosts":
+            case "products" | "products_with_signals_boosts" | "products_with_promotions":
                 self.delete_copy_fields(collection) 
                 self.set_search_defaults(collection)
                 self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
-                self.upsert_text_field(collection, "manufacturer")                
-                if collection.name == "products_with_promos":                           
+                self.upsert_text_field(collection, "manufacturer")
+                if collection.name == "products_with_promotions":
                     self.upsert_field(collection, "has_promotion", "boolean")
                 self.upsert_text_field(collection, "short_description")
                 self.upsert_text_field(collection, "long_description")

@@ -1,4 +1,5 @@
 import tarfile
+from aips import get_ltr_engine
 from git import Repo
 import os
 import shutil
@@ -44,7 +45,9 @@ dataset_info = {
                                  "count": 48194,
                                  "loader_fn": products.load_dataframe,
                                  "data_file_name": "products.csv",
-                                 "loader_args": {"with_promotion": True}},
+                                 "tar_file": "products.tgz",
+                                 "loader_args": {"with_promotion": True},
+                                 "enable_ltr": True},
     "signals": {"url": "https://github.com/ai-powered-search/retrotech.git",
                 "count": 2172605,
                 "loader_fn": from_csv},
@@ -100,7 +103,8 @@ dataset_info = {
              "destination": ".",
              "tar_file": "movies.tgz",
              "data_file_name": "tmdb.json",
-             "loader_fn": movies.load_dataframe},
+             "loader_fn": movies.load_dataframe,
+             "enable_ltr": True},
     "outdoors": {"url": "https://github.com/ai-powered-search/outdoors.git",
                  "count": 18456,
                  "loader_fn": outdoors.load_dataframe,
@@ -134,6 +138,8 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
             csv_file_path = download_data_files(dataset, log=log)
             loader_args = dataset_info[dataset].get("loader_args", {})
             dataframe = dataset_info[dataset]["loader_fn"](csv_file_path, **loader_args)
+            if dataset_info[dataset].get("enable_ltr", False):
+                get_ltr_engine(collection).enable_ltr()
             collection.write(dataframe)
     else:
         if log: print(f"Collection [{dataset}] is healthy")
