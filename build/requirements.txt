@@ -21,7 +21,6 @@ statsmodels==0.14.4
 networkx==3.3
 
 #Normal deps
-accelerate==0.34.2
 beautifulsoup4==4.12.3
 lxml==5.3.0
 datasets==3.0.1
@@ -41,4 +40,5 @@ spacy==3.5.0
 staticmap==0.5.7
 faiss-cpu==1.9.0
 sentence-transformers==3.1.1
+accelerate==1.9.0
 spladerunner==0.1.6
