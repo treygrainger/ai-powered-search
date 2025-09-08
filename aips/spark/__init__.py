@@ -32,7 +32,6 @@ def create_view_from_collection(collection, view_name, spark=None):
             if "_metadata" in dataframe.columns:
                 dataframe = dataframe.withColumn("id", parse_id_udf(col("_metadata")))
                 dataframe = dataframe.drop("_metadata")
-            print(dataframe.columns)
             dataframe.createOrReplaceTempView(view_name)
         case _:
             raise NotImplementedError(type(collection))

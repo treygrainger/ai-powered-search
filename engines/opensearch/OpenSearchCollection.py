@@ -29,10 +29,6 @@ def generate_vector_search_request(search_args):
         print("Search Request:")
         print(json.dumps(request, indent="  "))
     return request
-      
-def get_document_count(self):        
-    response = requests.get(f"{OPENSEARCH_URL}/{self.name}/_count").json()
-    return response.get("count", 0)
 
 def create_filter(field, value):
     if value != "*":
@@ -68,6 +64,14 @@ def is_vector_search(search_args):
            len(search_args["query"]) == len(list(filter(lambda o: isinstance(o, numbers.Number),
                                                         search_args["query"])))
 
+def get_query_fields(search_args):
+    if "query_fields" in search_args:
+        fields = search_args["query_fields"]
+        if isinstance(fields, str):
+            fields = [fields]
+        return {"fields": fields}
+    return {}
+
 class OpenSearchCollection(Collection):
     def __init__(self, name, id_field="_id"):
         super().__init__(name)
@@ -75,6 +79,10 @@ class OpenSearchCollection(Collection):
         
     def get_engine_name(self):
         return "opensearch"
+      
+    def get_document_count(self):        
+        response = requests.get(f"{OPENSEARCH_URL}/{self.name}/_count").json()
+        return response.get("count", 0)
     
     def commit(self):
         response = requests.post(f"{OPENSEARCH_URL}/{self.name}/_flush")
@@ -108,10 +116,10 @@ class OpenSearchCollection(Collection):
         query = query_string_clause(search_args)
         should = should_clauses(search_args)
         must = must_clauses(search_args)
-        query_fields = {"fields": search_args["query_fields"]} if "query_fields" in search_args else {}
+        query_fields = get_query_fields(search_args)
         query_clause = {"query_string": {"query": query,
-                        "boost": 0.454545454,
-                        "default_operator": search_args.get("default_operator", "OR")} | query_fields}
+                                         "boost": 0.454545454,
+                                         "default_operator": search_args.get("default_operator", "OR")} | query_fields}
         must.append(query_clause)
         request = {"query": {"bool": {"must": must}},
                    "size": 10}
@@ -119,7 +127,7 @@ class OpenSearchCollection(Collection):
         for name, value in search_args.items():
             match name:
                 case "return_fields":
-                    request["fields"] = value
+                    request["_source"] = value
                 case "filters":
                     request["query"]["bool"]["filter"] = [create_filter(f, v) for (f, v) in value]
                 case "limit":
@@ -137,7 +145,7 @@ class OpenSearchCollection(Collection):
                                for b in boosts]
                     should.extend(clauses)
                 case "min_match":
-                    raise Exception("To be implemented (Only used in ch05)")
+                    pass #ch5
                 case "index_time_boost":
                     should.append({"rank_feature": {"field": f"{value[0]}.{value[1]}"}})
                 case "explain":
