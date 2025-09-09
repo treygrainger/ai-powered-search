@@ -29,10 +29,8 @@ def date_field():
     return base_field("date")
 
 def basic_schema(field_mappings, id_field="_id"):
-    return {
-        "id_field": id_field,
-        "schema": {"mappings": {"properties": field_mappings}},
-    }
+    return {"id_field": id_field,
+            "schema": {"mappings": {"properties": field_mappings}}}
 
 def body_title_schema():
     return basic_schema({"title": text_field(), "body": text_field()})
@@ -66,7 +64,7 @@ def dense_vector_schema(
 
 PRODUCTS_SCHEMA = basic_schema(
     {
-        "upc": text_field(fielddata=True),
+        "upc": keyword_field(),
         "_text_": text_field(),
         "name_ngram": text_field(analyzer="bigram_analyzer", fielddata=True),
         "name_fuzzy": text_field(analyzer="shingle_analyzer", fielddata=True),
@@ -125,7 +123,7 @@ SCHEMAS = {
         "id"
     ),
     "products": PRODUCTS_SCHEMA,
-    "products_with_promos": PRODUCT_PROMO_SCHEMA,
+    "products_with_promotions": PRODUCT_PROMO_SCHEMA,
     "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
     "jobs": basic_schema(
         {

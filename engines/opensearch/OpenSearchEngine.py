@@ -14,25 +14,21 @@ class OpenSearchEngine(Engine):
 
     def health_check(self):
         status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
-        if status:
-            print("OpenSearch engine is online")
+        if status: print("OpenSearch engine is online")
         return status
     
     def does_collection_exist(self, name):
-        "Checks for the existance of the collection"
-        response = requests.post(f"{STATUS_URL}/{name}")
-        if response.status_code == 200:
-            return False
-        return False
+        response = requests.get(f"{STATUS_URL}/{name}")
+        return response.status_code == 200
     
     def is_collection_healthy(self, name, expected_count, log=False):
-        "Checks to see if the collection is properly populated"
-        return self.does_collection_exist(name) and \
-               self.get_collection(name).get_document_count() == expected_count
+        exists = self.does_collection_exist(name)
+        document_count = self.get_collection(name).get_document_count()
+        if log: print(exists, document_count)
+        return exists and document_count  == expected_count
 
     def print_status(self, response):
-        #print(json.dumps(response, indent=2))
-        "Prints the resulting status of a search engine request"
+        print(json.dumps(response, indent=2))
         pass
 
     def create_collection(self, name, force_rebuild=True, log=False):
