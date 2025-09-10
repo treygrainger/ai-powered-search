@@ -23,7 +23,7 @@ def generate_vector_search_request(search_args):
         if int(search_args["limit"]) > k:
             k = int(search_args["limit"]) #otherwise will only get k results
     request = {"query": {"knn": {field: {"vector": vector,
-                                            "k": k}}},
+                                         "k": k}}},
                "size": search_args.get("limit", 5)}             
     if "log" in search_args:
         print("Search Request:")
@@ -38,8 +38,6 @@ def create_filter(field, value):
         return {"exists": {"field": field}}
     
 def query_string_clause(search_args):
-    "Returns the query string from the args or from concatenating query clause strings"
-
     def retrieve_strings(c): return c if isinstance(c, str) else ""
 
     query_string = "*"
@@ -92,10 +90,12 @@ class OpenSearchCollection(Collection):
     def write(self, dataframe, overwrite=True):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
                 "opensearch.net.ssl": "false",
-                "opensearch.batch.size.entries": 500}
+                "opensearch.batch.size.entries": 500,
+                "opensearch.write.field.as.array.include": "image_embedding"}
         if self.id_field != "_id":
             opts["opensearch.mapping.id"] = self.id_field
         mode = "overwrite" if overwrite else "append"
+        display(dataframe.count())
         dataframe.write.format("opensearch").options(**opts).mode(mode).save(self.name)
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
@@ -126,6 +126,10 @@ class OpenSearchCollection(Collection):
         
         for name, value in search_args.items():
             match name:
+                case "search_after":
+                    request["search_after"] = value
+                case "sort":
+                    request["sort"] = [{s[0]: s[1]} for s in value]
                 case "return_fields":
                     request["_source"] = value
                 case "filters":
@@ -171,6 +175,8 @@ class OpenSearchCollection(Collection):
                                           "score": doc["_score"]}
             if "_explanation" in doc:
                 formatted["[explain]"] = doc["_explanation"]
+            if "sort" in doc:
+                formatted["sort"] = doc["sort"]
             return formatted
             
         if "hits" not in search_response:
