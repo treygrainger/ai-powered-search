@@ -40,10 +40,8 @@ class OpenSearchEngine(Engine):
         collection = self.get_collection(name)
         request = SCHEMAS[name]["schema"] if name in SCHEMAS else {}
         response = requests.put(f"{OPENSEARCH_URL}/{name}", json=request).json()
-        if log: 
-            print("Schema:", json.dumps(request, indent=2))
-        if log: 
-            print("Status:", json.dumps(response, indent=2))
+        if log: print("Schema:", json.dumps(request, indent=2))
+        if log: print("Status:", json.dumps(response, indent=2))
         return collection
 
     def get_collection(self, name):

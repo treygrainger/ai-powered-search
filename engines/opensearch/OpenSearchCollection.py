@@ -46,6 +46,8 @@ def query_string_clause(search_args):
             query_string = " ".join(list(map(retrieve_strings, search_args["query"])))
         else:
             query_string = search_args["query"]
+            if "{!func}" in search_args["query"]: #3.12 hack          
+                query_string = query_string.replace("{!func}query(", "").replace(")", "")
     return query_string.strip()
 
 def should_clauses(search_args):
@@ -90,12 +92,11 @@ class OpenSearchCollection(Collection):
     def write(self, dataframe, overwrite=True):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
                 "opensearch.net.ssl": "false",
-                "opensearch.batch.size.entries": 500,
-                "opensearch.write.field.as.array.include": "image_embedding"}
+                "opensearch.batch.size.entries": 500}
+                #"opensearch.write.field.as.array.include": "image_embedding"}
         if self.id_field != "_id":
             opts["opensearch.mapping.id"] = self.id_field
         mode = "overwrite" if overwrite else "append"
-        display(dataframe.count())
         dataframe.write.format("opensearch").options(**opts).mode(mode).save(self.name)
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
@@ -196,17 +197,9 @@ class OpenSearchCollection(Collection):
         return self.transform_response(search_response)
     
     def spell_check(self, query, log=False):
-        request = {
-            "suggest": {
-                "spell-check" : {
-                "text" : query,
-                "term" : {
-                    "field" : "_text_",
-                    "suggest_mode" : "missing"                    
-                }
-            }
-            }
-        }
+        request = {"suggest": {"spell-check" : {"text" : query,
+                                                "term" : {"field" : "_text_",
+                                                          "suggest_mode" : "missing"}}}}
         if log: print(json.dumps(request, indent=2))
         response = self.native_search(request=request)
         if log: print(json.dumps(response, indent=2))

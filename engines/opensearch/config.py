@@ -59,12 +59,12 @@ def dense_vector_schema(
             }
         }
     }
-    schema["schema"]["mappings"]["properties"] | additional_fields
+    schema["schema"]["mappings"]["properties"] |= additional_fields
     return schema
 
 PRODUCTS_SCHEMA = basic_schema(
     {
-        "upc": keyword_field(),
+        "upc": text_field(fielddata=True),
         "_text_": text_field(),
         "name_ngram": text_field(analyzer="bigram_analyzer", fielddata=True),
         "name_fuzzy": text_field(analyzer="shingle_analyzer", fielddata=True),
@@ -113,34 +113,26 @@ SIGNALS_BOOSTING_SCHEMA = basic_schema({
     "boost": integer_field()})
 
 SCHEMAS = {
-    "cat_in_the_hat": basic_schema(
-        {
+    "cat_in_the_hat": basic_schema({
             "id": text_field(),
             "title": text_field(),
             "description": text_field() | {"similarity": "BM25",
-                                           "discount_overlaps": False},
-        },
+                                           "discount_overlaps": False}},
         "id"
     ),
     "products": PRODUCTS_SCHEMA,
     "products_with_promotions": PRODUCT_PROMO_SCHEMA,
     "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
-    "jobs": basic_schema(
-        {
+    "jobs": basic_schema({
             "company_country": text_field(),
             "job_description": text_field(),
-            "company_description": text_field(),
-        }
-    ),
-    "signals": basic_schema(
-        {
+            "company_description": text_field()}),
+    "signals": basic_schema({
             "query": text_field(),
             "user": text_field(),
             "type": text_field(),
             "target": text_field(),
-            "signal_time": date_field()
-        }
-    ),
+            "signal_time": date_field()}),
     "signals_boosting": SIGNALS_BOOSTING_SCHEMA,
     "signals_boosts_with_spam": SIGNALS_BOOSTING_SCHEMA,
     "signals_boosts_anti_spam": SIGNALS_BOOSTING_SCHEMA,
@@ -153,25 +145,24 @@ SCHEMAS = {
     "travel": body_title_schema(),
     "devops": body_title_schema(),
     "reviews": basic_schema({
-        "id": text_field(),
-        "content": text_field(fielddata=True),
-        "categories": text_field(copy_to="doc_type", fielddata=True),
-        "doc_type": text_field(fielddata=True),
-        "stars_rating": integer_field(),
-        "city": text_field(fielddata=True),
-        "state": text_field(fielddata=True),
-        "business_name": text_field(fielddata=True),
-        "name": text_field(fielddata=True),
-        "location_coordinates": base_field("geo_point")}),
-    "tmdb": basic_schema(
-        {
-            "title": text_field(),
-            "overview": text_field(),
-            "release_year": double_field(),
-        }
-    ),
-    "outdoors": basic_schema(
-        {
+            "id": text_field(),
+            "content": text_field(fielddata=True),
+            "categories": text_field(copy_to="doc_type", fielddata=True),
+            "doc_type": text_field(fielddata=True),
+            "stars_rating": integer_field(),
+            "city": text_field(fielddata=True),
+            "state": text_field(fielddata=True),
+            "business_name": text_field(fielddata=True),
+            "name": text_field(fielddata=True),
+            "location_coordinates": base_field("geo_point")},
+        "id"),
+    "tmdb": basic_schema({
+            "id": text_field(),
+            "title": text_field(fielddata=True),
+            "overview": text_field(fielddata=True),
+            "release_year": double_field()},
+        "id"),
+    "outdoors": basic_schema({
             "id": text_field(),
             "post_type": text_field(),
             "accepted_answer_id": integer_field(),
@@ -184,26 +175,21 @@ SCHEMAS = {
             "title": text_field(fielddata=True),
             "tags": keyword_field(),
             "url": text_field(),
-            "answer_count": integer_field(),
-        },
-        "id"
-    ),
+            "answer_count": integer_field()},
+        "id"),
     "tmdb_with_embeddings": dense_vector_schema(
-        "image_embedding",
-        512,
-        "innerproduct",
-        "FLOAT32",
-        {"title": text_field(), "movie_id": text_field(), "image_id": text_field()},
+        "image_embedding", 512, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True),
+                                                            "movie_id": text_field(),
+                                                            "image_id": text_field()}
     ),
     "tmdb_lexical_plus_embeddings": dense_vector_schema(
-        "image_embedding",
-        512,
-        "innerproduct",
-        "FLOAT32",
-        {"title": text_field(), "overview": text_field(), "movie_id": text_field(), "image_id": text_field()},
+        "image_embedding", 512, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True),
+                                                            "overview": text_field(fielddata=True),
+                                                            "movie_id": text_field(),
+                                                            "image_id": text_field()}
     ),
     "outdoors_with_embeddings": dense_vector_schema(
-        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field()},
+        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True)}
     ),
     "ubi_queries": basic_schema({
         "timestamp": date_field(), # signal_time
