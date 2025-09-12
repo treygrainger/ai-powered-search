@@ -1,6 +1,6 @@
-import json
-from pyspark.sql import SparkSession, Row
 from aips.spark import get_spark_session
+import json
+from pyspark.sql import Row
 
 def load_dataframe(movie_file="data/tmdb.json", movie_image_ids={}):
     movies = []

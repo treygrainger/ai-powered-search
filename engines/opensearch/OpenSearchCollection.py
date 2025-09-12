@@ -25,7 +25,7 @@ def generate_vector_search_request(search_args):
         print("Search Request:")
         print(json.dumps(request, indent="  "))
     return request
-        
+
 def create_filter(field, value):
     if value != "*":
         key = "terms" if isinstance(value, list) else "term"
@@ -34,8 +34,6 @@ def create_filter(field, value):
         return {"exists": {"field": field}}
     
 def query_string_clause(search_args):
-    "Returns the query string from the args or from concatenating query clause strings"
-
     def retrieve_strings(c): return c if isinstance(c, str) else ""
 
     query_string = "*"
@@ -44,6 +42,8 @@ def query_string_clause(search_args):
             query_string = " ".join(list(map(retrieve_strings, search_args["query"])))
         else:
             query_string = search_args["query"]
+            if "{!func}" in search_args["query"]: #3.12 hack          
+                query_string = query_string.replace("{!func}query(", "").replace(")", "")
     return query_string.strip()
 
 def should_clauses(search_args):
@@ -54,6 +54,14 @@ def must_clauses(search_args):
     return list(filter(lambda c: isinstance(c, dict) and "geo_distance" in c,
                        search_args.get("query", [])))
 
+def get_query_fields(search_args):
+    if "query_fields" in search_args:
+        fields = search_args["query_fields"]
+        if isinstance(fields, str):
+            fields = [fields]
+        return {"fields": fields}
+    return {}
+
 class OpenSearchCollection(Collection):
     def __init__(self, name, id_field="_id"):
         super().__init__(name)
@@ -61,6 +69,10 @@ class OpenSearchCollection(Collection):
         
     def get_engine_name(self):
         return "opensearch"
+      
+    def get_document_count(self):        
+        response = requests.get(f"{OPENSEARCH_URL}/{self.name}/_count").json()
+        return response.get("count", 0)
     
     def commit(self):
         response = requests.post(f"{OPENSEARCH_URL}/{self.name}/_flush")
@@ -69,6 +81,7 @@ class OpenSearchCollection(Collection):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
                 "opensearch.net.ssl": "false",
                 "opensearch.batch.size.entries": 500}
+                #"opensearch.write.field.as.array.include": "image_embedding"}
         if self.id_field != "_id":
             opts["opensearch.mapping.id"] = self.id_field
         mode = "overwrite" if overwrite else "append"
@@ -91,18 +104,22 @@ class OpenSearchCollection(Collection):
         query = query_string_clause(search_args)
         should = should_clauses(search_args)
         must = must_clauses(search_args)
-        query_fields = {"fields": search_args["query_fields"]} if "query_fields" in search_args else {}
+        query_fields = get_query_fields(search_args)
         query_clause = {"query_string": {"query": query,
-                        "boost": 0.454545454,
-                        "default_operator": search_args.get("default_operator", "OR")} | query_fields}
+                                         "boost": 0.454545454,
+                                         "default_operator": search_args.get("default_operator", "OR")} | query_fields}
         must.append(query_clause)
         request = {"query": {"bool": {"must": must}},
                    "size": DEFAULT_SEARCH_SIZE}
         
         for name, value in search_args.items():
             match name:
+                case "search_after":
+                    request["search_after"] = value
+                case "sort":
+                    request["sort"] = [{s[0]: s[1]} for s in value]
                 case "return_fields":
-                    request["fields"] = value
+                    request["_source"] = value
                 case "filters":
                     request["query"]["bool"]["filter"] = [create_filter(f, v) for (f, v) in value]
                 case "limit":
@@ -120,7 +137,7 @@ class OpenSearchCollection(Collection):
                                for b in boosts]
                     should.extend(clauses)
                 case "min_match":
-                    raise Exception("To be implemented (Only used in ch05)")
+                    pass #ch5
                 case "index_time_boost":
                     should.append({"rank_feature": {"field": f"{value[0]}.{value[1]}"}})
                 case "explain":
@@ -148,6 +165,8 @@ class OpenSearchCollection(Collection):
                                           "score": score}
             if "_explanation" in doc:
                 formatted["[explain]"] = doc["_explanation"]
+            if "sort" in doc:
+                formatted["sort"] = doc["sort"]
             return formatted
             
         if "hits" not in search_response:
@@ -167,17 +186,9 @@ class OpenSearchCollection(Collection):
         return self.transform_response(search_response)
     
     def spell_check(self, query, log=False):
-        request = {
-            "suggest": {
-                "spell-check" : {
-                "text" : query,
-                "term" : {
-                    "field" : "_text_",
-                    "suggest_mode" : "missing"                    
-                }
-            }
-            }
-        }
+        request = {"suggest": {"spell-check" : {"text" : query,
+                                                "term" : {"field" : "_text_",
+                                                          "suggest_mode" : "missing"}}}}
         if log: print(json.dumps(request, indent=2))
         response = self.native_search(request=request)
         if log: print(json.dumps(response, indent=2))

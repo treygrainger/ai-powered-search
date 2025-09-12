@@ -37,15 +37,19 @@ RUN chmod a+rwx $SPARK_WV8_PATH
 WORKDIR /home/$NB_USER
 
 # Install Python dependencies
-COPY build/requirements.txt ./
-ENV BLIS_ARCH="generic" 
-ENV PIP_CACHE_DIR=/var/cache/pip
+COPY build/ch5_spacy_requirements.txt /home/$NB_USER
+RUN conda create --name ch5-spacy python=3.10.0 -y
+RUN conda run --name ch5-spacy pip install -r ch5_spacy_requirements.txt 
+RUN conda run --name ch5-spacy python -m spacy download en_core_web_sm
+RUN conda run --name ch5-spacy python -m ipykernel install --name ch5-spacy --display-name "[ONLY FOR CH5.1] spaCy experimental kernel"
+
+ENV BLIS_ARCH="generic" PIP_CACHE_DIR=/var/cache/pip
 RUN mkdir -p $PIP_CACHE_DIR
+COPY build/requirements.txt /home/$NB_USER
 RUN --mount=type=cache,target=$PIP_CACHE_DIR \
-    python -m pip install --upgrade pip && \
     pip install -r requirements.txt && \
     python -m spacy download en_core_web_sm
-RUN rm requirements.txt   
+RUN rm ch5_spacy_requirements.txt requirements.txt
 
 # Configure home directory
 COPY build/log4j.properties /usr/local/spark/conf/

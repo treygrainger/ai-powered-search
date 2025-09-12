@@ -1,14 +1,12 @@
 from aips.spark import get_spark_session
 from pyspark.sql.functions import col, udf
-from pyspark.sql.types import ArrayType, IntegerType, StructType, StructField, DoubleType
-    
+from pyspark.sql.types import ArrayType, IntegerType, StructType, StructField, DoubleType    
     
 def generate_popularity_vector(stars):
     return [stars]
 
 def geo_coordinate(latlon):
-    if not latlon:
-        latlon = "0,0"
+    latlon = latlon or "0,0"
     return {"latitude": float(latlon.split(",")[0]),
             "longitude": float(latlon.split(",")[1])}
 

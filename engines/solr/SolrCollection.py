@@ -15,10 +15,7 @@ class SolrCollection(Collection):
         #if name.lower() not in [s.lower() for s in collections]:
         #    raise ValueError(f"Collection name invalid. '{name}' does not exists.")
         self.solr_url = solr_url
-        if solr_url.find("localhost") != -1:
-            self.zk_url = "localhost:2181"
-        else:
-            self.zk_url = AIPS_ZK_URL
+        self.zk_url = "localhost:2181" if solr_url.find("localhost") != -1 else AIPS_ZK_URL
         super().__init__(name)
 
     def get_engine_name(self):
@@ -34,7 +31,13 @@ class SolrCollection(Collection):
         dataframe.write.format("solr").options(**opts).mode("overwrite").save()
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
-
+    
+    def get_document_count(self):        
+        response = requests.get(f"{self.solr_url}/{self.name}/select?q=*:*&rows=0")
+        if response.status_code != 200:
+            return 0
+        return response.json().get("response", {}).get("numFound", 0)
+    
     def add_documents(self, docs, commit=True):
         print(f"\nAdding Documents to '{self.name}' collection")
         response = requests.post(f"{self.solr_url}/{self.name}/update?commit=true", json=docs).json()
@@ -48,7 +51,7 @@ class SolrCollection(Collection):
             "limit": search_args.get("limit", DEFAULT_SEARCH_SIZE),
             "params": {}
         }
-        #handle before standard handling search arg to prevent conflicting request params
+        #handle before standard handling of search args to prevent conflicting request params
 
         if is_vector_search(search_args):
             vector = search_args.pop("query")

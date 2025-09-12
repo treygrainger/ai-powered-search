@@ -22,7 +22,6 @@ statsmodels==0.14.4
 networkx==3.3
 
 #Normal deps
-accelerate==0.34.2
 beautifulsoup4==4.12.3
 lxml==5.3.0
 datasets==3.0.1
@@ -39,14 +38,8 @@ scipy==1.14.1
 #scikit-learn==1.5.2
 scikit-learn==1.2.1
 spacy==3.5.0
+staticmap==0.5.7
 faiss-cpu==1.9.0
 sentence-transformers==3.1.1
-
-#Only used in 5.1
-#Omitted because of version conflicts. Super old library, need virtual env or something
-# pretrained coreference model dependency. Will load latest supported version of spacy, and transformers
-#https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_coreference_web_trf-3.4.0a2-py3-none-any.whl
-
-#Only used in 7.14
-#Currently breaks Commented out until M.2 Issue is solved or avoided for onnxruntime-gpu
-#spladerunner==0.1.6
+accelerate==1.9.0
+spladerunner==0.1.6

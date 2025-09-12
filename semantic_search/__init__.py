@@ -62,7 +62,7 @@ def process_semantic_query(collection, entities_collection, query):
     return {
         "tagged_query": tagged_query,
         "parsed_query": enriched_query,
-        "transformed_query": to_queries(transformed),
+        "transformed_query": to_queries(transformed)[0],
         "tagger_data": entities
     }
 

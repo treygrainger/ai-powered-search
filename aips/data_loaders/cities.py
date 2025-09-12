@@ -1,6 +1,7 @@
+from aips.spark import get_spark_session
+
 from pyspark.sql.types import StructType, StringType, IntegerType
 from pyspark.sql.functions import concat_ws, lit
-from aips.spark import get_spark_session
 
 def load_dataframe(csv_file):
     print("Loading Geonames...")

@@ -63,13 +63,13 @@ services:
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
       - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=''"
       - "DISABLE_SECURITY_PLUGIN=true"
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
+      - "OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g"
     ulimits:
       memlock:
         soft: -1
         hard: -1
       nofile:
-        soft: 262114 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
+        soft: 262114
         hard: 262114
     volumes:
       - opensearch-data:/usr/share/opensearch/data
@@ -118,7 +118,7 @@ services:
       - all
   
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.14.0
+    image: opensearchproject/opensearch-dashboards:2.18.0
     container_name: opensearch-dashboards
     ports:
       - 5601:5601
