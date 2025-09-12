@@ -1,6 +1,4 @@
 from random import random
-from re import search
-from engines.solr.config import SOLR_URL
 from engines.solr.SolrCollection import SolrCollection
 from engines.LTR import LTR
 import json
@@ -14,10 +12,10 @@ class SolrLTR(LTR):
     
     def enable_ltr(self, log=True):
         delete_parser = {"delete-queryparser": "ltr"}
-        response = requests.post(f"{SOLR_URL}/{self.collection.name}/config", json=delete_parser)
+        response = requests.post(f"{self.collection.solr_url}/{self.collection.name}/config", json=delete_parser)
 
         delete_transformer = {"delete-transformer": "features"}
-        response = requests.post(f"{SOLR_URL}/{self.collection.name}/config", json=delete_transformer)
+        response = requests.post(f"{self.collection.solr_url}/{self.collection.name}/config", json=delete_transformer)
         
         print(f"Adding LTR QParser for {self.collection.name} collection")
         add_parser = {
@@ -26,7 +24,7 @@ class SolrLTR(LTR):
                 "class": "org.apache.solr.ltr.search.LTRQParserPlugin"
                 }
             }
-        response = requests.post(f"{SOLR_URL}/{self.collection.name}/config", json=add_parser)        
+        response = requests.post(f"{self.collection.solr_url}/{self.collection.name}/config", json=add_parser)        
 
         print(f"Adding LTR Doc Transformer for {self.collection.name} collection")
         add_transformer =  {
@@ -36,7 +34,7 @@ class SolrLTR(LTR):
                 "fvCacheName": "QUERY_DOC_FV"
                 }
             }
-        response = requests.post(f"{SOLR_URL}/{self.collection.name}/config", json=add_transformer)
+        response = requests.post(f"{self.collection.solr_url}/{self.collection.name}/config", json=add_transformer)
     
     def generate_feature(self, feature_name, params, 
                          feature_type="org.apache.solr.ltr.feature.SolrFeature"):
@@ -69,28 +67,28 @@ class SolrLTR(LTR):
                                      feature_type="org.apache.solr.ltr.feature.FieldLengthFeature")
     
     def delete_feature_store(self, name, log=False):
-        return requests.delete(f"{SOLR_URL}/{self.collection.name}/schema/feature-store/{name}").json()
+        return requests.delete(f"{self.collection.solr_url}/{self.collection.name}/schema/feature-store/{name}").json()
 
     def upload_features(self, features, model_name, log=False):
         if log: print(f"Uploading {model_name} features to {self.collection.name} collection.")        
         for feature in features:
             feature["store"] = model_name
-        response = requests.put(f"{SOLR_URL}/{self.collection.name}/schema/feature-store", json=features).json()
+        response = requests.put(f"{self.collection.solr_url}/{self.collection.name}/schema/feature-store", json=features).json()
         if log: print(json.dumps(response, indent=2))
-        requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={self.collection.name}&wt=xml")
+        requests.get(f"{self.collection.solr_url}/admin/collections?action=RELOAD&name={self.collection.name}&wt=xml")
         return response
 
     def delete_model(self, model_name, log=False):
         if log: print(f"Delete model {model_name}")
-        response = requests.delete(f"{SOLR_URL}/{self.collection.name}/schema/model-store/{model_name}").json()
+        response = requests.delete(f"{self.collection.solr_url}/{self.collection.name}/schema/model-store/{model_name}").json()
         if log: print(json.dumps(response, indent=2))
         return response
     
     def upload_model(self, model, log=False):
         if log: print(f'Uploading model {model["name"]}')
-        response = requests.put(f"{SOLR_URL}/{self.collection.name}/schema/model-store", json=model).json()
+        response = requests.put(f"{self.collection.solr_url}/{self.collection.name}/schema/model-store", json=model).json()
         if log: print(json.dumps(response, indent=2))
-        requests.get(f"{SOLR_URL}/admin/collections?action=RELOAD&name={self.collection.name}&wt=xml")
+        requests.get(f"{self.collection.solr_url}/admin/collections?action=RELOAD&name={self.collection.name}&wt=xml")
         return response    
     
     def upsert_model(self, model, log=False):

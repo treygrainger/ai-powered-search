@@ -1,13 +1,9 @@
-import random
-from re import search
 import requests
-from aips.spark import get_spark_session
-from engines.Collection import Collection
+from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 from engines.opensearch.config import OPENSEARCH_URL
-import time
 import json
 from pyspark.sql import Row
-import numbers
+from aips.spark import get_spark_session
 
 def generate_vector_search_request(search_args):
     vector = search_args.pop("query")
@@ -18,13 +14,13 @@ def generate_vector_search_request(search_args):
         raise ValueError("You must specificy at least one field in query_fields")
     else: 
         field = query_fields[0]
-    k = search_args.pop("k", 10)
+    k = search_args.pop("k", DEFAULT_NEIGHBORS)
     if "limit" in search_args: 
         if int(search_args["limit"]) > k:
             k = int(search_args["limit"]) #otherwise will only get k results
     request = {"query": {"knn": {field: {"vector": vector,
                                          "k": k}}},
-               "size": search_args.get("limit", 5)}             
+               "size": search_args.get("limit", DEFAULT_SEARCH_SIZE)}             
     if "log" in search_args:
         print("Search Request:")
         print(json.dumps(request, indent="  "))
@@ -58,12 +54,6 @@ def must_clauses(search_args):
     return list(filter(lambda c: isinstance(c, dict) and "geo_distance" in c,
                        search_args.get("query", [])))
 
-def is_vector_search(search_args):
-    return "query" in search_args and \
-           isinstance(search_args["query"], list) and \
-           len(search_args["query"]) == len(list(filter(lambda o: isinstance(o, numbers.Number),
-                                                        search_args["query"])))
-
 def get_query_fields(search_args):
     if "query_fields" in search_args:
         fields = search_args["query_fields"]
@@ -86,8 +76,6 @@ class OpenSearchCollection(Collection):
     
     def commit(self):
         response = requests.post(f"{OPENSEARCH_URL}/{self.name}/_flush")
-        print(response)
-        print(response.json())
 
     def write(self, dataframe, overwrite=True):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
@@ -102,8 +90,7 @@ class OpenSearchCollection(Collection):
         print(f"Successfully written {dataframe.count()} documents")
     
     def add_documents(self, docs, commit=True):
-        spark = get_spark_session()
-        dataframe = spark.createDataFrame(Row(**d) for d in docs)
+        dataframe = get_spark_session().createDataFrame(Row(**d) for d in docs)
         self.write(dataframe, overwrite=False)
     
     def transform_request(self, **search_args):
@@ -123,7 +110,7 @@ class OpenSearchCollection(Collection):
                                          "default_operator": search_args.get("default_operator", "OR")} | query_fields}
         must.append(query_clause)
         request = {"query": {"bool": {"must": must}},
-                   "size": 10}
+                   "size": DEFAULT_SEARCH_SIZE}
         
         for name, value in search_args.items():
             match name:
@@ -172,8 +159,10 @@ class OpenSearchCollection(Collection):
     def transform_response(self, search_response):
         def format_doc(doc):
             id = doc.get("id", doc["_id"])
+            is_vector_search = False #Stubbed for future normalization
+            score = doc["_score"] if not is_vector_search else doc["_score"] * 2
             formatted = doc["_source"] | {"id": id,
-                                          "score": doc["_score"]}
+                                          "score": score}
             if "_explanation" in doc:
                 formatted["[explain]"] = doc["_explanation"]
             if "sort" in doc:

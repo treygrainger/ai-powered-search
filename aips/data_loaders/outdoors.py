@@ -1,6 +1,7 @@
-from aips.spark import get_spark_session
 from pyspark.sql.functions import coalesce, col, lit, udf
 from pyspark.sql.types import ArrayType, StringType 
+from aips.spark import get_spark_session
+
 import html
 import re
 
@@ -33,5 +34,5 @@ def load_dataframe(csv_file):
     dataframe = dataframe.withColumn("url", generate_url_udf(col("id"))) 
     dataframe = dataframe.drop("post_type_id", "deletion_date", "owner_display_name", "last_editor_user_id",
                                "last_editor_display_name", "last_edit_date", "last_activity_date", "comment_count",
-                               "favorite_count", "closed_date", "community_owned_date")
+                               "favorite_count", "closed_date", "community_owned_date", "tags")
     return dataframe
