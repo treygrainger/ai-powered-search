@@ -86,8 +86,6 @@ class OpenSearchCollection(Collection):
     
     def commit(self):
         response = requests.post(f"{OPENSEARCH_URL}/{self.name}/_flush")
-        print(response)
-        print(response.json())
 
     def write(self, dataframe, overwrite=True):
         opts = {"opensearch.nodes": OPENSEARCH_URL,
