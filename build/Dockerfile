@@ -29,9 +29,12 @@ WORKDIR /home/$NB_USER
 # Install Python dependencies
 COPY build/ch5_spacy_requirements.txt /home/$NB_USER
 RUN conda create --name ch5-spacy python=3.10.0 -y
-RUN conda run --name ch5-spacy pip install -r ch5_spacy_requirements.txt 
-RUN conda run --name ch5-spacy python -m spacy download en_core_web_sm
+RUN conda run --name ch5-spacy pip install -r ch5_spacy_requirements.txt
+# Install spacy model explicitly instead of "spacy download"
+RUN conda run --name ch5-spacy pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+RUN conda run --name ch5-spacy python -m spacy link en_core_web_sm en_core_web_sm
 RUN conda run --name ch5-spacy python -m ipykernel install --name ch5-spacy --display-name "[ONLY FOR CH5.1] spaCy experimental kernel"
+
 
 ENV BLIS_ARCH="generic" PIP_CACHE_DIR=/var/cache/pip
 RUN mkdir -p $PIP_CACHE_DIR
