@@ -30,10 +30,11 @@ class SolrCollection(Collection):
         requests.post(f"{SOLR_URL}/{self.name}/update?commit=true&waitSearcher=true")
         time.sleep(5)
 
-    def write(self, dataframe):
+    def write(self, dataframe, overwrite=True):
+        mode = "overwrite" if overwrite else "append"
         opts = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
                 "gen_uniq_key": "true", "commit_within": "5000"}
-        dataframe.write.format("solr").options(**opts).mode("overwrite").save()
+        dataframe.write.format("solr").options(**opts).mode(mode).save()
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
     

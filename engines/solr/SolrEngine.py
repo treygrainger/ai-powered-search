@@ -30,7 +30,7 @@ class SolrEngine(Engine):
         if log: print(f"Documents found: {document_count}")
         return collection_exists and document_count == expected_count
 
-    def create_collection(self, name, force_rebuild=True,log=False):
+    def create_collection(self, name, force_rebuild=True, log=False):
         collection = self.get_collection(name)
         if force_rebuild:
             wipe_collection_params = [("action", "delete"), ("name", name)]
@@ -44,8 +44,7 @@ class SolrEngine(Engine):
                                     ("replicationFactor", 1)]
         print(f'Creating "{name}" collection')
         response = requests.post(SOLR_COLLECTIONS_URL + "?commit=true", data=create_collection_params).json()
-        if log:
-            print(response)
+        if log: print(response)
         self.apply_schema_for_collection(collection, log=log)
         self.print_status(response)
         return collection

@@ -24,7 +24,6 @@ def create_view_from_collection(collection, view_name, spark=None):
         case "solr":
             opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    
             dataframe = spark.read.format("solr").options(**opts).load()
-            dataframe.printSchema()
             dataframe.createOrReplaceTempView(view_name)
         case "opensearch":
             if collection.name == "tmdb_with_embeddings":

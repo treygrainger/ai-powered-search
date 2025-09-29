@@ -53,10 +53,11 @@ dataset_info = {
                 "loader_fn": from_csv},
                #"copy_repository": "data/"},
     "jobs": {"url": "https://github.com/ai-powered-search/jobs.git",
-             "count": 2103555,
+             "count": 30002,
              "loader_fn": from_csv,
              "loader_args": {"additional_columns": {"category": "jobs"},
-                             "drop_id": True}},
+                             "drop_id": True,
+                             "multiline_csv": True}},
     "health": {"url": "https://github.com/ai-powered-search/health.git",
                "count": 12892,
                "loader_fn": from_csv,
@@ -135,13 +136,14 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
     if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, log=log):
         if log: print(f"Reindexing [{dataset}] collection")
         collection = engine.create_collection(dataset, log=log)
+        overwrite = len(source_datasets) == 1
         for dataset in source_datasets:
             csv_file_path = download_data_files(dataset, log=log)
             loader_args = dataset_info[dataset].get("loader_args", {})
             dataframe = dataset_info[dataset]["loader_fn"](csv_file_path, **loader_args)
             if dataset_info[dataset].get("enable_ltr", False):
                 get_ltr_engine(collection).enable_ltr()
-            collection.write(dataframe)
+            collection.write(dataframe, overwrite=overwrite)
     else:
         if log: print(f"Collection [{dataset}] is healthy")
         collection = engine.get_collection(dataset)

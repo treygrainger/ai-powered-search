@@ -17,7 +17,7 @@ class Collection(ABC):
         pass  
     
     @abstractmethod
-    def write(self, dataframe):
+    def write(self, dataframe, overwrite):
         "Writes a pyspark dataframe containing documents into the collection"
         pass
     
