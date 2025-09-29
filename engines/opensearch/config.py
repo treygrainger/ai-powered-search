@@ -29,10 +29,8 @@ def date_field():
     return base_field("date")
 
 def basic_schema(field_mappings, id_field="_id"):
-    return {
-        "id_field": id_field,
-        "schema": {"mappings": {"properties": field_mappings}},
-    }
+    return {"id_field": id_field,
+            "schema": {"mappings": {"properties": field_mappings}}}
 
 def body_title_schema():
     return basic_schema({"title": text_field(), "body": text_field()})
@@ -61,7 +59,7 @@ def dense_vector_schema(
             }
         }
     }
-    schema["schema"]["mappings"]["properties"] | additional_fields
+    schema["schema"]["mappings"]["properties"] |= additional_fields
     return schema
 
 PRODUCTS_SCHEMA = basic_schema(
@@ -74,8 +72,7 @@ PRODUCTS_SCHEMA = basic_schema(
         "name": text_field(copy_to=["name_ngram", "_text_", "name_fuzzy"], fielddata=True),
         "short_description": text_field(copy_to=["short_description_ngram", "_text_"]),
         "long_description": text_field(copy_to="_text_"),
-        "manufacturer": text_field(copy_to="_text_"),
-        "has_promotion": boolean_field()
+        "manufacturer": text_field(copy_to="_text_")
     },
     "upc"
 )
@@ -105,6 +102,10 @@ PRODUCT_BOOSTS_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
 PRODUCT_BOOSTS_SCHEMA["schema"]["mappings"]["properties"]["signals_boosts"] = {
         "type": "rank_features"
     }
+PRODUCT_PROMO_SCHEMA = copy.deepcopy(PRODUCTS_SCHEMA)
+PRODUCT_PROMO_SCHEMA["schema"]["mappings"]["properties"]["has_promotion"] = {
+        "type": "boolean"
+    }
 
 SIGNALS_BOOSTING_SCHEMA = basic_schema({
     "query": keyword_field(),
@@ -112,33 +113,26 @@ SIGNALS_BOOSTING_SCHEMA = basic_schema({
     "boost": integer_field()})
 
 SCHEMAS = {
-    "cat_in_the_hat": basic_schema(
-        {
+    "cat_in_the_hat": basic_schema({
             "id": text_field(),
             "title": text_field(),
             "description": text_field() | {"similarity": "BM25",
-                                           "discount_overlaps": False},
-        },
+                                           "discount_overlaps": False}},
         "id"
     ),
     "products": PRODUCTS_SCHEMA,
+    "products_with_promotions": PRODUCT_PROMO_SCHEMA,
     "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
-    "jobs": basic_schema(
-        {
+    "jobs": basic_schema({
             "company_country": text_field(),
             "job_description": text_field(),
-            "company_description": text_field(),
-        }
-    ),
-    "signals": basic_schema(
-        {
+            "company_description": text_field()}),
+    "signals": basic_schema({
             "query": text_field(),
             "user": text_field(),
             "type": text_field(),
             "target": text_field(),
-            "signal_time": date_field()
-        }
-    ),
+            "signal_time": date_field()}),
     "signals_boosting": SIGNALS_BOOSTING_SCHEMA,
     "signals_boosts_with_spam": SIGNALS_BOOSTING_SCHEMA,
     "signals_boosts_anti_spam": SIGNALS_BOOSTING_SCHEMA,
@@ -151,25 +145,24 @@ SCHEMAS = {
     "travel": body_title_schema(),
     "devops": body_title_schema(),
     "reviews": basic_schema({
-        "id": text_field(),
-        "content": text_field(fielddata=True),
-        "categories": text_field(copy_to="doc_type", fielddata=True),
-        "doc_type": text_field(fielddata=True),
-        "stars_rating": integer_field(),
-        "city": text_field(fielddata=True),
-        "state": text_field(fielddata=True),
-        "business_name": text_field(fielddata=True),
-        "name": text_field(fielddata=True),
-        "location_coordinates": base_field("geo_point")}),
-    "tmdb": basic_schema(
-        {
-            "title": text_field(),
-            "overview": text_field(),
-            "release_year": double_field(),
-        }
-    ),
-    "outdoors": basic_schema(
-        {
+            "id": text_field(),
+            "content": text_field(fielddata=True),
+            "categories": text_field(copy_to="doc_type", fielddata=True),
+            "doc_type": text_field(fielddata=True),
+            "stars_rating": integer_field(),
+            "city": text_field(fielddata=True),
+            "state": text_field(fielddata=True),
+            "business_name": text_field(fielddata=True),
+            "name": text_field(fielddata=True),
+            "location_coordinates": base_field("geo_point")},
+        "id"),
+    "tmdb": basic_schema({
+            "id": text_field(),
+            "title": text_field(fielddata=True),
+            "overview": text_field(fielddata=True),
+            "release_year": double_field()},
+        "id"),
+    "outdoors": basic_schema({
             "id": text_field(),
             "post_type": text_field(),
             "accepted_answer_id": integer_field(),
@@ -182,40 +175,34 @@ SCHEMAS = {
             "title": text_field(fielddata=True),
             "tags": keyword_field(),
             "url": text_field(),
-            "answer_count": integer_field(),
-        },
-        "id"
-    ),
+            "answer_count": integer_field()},
+        "id"),
     "tmdb_with_embeddings": dense_vector_schema(
-        "image_embedding",
-        512,
-        "innerproduct",
-        "FLOAT32",
-        {"title": text_field(), "movie_id": text_field(), "image_id": text_field()},
+        "image_embedding", 512, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True),
+                                                            "movie_id": text_field(),
+                                                            "image_id": text_field()}
     ),
     "tmdb_lexical_plus_embeddings": dense_vector_schema(
-        "image_embedding",
-        512,
-        "innerproduct",
-        "FLOAT32",
-        {"title": text_field(), "overview": text_field(), "movie_id": text_field(), "image_id": text_field()},
+        "image_embedding", 512, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True),
+                                                            "overview": text_field(fielddata=True),
+                                                            "movie_id": text_field(),
+                                                            "image_id": text_field()}
     ),
     "outdoors_with_embeddings": dense_vector_schema(
-        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field()},
+        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True)}
     ),
     "ubi_queries": basic_schema({
         "timestamp": date_field(), # signal_time
         "query_id": keyword_field(),
         "client_id": text_field()
     }),
-    "ubi_aips_events": basic_schema({
-        "application": text_field(),
-        "action_name": text_field(),
-        "query_id": keyword_field(), #linked, linked to queries.query_id
-        "client_id": text_field(), #the user, linked to queries.client_id 
+    "ubi_events": basic_schema({
+        "action_name": text_field(fielddata=True),
+        "client_id": text_field(fielddata=True), #the user, linked to queries.client_id 
+        "query_id": text_field(fielddata=True), #linked to queries.query_id
         "timestamp": date_field(), # signal_time
-        "message_type": text_field(), # type
-        "message": text_field(),
-        #"event_attributes": {}
+        "message_type": text_field(fielddata=True), # type
+        "message": text_field(fielddata=True),
+        "target": text_field(fielddata=True)
     })
 }

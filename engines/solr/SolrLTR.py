@@ -103,11 +103,9 @@ class SolrLTR(LTR):
         if not fields:
             fields = [id_field]
         fields.append(f"[features store={model_name} {efi}]")
-        request = {
-            "query": f"{id_field}:({' '.join(doc_ids)})" if doc_ids else "*", 
-            "return_fields": fields,
-            "limit": 1000
-        }
+        request = {"query": f"{id_field}:({' '.join(doc_ids)})" if doc_ids else "*", 
+                   "return_fields": fields,
+                   "limit": 1000}
         if log:
             request["log"] = True
         docs = self.collection.search(**request)["docs"]

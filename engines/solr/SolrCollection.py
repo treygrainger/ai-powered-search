@@ -30,12 +30,19 @@ class SolrCollection(Collection):
         requests.post(f"{SOLR_URL}/{self.name}/update?commit=true&waitSearcher=true")
         time.sleep(5)
 
-    def write(self, dataframe):
+    def write(self, dataframe, overwrite=True):
+        mode = "overwrite" if overwrite else "append"
         opts = {"zkhost": AIPS_ZK_HOST, "collection": self.name,
                 "gen_uniq_key": "true", "commit_within": "5000"}
-        dataframe.write.format("solr").options(**opts).mode("overwrite").save()
+        dataframe.write.format("solr").options(**opts).mode(mode).save()
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
+    
+    def get_document_count(self):        
+        response = requests.get(f"{SOLR_URL}/{self.name}/select?q=*:*&rows=0")
+        if response.status_code != 200:
+            return 0
+        return response.json().get("response", {}).get("numFound", 0)
     
     def add_documents(self, docs, commit=True):
         print(f"\nAdding Documents to '{self.name}' collection")
@@ -48,7 +55,7 @@ class SolrCollection(Collection):
         request = {
             "query": "*:*",
             "limit": 10,
-            "params": {}     
+            "params": {}
         }
         #handle before standard handling search arg to prevent conflicting request params
 
@@ -141,8 +148,10 @@ class SolrCollection(Collection):
         return response
         
     def native_search(self, request=None, data=None):
-        response = requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data).json()
-        return response
+        response = requests.post(f"{SOLR_URL}/{self.name}/select", json=request, data=data)        
+        if response.status_code != 200:
+            return {"error": "Collection does not exist"}
+        return response.json()
     
     def spell_check(self, query, log=False):
         request = {"query": query,

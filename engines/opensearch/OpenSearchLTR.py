@@ -16,11 +16,15 @@ class OpenSearchLTR(LTR):
         super().__init__(collection)
     
     def enable_ltr(self, log=False):        
-        display("Enabling LTR")
-        response = requests.delete(f"{OPENSEARCH_URL}/_ltr")
-        if log: display(response.json())
-        response = requests.put(f"{OPENSEARCH_URL}/_ltr")
-        if log: display(response.json())
+        ltr_info = requests.get(f"{OPENSEARCH_URL}/_ltr").json()
+        if len(ltr_info.get("stores", {})) > 0:
+            if log: display("LTR already initialized")
+        else:
+            if log: display("Enabling/Refreshing LTR store")
+            response = requests.delete(f"{OPENSEARCH_URL}/_ltr")
+            if log: display(response.json())
+            response = requests.put(f"{OPENSEARCH_URL}/_ltr")
+            if log: display(response.json())
 
     def generate_feature(self, feature_name, template, 
                          params=["keywords"]):

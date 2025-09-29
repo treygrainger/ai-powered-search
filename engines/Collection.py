@@ -17,7 +17,7 @@ class Collection(ABC):
         pass  
     
     @abstractmethod
-    def write(self, dataframe):
+    def write(self, dataframe, overwrite):
         "Writes a pyspark dataframe containing documents into the collection"
         pass
     
@@ -25,7 +25,12 @@ class Collection(ABC):
     def add_documents(self, docs, commit=True):
         "Adds a collection of documents into the collection"
         pass
-    
+
+    @abstractmethod
+    def get_document_count(self):
+        "Returns the number of documents in the index"
+        pass
+
     @abstractmethod
     def transform_request(self, **search_args):
         "Transforms a generic search request into a native search request"
