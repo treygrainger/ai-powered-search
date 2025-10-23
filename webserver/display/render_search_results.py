@@ -24,8 +24,10 @@ def render_search_results(results, keywords_to_highlight):
         for result in results["docs"]:
             #todo: add highlighting
             coordinates = result["location_coordinates"].split(",")
-            rendered += results_template.replace("${NAME}", result.get("business_name", "UNKNOWN")) \
-                .replace("${CITY}", result.get("city", "Anywhere") + ", " + result.get("state", "USA"))\
+            rendered += results_template \
+                .replace("${NAME}", result.get("business_name", "UNKNOWN")) \
+                .replace("${CITY}", result.get("city", "Anywhere") + ", " + result.get("state", "USA")) \
+                .replace("${DESCRIPTION}", result.get("content", "")) \
                 .replace("${IMAGE_URL}", "/map?lat=" + coordinates[0] + "&lon=" + coordinates[1]) \
                 .replace("${STARS}", "★" * int(result.get("stars_rating", 0)))
             rendered += separator_template
