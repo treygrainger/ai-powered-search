@@ -1,10 +1,11 @@
-from datetime import date
 import os
 import copy
+from datetime import date
 
-OPENSEARCH_HOST = os.getenv("AIPS_OPENSEARCH_HOST") or "opensearch-node1"
-OPENSEARCH_PORT = os.getenv("AIPS_OPENSEARCH_PORT") or "9200"
-OPENSEARCH_URL = f"http://{OPENSEARCH_HOST}:{OPENSEARCH_PORT}"
+AIPS_ES_HOST = os.getenv("AIPS_ES_HOST") or "aips-elasticsearch"
+AIPS_ES_PORT = os.getenv("AIPS_ES_PORT") or "9200"
+ES_URL = f"http://{AIPS_ES_HOST}:{AIPS_ES_PORT}"
+STATUS_URL = f"{ES_URL}/_cluster/health"
 
 
 def base_field(type, **kwargs):
@@ -31,7 +32,6 @@ def keyword_field(**kwargs):
     return base_field("keyword", **kwargs)
 
 
-# {"multiValued": "true", "docValues": "true"}
 def date_field():
     return base_field("date")
 
@@ -48,30 +48,45 @@ def body_title_schema():
 
 
 def dense_vector_schema(
-    field_name, dimensions, similarity_score, quantization_size, additional_fields={}
+    field_name, dimensions, similarity_score, quantization_size=None, additional_fields={}
 ):
-    datatype_map = {"FLOAT32": "float", "BINARY": "byte"}
+    """
+    Create a schema for dense vector fields in Elasticsearch.
+
+    In Elasticsearch 8.x, vector search is handled differently than in OpenSearch:
+    - Uses 'dense_vector' type instead of 'knn_vector'
+    - Similarity is either 'cosine' or 'l2_norm' (dot_product is mapped to cosine)
+    - HNSW parameters are configured differently
+    """
+    similarity = "cosine" if similarity_score == "innerproduct" else "l2_norm"
+
+    # Configure vector field with HNSW algorithm (Elasticsearch's approach)
+    vector_field = {
+        "type": "dense_vector",
+        "dims": dimensions,
+        "index": True,
+        "similarity": similarity,
+    }
+
+    # Add HNSW parameters (Elasticsearch equivalent to OpenSearch's method.parameters)
+    vector_field["index_options"] = {
+        "type": "hnsw",
+        "m": 24,  # Equivalent to OpenSearch's m parameter
+        "ef_construction": 128,  # Equivalent to OpenSearch's ef_construction
+    }
+
     schema = {
         "schema": {
-            "settings": {"index": {"knn": True, "knn.algo_param.ef_search": 100}},
-            "mappings": {
-                "properties": {
-                    field_name: {
-                        "type": "knn_vector",
-                        "dimension": dimensions,
-                        # "data_type": data_type_map.get(quantization_size, "float"),
-                        "method": {
-                            "name": "hnsw",
-                            "engine": "nmslib",
-                            "space_type": similarity_score or "l2",
-                            "parameters": {"ef_construction": 128, "m": 24},
-                        },
-                    }
-                }
+            # Add basic settings for the index
+            "settings": {
+                "index": {"number_of_shards": 1, "number_of_replicas": 0, "refresh_interval": "1s"}
             },
+            "mappings": {"properties": {field_name: vector_field}},
         }
     }
-    schema["schema"]["mappings"]["properties"] | additional_fields
+
+    # Add additional fields
+    schema["schema"]["mappings"]["properties"].update(additional_fields)
     return schema
 
 
@@ -180,7 +195,7 @@ SCHEMAS = {
             "accepted_answer_id": integer_field(),
             "parent_id": integer_field(),
             "creation_date": text_field(),
-            "score": integer_field(),  # rename?
+            "score": integer_field(),
             "view_count": integer_field(),
             "body": text_field(fielddata=True),
             "owner_user_id": text_field(),
@@ -195,14 +210,12 @@ SCHEMAS = {
         "image_embedding",
         512,
         "innerproduct",
-        "FLOAT32",
         {"title": text_field(), "movie_id": text_field(), "image_id": text_field()},
     ),
     "tmdb_lexical_plus_embeddings": dense_vector_schema(
         "image_embedding",
         512,
         "innerproduct",
-        "FLOAT32",
         {
             "title": text_field(),
             "overview": text_field(),
@@ -214,12 +227,27 @@ SCHEMAS = {
         "title_embedding",
         768,
         "innerproduct",
-        "FLOAT32",
         {"title": text_field()},
+    ),
+    "outdoors_quantization": dense_vector_schema(
+        "text_embedding",
+        1024,
+        "innerproduct",
+        {"title": text_field(), "body": text_field()},
+    ),
+    "entities": basic_schema(
+        {
+            "surface_form": keyword_field(),
+            "canonical_form": keyword_field(),
+            "admin_area": keyword_field(),
+            "country": keyword_field(),
+            "name": text_field(),
+            "popularity": integer_field(),
+        }
     ),
     "ubi_queries": basic_schema(
         {
-            "timestamp": date_field(),  # signal_time
+            "timestamp": date_field(),
             "query_id": keyword_field(),
             "client_id": text_field(),
         }
@@ -228,12 +256,11 @@ SCHEMAS = {
         {
             "application": text_field(),
             "action_name": text_field(),
-            "query_id": keyword_field(),  # linked, linked to queries.query_id
-            "client_id": text_field(),  # the user, linked to queries.client_id
-            "timestamp": date_field(),  # signal_time
-            "message_type": text_field(),  # type
+            "query_id": keyword_field(),
+            "client_id": text_field(),
+            "timestamp": date_field(),
+            "message_type": text_field(),
             "message": text_field(),
-            # "event_attributes": {}
         }
     ),
 }

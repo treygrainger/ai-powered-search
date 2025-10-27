@@ -1,6 +1,6 @@
 services:
   notebooks:
-    build: 
+    build:
       context: .
       dockerfile: build/Dockerfile
     container_name: aips-notebooks
@@ -9,11 +9,12 @@ services:
       - 8082:8080 # Spark Master UI - 8082 less likely to conflict
       - 8081:8081 # Spark Worker UI
       - 4041:4041 # Spark UI
-      - 8888:8888 # Jupyter Notebook UI 
+      - 8888:8888 # Jupyter Notebook UI
       - 2345:2345 # Search Webserver
     networks:
       - solr-network
       - opensearch-network
+      - elasticsearch-network
     restart: unless-stopped
     environment:
       #PYSPARK_SUBMIT_ARGS: '--jars /usr/local/spark/lib/spark-solr-4.0.0-shaded.jar pyspark-shell'
@@ -21,8 +22,10 @@ services:
       #NB_UID: 1010
       #NB_GID: 1020
       #CHOWN_HOME: 'yes'
-      #CHOWN_HOME_OPTS: -R    
+      #CHOWN_HOME_OPTS: -R
       SOLR_HOST: 'aips-solr'
+      AIPS_ES_HOST: 'aips-elasticsearch'
+      AIPS_OPENSEARCH_HOST: 'aips-opensearch'
     volumes:
       - type: bind
         source: "."
@@ -38,7 +41,7 @@ services:
     container_name: aips-solr
     hostname: aips-solr
     ports:
-      - 8983:8983 
+      - 8983:8983
     environment:
       - ZK_HOST=aips-zk:2181
       - SOLR_HOST=aips-solr
@@ -57,11 +60,11 @@ services:
     build:
       context: ./engines/opensearch/build/
       dockerfile: engine-Dockerfile
-    container_name: opensearch-node1
+    container_name: aips-opensearch
     hostname: aips-opensearch
     environment:
       - cluster.name=opensearch-cluster
-      - node.name=opensearch-node1
+      - node.name=aips-opensearch
       - discovery.type=single-node
       - network.host=0.0.0.0
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
@@ -89,7 +92,7 @@ services:
       - opensearch-dashboards
     profiles:
       - all
-      
+
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.14.0
     container_name: opensearch-dashboards
@@ -99,7 +102,7 @@ services:
       - 5601:5601
     environment:
       DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
-      OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
+      OPENSEARCH_HOSTS: '["http://aips-opensearch:9200"]'
     networks:
       - opensearch-network
     profiles:
@@ -109,7 +112,7 @@ services:
     image: zookeeper:3.5.8
     container_name: aips-zk
     hostname: aips-zk
-    ports: 
+    ports:
       - 2181:2128
     networks:
       - zk-solr
@@ -119,10 +122,42 @@ services:
       - all
       - ""
 
+  elasticsearch:
+    build:
+      context: ./engines/elasticsearch/build/
+      dockerfile: Dockerfile
+    container_name: aips-elasticsearch
+    hostname: aips-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - 9201:9200
+    expose:
+      - 9200:9200
+    networks:
+      - elasticsearch-network
+    depends_on:
+      - notebooks
+    profiles:
+      - all
+
 volumes:
   opensearch-data:
-  
+  elasticsearch-data:
+
 networks:
-  zk-solr:  
+  zk-solr:
   solr-network:
   opensearch-network:
+  elasticsearch-network:
