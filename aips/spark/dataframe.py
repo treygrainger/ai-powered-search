@@ -24,6 +24,4 @@ def from_csv(file, additional_columns=False, drop_id=False, multiline_csv=False,
     return dataframe
 
 def from_sql(query, spark=None):
-    if not spark:
-        spark = get_spark_session()
-    return spark.sql(query)
+    return (spark or get_spark_session()).sql(query)

@@ -27,7 +27,7 @@ def set_engine(engine_name):
     else:
         environment.set("AIPS_SEARCH_ENGINE", engine_name)
 
-def get_ltr_engine(collection):    
+def get_ltr_engine(collection):
     ltr_engine_map = {SolrCollection: SolrLTR,
                       OpenSearchCollection: OpenSearchLTR}
     return ltr_engine_map[type(collection)](collection)

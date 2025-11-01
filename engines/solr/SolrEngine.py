@@ -1,11 +1,14 @@
 import requests
-from engines.Engine import Engine
+from engines.Engine import AdvancedFeatures, Engine
 from engines.solr.SolrCollection import SolrCollection
 from engines.solr.config import SOLR_COLLECTIONS_URL, STATUS_URL, SOLR_URL
 class SolrEngine(Engine):
     def __init__(self):
         super().__init__("Solr")
 
+    def get_supported_advanced_features(self):
+        return [AdvancedFeatures.SKG, AdvancedFeatures.TEXT_TAGGING, AdvancedFeatures.LTR]
+    
     def health_check(self):
         status = requests.get(STATUS_URL).json()["responseHeader"]["status"] == 0
         if status:

@@ -1,8 +1,9 @@
 import tarfile
-from aips import get_ltr_engine
+from aips import get_engine, get_ltr_engine
 from git import Repo
 import os
 import shutil
+from engines.Engine import AdvancedFeatures
 
 import tqdm
 from aips.data_loaders import movies, outdoors, reviews, products, cities
@@ -57,45 +58,53 @@ dataset_info = {
              "loader_fn": from_csv,
              "loader_args": {"additional_columns": {"category": "jobs"},
                              "drop_id": True,
-                             "multiline_csv": True}},
+                             "multiline_csv": True},
+             "feature_requirement": AdvancedFeatures.SKG},
     "health": {"url": "https://github.com/ai-powered-search/health.git",
                "count": 12892,
                "loader_fn": from_csv,
                "data_file_name": "posts.csv",
                "loader_args": {"additional_columns": {"category": "health"},
-                               "drop_id": True}},
+                               "drop_id": True},
+               "feature_requirement": AdvancedFeatures.SKG},
     "cooking": {"url": "https://github.com/ai-powered-search/cooking.git",
                 "count": 79324,
                 "loader_fn": from_csv,
                 "data_file_name": "posts.csv",
                 "loader_args": {"additional_columns": {"category": "cooking"},
-                                "drop_id": True}},
+                                "drop_id": True},
+                "feature_requirement": AdvancedFeatures.SKG},
     "scifi": {"url": "https://github.com/ai-powered-search/scifi.git",
               "count": 177547,
               "loader_fn": from_csv,
               "data_file_name": "posts.csv",
               "loader_args": {"additional_columns": {"category": "scifi"},
-                              "drop_id": True}},
+                              "drop_id": True},
+               "feature_requirement": AdvancedFeatures.SKG},
     "travel": {"url": "https://github.com/ai-powered-search/travel.git",
                "count": 111130,
                "loader_fn": from_csv,
                "data_file_name": "posts.csv",
                "loader_args": {"additional_columns": {"category": "travel"},
-                               "drop_id": True}},
+                               "drop_id": True},
+               "feature_requirement": AdvancedFeatures.SKG},
     "devops": {"url": "https://github.com/ai-powered-search/devops.git",
                "count": 9216,
                "loader_fn": from_csv,
                "data_file_name": "posts.csv",
                "loader_args": {"additional_columns": {"category": "devops"},
-                               "drop_id": True}},
-    "stackexchange": {"source_datasets": ["health", "cooking", "scifi", "travel", "devops"]},
+                               "drop_id": True},
+               "feature_requirement": AdvancedFeatures.SKG},
+    "stackexchange": {"source_datasets": ["health", "cooking", "scifi", "travel", "devops"],
+                      "feature_requirement": AdvancedFeatures.SKG},
     "reviews": {"url": "https://github.com/ai-powered-search/reviews.git",
                 "count": 192138,
                 "loader_fn": reviews.load_dataframe},
     "entities": {"url": "https://github.com/ai-powered-search/reviews.git",
                  "source_datasets": ["entities", "cities"],
                  "count": 21,
-                 "loader_fn": from_csv},
+                 "loader_fn": from_csv,
+                 "feature_requirement": AdvancedFeatures.TEXT_TAGGING},
     "cities": {"url": "https://github.com/ai-powered-search/reviews.git",
                "count": 137581,
                "loader_fn": cities.load_dataframe},
@@ -118,6 +127,10 @@ dataset_info = {
     "movies_with_image_embeddings": {"url": "https://github.com/ai-powered-search/tmdb.git",
                                      "data_file_name": "movies_with_image_embeddings.pickle"}}
 
+def is_feature_supported(engine, dataset):
+    required_feature = dataset_info[dataset].get("feature_requirement", None)
+    return not required_feature or required_feature in engine.get_supported_advanced_features()
+
 def build_collection(engine, dataset, force_rebuild=False, log=False):
     """
     Attempts to build a collection in the search engine if necessary.
@@ -136,6 +149,9 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
     if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, log=log):
         if log: print(f"Reindexing [{dataset}] collection")
         collection = engine.create_collection(dataset, log=log)
+        alternate_feature_collection = None
+        if not is_feature_supported(engine, dataset):
+            alternate_feature_collection = get_engine("solr").create_collection(dataset, log=log)
         overwrite = len(source_datasets) == 1
         for dataset in source_datasets:
             csv_file_path = download_data_files(dataset, log=log)
@@ -144,6 +160,8 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
             if dataset_info[dataset].get("enable_ltr", False):
                 get_ltr_engine(collection).enable_ltr()
             collection.write(dataframe, overwrite=overwrite)
+            if alternate_feature_collection:
+                alternate_feature_collection.write(dataframe, overwrite=overwrite)
     else:
         if log: print(f"Collection [{dataset}] is healthy")
         collection = engine.get_collection(dataset)

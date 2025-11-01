@@ -2,7 +2,7 @@ import json
 
 import requests
 
-from engines.Engine import Engine
+from engines.Engine import AdvancedFeatures, Engine
 from engines.opensearch.config import OPENSEARCH_URL, SCHEMAS
 from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 
@@ -11,6 +11,9 @@ STATUS_URL = f"{OPENSEARCH_URL}/_cluster/health"
 class OpenSearchEngine(Engine):
     def __init__(self):
         super().__init__("OpenSearch")
+
+    def get_supported_advanced_features(self):
+        return [AdvancedFeatures.LTR]
 
     def health_check(self):
         status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]

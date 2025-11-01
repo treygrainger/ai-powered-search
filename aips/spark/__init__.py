@@ -14,12 +14,10 @@ def get_spark_session():
     conf.set("spark.dynamicAllocation.enabled", "true")
     conf.set("spark.ui.port", "4040")
     conf.set("spark.dynamicAllocation.executorMemoryOverhead", "7g")
-    spark = SparkSession.builder.appName("AIPS").config(conf=conf).getOrCreate()
-    return spark
+    return SparkSession.builder.appName("AIPS").config(conf=conf).getOrCreate()
 
 def create_view_from_collection(collection, view_name, spark=None):
-    if not spark:
-        spark = get_spark_session()
+    spark = spark or get_spark_session()
     match collection.get_engine_name():
         case "solr":
             opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    
