@@ -58,11 +58,12 @@ def process_semantic_query(collection, entities_collection, query):
     enriched_query = " ".join([str(q) for q in query_tree])
     enriched_query_tree = enrich(collection, query_tree)
     transformed = semantic_functions.transform_query(enriched_query_tree)
+    transformed_query = " ".join(to_queries(transformed))
     
     return {
         "tagged_query": tagged_query,
         "parsed_query": enriched_query,
-        "transformed_query": to_queries(transformed)[0],
+        "transformed_query": transformed_query,
         "tagger_data": entities
     }
 
