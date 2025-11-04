@@ -30,7 +30,7 @@ RUN set -eux && BUILDARCH=$(echo $BUILDARCH | sed 's/amd64/x64/' -) && \
 # Copy working directory to the actual release docker images
 FROM amazonlinux:2
 
-ENV OS_VERSION=2.14.0
+ENV OS_VERSION=2.18.0
 ARG OPENSEARCH_HOME=/usr/share/opensearch
 ARG UID=1000
 ARG GID=1000
