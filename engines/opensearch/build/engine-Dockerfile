@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 FROM amazonlinux:2 AS linux_stage_0
 
-ENV OS_VERSION=2.14.0
+ENV OS_VERSION=2.18.0
 ARG OPENSEARCH_HOME=/usr/share/opensearch
 ARG UID=1000
 ARG GID=1000
@@ -30,7 +30,7 @@ RUN set -eux && BUILDARCH=$(echo $BUILDARCH | sed 's/amd64/x64/' -) && \
 # Copy working directory to the actual release docker images
 FROM amazonlinux:2
 
-ENV OS_VERSION=2.14.0
+ENV OS_VERSION=2.18.0
 ARG OPENSEARCH_HOME=/usr/share/opensearch
 ARG UID=1000
 ARG GID=1000
@@ -50,12 +50,11 @@ USER $UID
 
 ARG DISABLE_INSTALL_DEMO_CONFIG=true
 ARG DISABLE_SECURITY_PLUGIN=true
-ARG UBI_VERSION=v0.0.12.1-os2.14.0
-ARG UBI_PLUGIN_FILE=opensearch-ubi-plugin-$UBI_VERSION.zip
-ARG UBI_PLUGIN_URL=https://github.com/o19s/opensearch-ubi/releases/download/release-$UBI_VERSION/$UBI_PLUGIN_FILE
+ARG UBI_VERSION=2.18.0.2
+ARG UBI_PLUGIN_FILE=opensearch-ubi-$UBI_VERSION.zip
+ARG UBI_PLUGIN_URL=https://github.com/opensearch-project/user-behavior-insights/releases/download/$UBI_VERSION/$UBI_PLUGIN_FILE
 RUN bin/opensearch-plugin install $UBI_PLUGIN_URL --batch
-
-ARG LTR_PLUGIN_FILE=ltr-2.14.0-os2.14.0.zip
+ARG LTR_PLUGIN_FILE=ltr-2.18.0-os2.18.0.zip
 COPY $LTR_PLUGIN_FILE .
 RUN bin/opensearch-plugin install file://$OPENSEARCH_HOME/$LTR_PLUGIN_FILE --batch
 

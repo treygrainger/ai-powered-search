@@ -1,9 +1,20 @@
 from abc import ABC, abstractmethod
+from enum import Enum
+
+class AdvancedFeatures(Enum):
+    SKG = "SKG"
+    TEXT_TAGGING = "TEXT_TAGGING"
+    LTR = "LTR"
 
 class Engine(ABC):
     def __init__(self, name):
         self.name = name
     
+    @abstractmethod
+    def get_supported_advanced_features(self):
+        "Returns the list of implemented advanced features for the given engine"
+        pass
+
     @abstractmethod
     def health_check(self):
         "Checks the state of the search engine returning a boolean"
@@ -15,7 +26,17 @@ class Engine(ABC):
         pass
 
     @abstractmethod
-    def create_collection(self, name):
+    def does_collection_exist(self, name):
+        "Checks for the existance of the collection"
+        pass
+    
+    @abstractmethod
+    def is_collection_healthy(self, name, expected_count):
+        "Checks to see if the collection exists and is correctly populated"
+        pass
+
+    @abstractmethod
+    def create_collection(self, name, force_rebuild=True):
         "Create and initialize the schema for a collection, returns the initialized collection"
         pass
 

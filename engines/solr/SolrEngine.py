@@ -1,12 +1,14 @@
 import requests
-from engines.Engine import Engine
+from engines.Engine import AdvancedFeatures, Engine
 from engines.solr.SolrCollection import SolrCollection
 from engines.solr.config import SOLR_COLLECTIONS_URL, STATUS_URL, SOLR_URL
-
 class SolrEngine(Engine):
     def __init__(self):
         super().__init__("Solr")
 
+    def get_supported_advanced_features(self):
+        return [AdvancedFeatures.SKG, AdvancedFeatures.TEXT_TAGGING, AdvancedFeatures.LTR]
+    
     def health_check(self):
         status = requests.get(STATUS_URL).json()["responseHeader"]["status"] == 0
         if status:
@@ -18,13 +20,26 @@ class SolrEngine(Engine):
         print("Status: Success" if response["responseHeader"]["status"] == 0 else
               f"Status: Failure; Response:[ {response} ]" )
 
-    def create_collection(self, name, log=False):
+    def does_collection_exist(self, name, log=False):
+        url = f"{SOLR_URL}/admin/collections?action=LIST&wt=json"
+        response = requests.get(url).json()
+        return name in response["collections"]
+    
+    def is_collection_healthy(self, name, expected_count, log=False):
+        collection_exists = self.does_collection_exist(name)
+        if log: print(f"Collection [{name}] exists? {collection_exists}")
+        document_count = self.get_collection(name).get_document_count()
+        if log: print(f"Documents expected: {expected_count}")
+        if log: print(f"Documents found: {document_count}")
+        return collection_exists and document_count == expected_count
+
+    def create_collection(self, name, force_rebuild=True, log=False):
         collection = self.get_collection(name)
-        wipe_collection_params = [("action", "delete"),
-                                  ("name", name)]
-        print(f'Wiping "{name}" collection')
-        response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
-        requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
+        if force_rebuild:
+            wipe_collection_params = [("action", "delete"), ("name", name)]
+            print(f'Wiping "{name}" collection')
+            response = requests.post(SOLR_COLLECTIONS_URL, data=wipe_collection_params).json()
+            requests.get(f"{SOLR_URL}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
 
         create_collection_params = [("action", "CREATE"),
                                     ("name", name),
@@ -32,8 +47,7 @@ class SolrEngine(Engine):
                                     ("replicationFactor", 1)]
         print(f'Creating "{name}" collection')
         response = requests.post(SOLR_COLLECTIONS_URL + "?commit=true", data=create_collection_params).json()
-        if log:
-            display(response)
+        if log: print(response)
         self.apply_schema_for_collection(collection, log=log)
         self.print_status(response)
         return collection
@@ -47,13 +61,14 @@ class SolrEngine(Engine):
                 self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "description")
-            case "products" | "products_with_signals_boosts":
+            case "products" | "products_with_signals_boosts" | "products_with_promotions":
                 self.delete_copy_fields(collection) 
                 self.set_search_defaults(collection)
                 self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
-                self.upsert_text_field(collection, "manufacturer")                               
-                self.upsert_field(collection, "has_promotion", "boolean")
+                self.upsert_text_field(collection, "manufacturer")
+                if collection.name == "products_with_promotions":
+                    self.upsert_field(collection, "has_promotion", "boolean")
                 self.upsert_text_field(collection, "short_description")
                 self.upsert_text_field(collection, "long_description")
 
@@ -193,17 +208,23 @@ class SolrEngine(Engine):
         self.delete_field(collection, field_name)
         return self.add_field(collection, field_name, type, additional_schema)
     
-    def add_field(self, collection, field_name, type, additional_schema={}):        
+    def add_field(self, collection, field_name, type, additional_schema={}, log=False):        
         field = {"name": field_name, "type": type,
                  "stored": "true", "indexed": "true", "multiValued": "false"}
         field.update(additional_schema)
         add_field = {"add-field": field}
-        return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field)
+        resp = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=add_field)
+        if log:
+            print(resp.json())
+        return resp
     
-    def delete_field(self, collection, field_name):
+    def delete_field(self, collection, field_name, log=False):
         delete_field = {"delete-field": {"name": field_name}}
         try:
-            return requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
+            resp = requests.post(f"{SOLR_URL}/{collection.name}/schema", json=delete_field)
+            if log:
+                print(resp.json())
+            return resp
         except:
             return {}
     
