@@ -1,47 +1,62 @@
 import aips.environment as environment
 from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
 from engines.solr.SolrEngine import SolrEngine
-from engines.solr.SolrCollection import SolrCollection
-
-from engines.opensearch.OpenSearchCollection import OpenSearchCollection
 from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 from engines.opensearch.OpenSearchLTR import OpenSearchLTR
 from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSemanticSearch
+
+from engines.weaviate.WeaviateEngine import WeaviateEngine
+from engines.weaviate.WeaviateLTR import WeaviateLTR
+from engines.weaviate.WeaviateSearchSparseSemanticSearch import WeaviateSearchSparseSemanticSearch
 
 import os
 from IPython.display import display, HTML
 import pandas
 import re
 
-engine_type_map = {"SOLR": SolrEngine(),
-                   "OPENSEARCH": OpenSearchEngine()}
+engine_type_map = {"solr": SolrEngine,
+                   "opensearch": OpenSearchEngine,
+                   "weaviate": WeaviateEngine}
+ltr_engine_map = {"solr": SolrLTR,
+                  "opensearch": OpenSearchLTR,
+                  "weaviate": WeaviateLTR}
+SSS_map = {"solr": SolrSparseSemanticSearch,
+           "opensearch": OpenSearchSparseSemanticSearch,
+           "weaviate": WeaviateSearchSparseSemanticSearch}
 
-def get_engine(override=None):
-    engine_name = override.upper() if override else environment.get("AIPS_SEARCH_ENGINE", "SOLR")
-    return engine_type_map[engine_name]
+def get_engine(override=None, host_override=None):
+    engine_name = override if override else environment.get("AIPS_SEARCH_ENGINE", "solr")
+    engine_type = engine_type_map[engine_name.lower()]
+    return engine_type() if not host_override else engine_type(host_override)
 
 def set_engine(engine_name):
-    engine_name = engine_name.upper()
-    if engine_name not in engine_type_map:
+    engine_name = engine_name.lower()
+    if engine_name not in ltr_engine_map:
         raise ValueError(f"No search engine implementation found for {engine_name}")
     else:
         environment.set("AIPS_SEARCH_ENGINE", engine_name)
 
-def get_ltr_engine(collection):
-    ltr_engine_map = {SolrCollection: SolrLTR,
-                      OpenSearchCollection: OpenSearchLTR}
-    return ltr_engine_map[type(collection)](collection)
+def get_ltr_engine(collection):    
+    return ltr_engine_map[collection.get_engine_name()](collection)
 
-def get_semantic_knowledge_graph(collection):
-    return SolrSemanticKnowledgeGraph(get_engine("solr").get_collection(collection.name))
-
-def get_entity_extractor(collection):
-    return SolrEntityExtractor(get_engine("solr").get_collection(collection.name))
+def get_semantic_engine(log=False):
+    if get_engine().name == "solr":
+        return get_engine("solr")
+    else:
+        engine = get_engine("solr", "localhost")
+        if not engine.health_check(log):
+            environment.shutdown_semantic_engine(log)
+            environment.initialize_embedded_semantic_engine(log)
+        return engine
 
 def get_sparse_semantic_search():
-    SSS_map = {SolrEngine: SolrSparseSemanticSearch,
-               OpenSearchEngine: OpenSearchSparseSemanticSearch}
-    return SSS_map[type(get_engine())]()
+    return SSS_map[get_engine().name.lower()]()
+    
+def get_semantic_knowledge_graph(collection):
+    return SolrSemanticKnowledgeGraph(get_semantic_engine().get_collection(collection.name.lower()))
+
+def get_entity_extractor(collection):
+    return SolrEntityExtractor(get_semantic_engine().get_collection(collection.name.lower()))
 
 def healthcheck():
     try:
@@ -53,7 +68,7 @@ def healthcheck():
         print("Error! One or more containers are not responding.\nPlease follow the instructions in Appendix A.")
         
 def num2str(number):
-    return str(round(number,4)) #round to 4 decimal places for readibility
+    return str(round(number, 4)) #round to 4 decimal places for readibility
 
 def vec2str(vector):
     return "[" + ", ".join(map(num2str,vector)) + "]"

@@ -1,6 +1,10 @@
 from abc import ABC, abstractmethod
 import aips.environment as env
 import json
+import numbers
+
+DEFAULT_SEARCH_SIZE = 10
+DEFAULT_NEIGHBORS = 10
 
 class Collection(ABC):
     def __init__(self, name):
@@ -117,3 +121,9 @@ def reciprocal_rank_fusion(search_results, k=None):
             scores[doc["id"]] = scores.get(doc["id"], 0)  + (1.0 / (k + rank))
     sorted_scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
     return sorted_scores
+
+def is_vector_search(search_args):
+    return "query" in search_args and \
+           isinstance(search_args["query"], list) and \
+           len(search_args["query"]) == len(list(filter(lambda o: isinstance(o, numbers.Number),
+                                                        search_args["query"])))
