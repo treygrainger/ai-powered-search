@@ -51,3 +51,8 @@ class OpenSearchEngine(Engine):
         "Returns initialized object for a given collection"
         id_field = SCHEMAS.get(name, {}).get("id_field", "_id")
         return OpenSearchCollection(name, id_field)
+    
+    def cleanup_querygroup_id_error_bug(self):
+        resp = requests.put("http://aips-opensearch:9200/_cluster/settings",
+                            json={"persistent" : {"logger.org.opensearch.wlm.QueryGroupTask": "ERROR"}})
+        return resp.json()
