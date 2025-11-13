@@ -2,7 +2,7 @@ import json
 
 import requests
 
-from engines.Engine import Engine
+from engines.Engine import AdvancedFeatures, Engine
 from engines.weaviate.config import WEAVIATE_URL, SCHEMAS
 from engines.weaviate.WeaviateCollection import WeaviateCollection
 
@@ -20,7 +20,7 @@ class WeaviateEngine(Engine):
         return response.status_code == 200
     
     def get_supported_advanced_features(self):
-        return []
+        return [AdvancedFeatures.LTR]
 
     def health_check(self):
         return requests.get(STATUS_URL).json()["status"] == "green"

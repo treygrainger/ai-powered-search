@@ -1,3 +1,4 @@
+import time
 import requests
 from engines.Engine import AdvancedFeatures, Engine
 from engines.solr.SolrCollection import SolrCollection
@@ -7,11 +8,12 @@ class SolrEngine(Engine):
     def __init__(self, solr_host=config.AIPS_SOLR_HOST):
         self.solr_url = f"http://{solr_host}:{config.AIPS_SOLR_PORT}/solr"
         super().__init__("solr")
+        
     def get_supported_advanced_features(self):
         return [AdvancedFeatures.SKG, AdvancedFeatures.TEXT_TAGGING, AdvancedFeatures.LTR]
     
-    def health_check(self, log=True):
-        for i in range(3):
+    def health_check(self, log=True, retries=0):
+        for i in range(retries + 1):
             try:
                 response = requests.get(f"{self.solr_url}/admin/zookeeper/status", timeout=5)
                 if log:
@@ -26,6 +28,7 @@ class SolrEngine(Engine):
                 if log:
                     print(f"Solr {self.solr_url} failed to respond to healthcheck.")
                 status = False
+            time.sleep(10)
         return status
     
     def print_status(self, response):        
@@ -72,8 +75,6 @@ class SolrEngine(Engine):
                 self.add_copy_field(collection, "*", "_text_")
                 self.upsert_text_field(collection, "upc")
                 self.upsert_text_field(collection, "manufacturer")
-                if collection.name == "products_with_promotions":
-                    self.upsert_field(collection, "has_promotion", "boolean")
                 self.upsert_text_field(collection, "short_description")
                 self.upsert_text_field(collection, "long_description")
 
@@ -83,9 +84,12 @@ class SolrEngine(Engine):
                 self.add_omit_norms_field_type(collection)
                 self.add_copy_field(collection, "name", "name_omit_norms")                
                 self.add_copy_field(collection, "name", "name_txt_en_split") 
+                
                 if collection.name == "products_with_signals_boosts":
                     self.upsert_boosts_field_type(collection, "boosts")
                     self.upsert_boosts_field(collection, "signals_boosts")
+                if collection.name == "products_with_promotions":
+                    self.upsert_field(collection, "has_promotion", "boolean")
             case "jobs":
                 self.set_search_defaults(collection)
                 self.upsert_text_field(collection, "company_country")
@@ -159,32 +163,22 @@ class SolrEngine(Engine):
               
     def add_vector_field(self, collection, field_name, dimensions, similarity_function,
                          vector_encoding_size="FLOAT32"):
-        field_type = f"{field_name}_vector"
-        field_name = f"{field_name}"
+        field_type_name = f"{field_name}_vector"
         self.delete_field(collection, field_name)
-        self.delete_field_type(collection, field_type)
-        
-        add_field_type = {
-            "add-field-type": {
-                "name": field_type,
-                "class": "solr.DenseVectorField",
-                "vectorDimension": dimensions,
-                "vectorEncoding": vector_encoding_size,
-                "similarityFunction": similarity_function
-            }
-        }
+        self.delete_field_type(collection, field_type_name)        
+        add_field_type = {"add-field-type": {"name": field_type_name,
+                                             "class": "solr.DenseVectorField",
+                                             "vectorDimension": dimensions,
+                                             "vectorEncoding": vector_encoding_size,
+                                             "similarityFunction": similarity_function}}
         response = requests.post(f"{self.solr_url}/{collection.name}/schema", json=add_field_type)
-        self.add_field(collection, field_name, field_type)
+        self.add_field(collection, field_name, field_type_name)
 
     def set_search_defaults(self, collection, default_parser="edismax"):
-        request = {
-            "update-requesthandler": {
-                "name": "/select",
-                "class": "solr.SearchHandler",
-                "defaults": {"defType": default_parser,
-                             "indent": True}
-            }
-        }
+        request = {"update-requesthandler": {"name": "/select",
+                                             "class": "solr.SearchHandler",
+                                             "defaults": {"defType": default_parser,
+                                                          "indent": True}}}
         return requests.post(f"{self.solr_url}/{collection.name}/config", json=request)
         
     def add_copy_field(self, collection, source, dest):
@@ -207,17 +201,15 @@ class SolrEngine(Engine):
         self.upsert_field(collection, field_name, "string", {"indexed": "false", "docValues": "true"})
     
     def upsert_boosts_field(self, collection, field_name, field_type_name="boosts"):
-        self.upsert_field(collection, field_name, field_type_name, {"multiValued":"true"})
+        self.upsert_field(collection, field_name, field_type_name, {"multiValued": "true"})
            
     def upsert_field(self, collection, field_name, type, additional_schema={}):
         self.delete_field(collection, field_name)
         return self.add_field(collection, field_name, type, additional_schema)
     
     def add_field(self, collection, field_name, type, additional_schema={}, log=False):        
-        field = {"name": field_name, "type": type,
-                 "stored": "true", "indexed": "true", "multiValued": "false"}
-        field.update(additional_schema)
-        add_field = {"add-field": field}
+        add_field = {"add-field": {"name": field_name, "type": type, "stored": "true",
+                                   "indexed": "true", "multiValued": "false"} | additional_schema}
         return requests.post(f"{self.solr_url}/{collection.name}/schema", json=add_field)
     
     def delete_field(self, collection, field_name, log=False):
@@ -235,7 +227,6 @@ class SolrEngine(Engine):
             return {}
         
     def upsert_boosts_field_type(self, collection, field_type_name):
-
         print(f'Adding "{field_type_name}" field type to collection')
         add_field_type = { 
             "add-field-type": {

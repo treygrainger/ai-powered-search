@@ -25,10 +25,11 @@ class SolrCollection(Collection):
         requests.post(f"{self.solr_url}/{self.name}/update?commit=true&waitSearcher=true")
         time.sleep(5)
 
-    def write(self, dataframe):
+    def write(self, dataframe, overwrite=True):
         opts = {"zkhost": self.zk_host, "collection": self.name,
                 "gen_uniq_key": "true", "commit_within": "5000"}
-        dataframe.write.format("solr").options(**opts).mode("overwrite").save()
+        mode = "overwrite" if overwrite else "append"
+        dataframe.write.format("solr").options(**opts).mode(mode).save()
         self.commit()
         print(f"Successfully written {dataframe.count()} documents")
     
@@ -141,8 +142,9 @@ class SolrCollection(Collection):
         return response
 
     def native_search(self, request=None, data=None):
-        response = requests.post(f"{self.solr_url}/{self.name}/select", json=request, data=data).json()
-        return response
+        response = requests.post(f"{self.solr_url}/{self.name}/select", json=request, data=data)
+        response.raise_for_status()
+        return response.json()
 
     def spell_check(self, query, log=False):
         request = {"query": query,

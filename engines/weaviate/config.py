@@ -14,8 +14,7 @@ def get_boost_field(collection_name):
 def schema_contains_id_field(collection_name): 
     collection_name = collection_name.lower()
     return collection_name in SCHEMAS and \
-        any(filter(lambda p: p["name"] == "__id",
-                   SCHEMAS[collection_name]["schema"]["properties"]))
+        any(p["name"] == "__id" for p in SCHEMAS[collection_name]["schema"]["properties"])
 
 def get_vector_field_name(collection_name):
     return SCHEMAS.get(collection_name.lower(), {}).get("vector_field", None)
@@ -25,9 +24,13 @@ def schema_contains_custom_vector_field(collection_name):
 
 def base_field(type, **kwargs):
     return {"dataType": [type]} | kwargs
+
 #"indexSearchable": True
 def text_field(**kwargs):
     return base_field("text", **kwargs)
+
+def multivalue_text_field(**kwargs):
+    return base_field("text[]", **kwargs)
 
 def boolean_field():
     return base_field("boolean")
@@ -99,60 +102,52 @@ PRODUCT_BOOSTS_SCHEMA = basic_schema("products_with_signals_boosts",
                                      PRODUCTS_SCHEMA_PROPERTIES | {"signals_boosts": text_field()})
 PRODUCT_BOOSTS_SCHEMA["boost_field"] = "upc"
 
+PRODUCTS_WITH_PROMOS_SCHEMA = basic_schema("products_with_promotions",
+                                     PRODUCTS_SCHEMA_PROPERTIES | {"has_promotion": boolean_field()})
+
 SCHEMAS = {
-    "cat_in_the_hat": basic_schema("cat_in_the_hat",
-        {
-            "__id": text_field(),
-            "title": text_field(),
-            "description": text_field() | {"similarity": "BM25",
-                                           "discount_overlaps": False}
-        }
-    ),
+    "cat_in_the_hat": basic_schema("cat_in_the_hat", {"__id": text_field(),
+                                                      "title": text_field(),
+                                                      "description": text_field(**{"similarity": "BM25",
+                                                                                  "discount_overlaps": False})}),
     "products": PRODUCTS_SCHEMA,
     "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
-    "jobs": basic_schema("jobs",
-        {
-            "job_title": text_field(),
-            "job_description": text_field(),
-            "job_type": text_field(),
-            "category": text_field(),
-            "job_location": text_field(),
-            "job_city": text_field(),
-            "job_state": text_field(),
-            "job_country": text_field(),
-            "job_zip_code": text_field(),
-            "job_address": text_field(),
-            "min_salary": text_field(),
-            "max_salary": text_field(),
-            "salary_period": text_field(),
-            "apply_url": text_field(),
-            "apply_email": text_field(),
-            "num_employees": text_field(),
-            "industry": text_field(),
-            "company_name": text_field(),
-            "company_email": text_field(),
-            "company_website": text_field(),
-            "company_phone": text_field(),
-            "company_logo": text_field(),
-            "company_description": text_field(),
-            "company_location": text_field(),
-            "company_city": text_field(),
-            "company_state": text_field(),
-            "company_country": text_field(),
-            "company_zip_code": text_field(),
-            "job_date": text_field()
-        }
-    ),
-    "signals": basic_schema("signals",
-        {
-            "__id": text_field(),
-            "query_id": text_field(),
-            "user": text_field(),
-            "type": text_field(),
-            "target": text_field(),
-            "signal_time": text_field()
-        }
-    ),
+    "products_with_promotions": PRODUCTS_WITH_PROMOS_SCHEMA,
+    "jobs": basic_schema("jobs", {"job_title": text_field(),
+                                  "job_description": text_field(),
+                                  "job_type": text_field(),
+                                  "category": text_field(),
+                                  "job_location": text_field(),
+                                  "job_city": text_field(),
+                                  "job_state": text_field(),
+                                  "job_country": text_field(),
+                                  "job_zip_code": text_field(),
+                                  "job_address": text_field(),
+                                  "min_salary": text_field(),
+                                  "max_salary": text_field(),
+                                  "salary_period": text_field(),
+                                  "apply_url": text_field(),
+                                  "apply_email": text_field(),
+                                  "num_employees": text_field(),
+                                  "industry": text_field(),
+                                  "company_name": text_field(),
+                                  "company_email": text_field(),
+                                  "company_website": text_field(),
+                                  "company_phone": text_field(),
+                                  "company_logo": text_field(),
+                                  "company_description": text_field(),
+                                  "company_location": text_field(),
+                                  "company_city": text_field(),
+                                  "company_state": text_field(),
+                                  "company_country": text_field(),
+                                  "company_zip_code": text_field(),
+                                  "job_date": text_field()}),
+    "signals": basic_schema("signals", {"__id": text_field(),
+                                        "query_id": text_field(),
+                                        "user": text_field(),
+                                        "type": text_field(),
+                                        "target": text_field(),
+                                        "signal_time": text_field()}),
     "signals_boosting": signals_boosting_schema("signals_boosting"),
     "basic_signals_boosts": signals_boosting_schema("basic_signals_boosts"),
     "normalized_signals_boosts": signals_boosting_schema("normalized_signals_boosts"),
@@ -160,86 +155,77 @@ SCHEMAS = {
     "signals_boosts_anti_spam": signals_boosting_schema("signals_boosts_anti_spam"),
     "signals_boosts_weighted_types": signals_boosting_schema("signals_boosts_weighted_types"),
     "signals_boosts_time_weighted": signals_boosting_schema("signals_boosts_time_weighted"),
-    "user_product_implicit_preferences": basic_schema(
-        "user_product_implicit_preferences",
-        {"user": text_field(),
-         "product": text_field(),
-         "rating": integer_field()}),
-    "user_item_recommendations": basic_schema(
-        "user_item_recommendations",
-        {"user": text_field(),
-         "product": text_field(),
-         "boost": double_field()}),
+    "user_product_implicit_preferences": basic_schema("user_product_implicit_preferences",
+                                                      {"user": text_field(),
+                                                       "product": text_field(),
+                                                       "rating": integer_field()}),
+    "user_item_recommendations": basic_schema("user_item_recommendations",
+                                              {"user": text_field(),
+                                               "product": text_field(),
+                                               "boost": double_field()}),
     "stackexchange": body_title_schema("stackexchange"),
     "health": body_title_schema("health"),
     "cooking": body_title_schema("cooking"),
     "scifi": body_title_schema("scifi"),
     "travel": body_title_schema("travel"),
     "devops": body_title_schema("devops"),
-    "reviews": basic_schema("reviews", {
-        "__id": text_field(),
-        "business_name": text_field(),
-        "name": text_field(),
-        "city": text_field(),
-        "state": text_field(),
-        "content": text_field(),
-        "categories": text_field(copy_to="doc_type"),
-        "stars_rating": integer_field(),
-        "location_coordinates": base_field("geoCoordinates")},
-        "popularity_vector"), #base_field("geoCoordinates")}),
-    "entities": basic_schema("entities",
-                             {"__id": text_field(),
-                              "surface_form": text_field(),
-                              "canonical_form": text_field(),
-                              "type": text_field(),
-                              "popularity": integer_field(),
-                              "semantic_function": text_field()}),
-    "tmdb": basic_schema("tmdb",
-        {
-            "__id": text_field(),
-            "title": text_field(),
-            "overview": text_field(),
-            "cast": text_field(),
-            "release_date": text_field(),
-            "release_year": text_field(),
-            "poster_file": text_field(),
-            "poster_path": text_field(),
-            "vote_average": integer_field(),
-            "vote_count": integer_field(),
-            "movie_image_ids": text_field()
-        }
-    ),
-    "outdoors": basic_schema("outdoors",
-        {
-            "__id": text_field(),
-            "post_type": text_field(),
-            "accepted_answer_id": integer_field(),
-            "parent_id": text_field(), #integer fields 
-            "creation_date": text_field(),
-            "score": integer_field(),  # rename?
-            "view_count": integer_field(),
-            "body": text_field(),
-            "owner_user_id": text_field(),
-            "title": text_field(),
-            "url": text_field(),
-            "answer_count": integer_field(),
-        }
-    ),
+    "reviews": basic_schema("reviews",
+                            {"__id": text_field(),
+                             "business_name": text_field(),
+                             "name": text_field(),
+                             "city": text_field(),
+                             "state": text_field(),
+                             "content": text_field(),
+                             "categories": text_field(copy_to="doc_type"),
+                             "stars_rating": integer_field(),
+                             "location_coordinates": base_field("geoCoordinates")},
+                             "popularity_vector"),
+    "entities": basic_schema("entities", {"__id": text_field(),
+                                          "surface_form": text_field(),
+                                          "canonical_form": text_field(),
+                                          "type": text_field(),
+                                          "popularity": integer_field(),
+                                          "semantic_function": text_field(),
+                                          "location_coordinates": text_field(), #text_field as just used as coord data, not for geo search
+                                          "country": text_field(),
+                                          "admin_area": text_field()}),
+    "tmdb": basic_schema("tmdb", {"__id": text_field(),
+                                  "title": text_field(),
+                                  "overview": text_field(),
+                                  "tagline": text_field(),
+                                  "directors": multivalue_text_field(),
+                                  "cast": text_field(),
+                                  "genres": multivalue_text_field(),
+                                  "release_date": text_field(),
+                                  "release_year": text_field(),
+                                  "poster_file": text_field(),
+                                  "poster_path": text_field(),
+                                  "vote_average": integer_field(),
+                                  "vote_count": integer_field(),
+                                  "movie_image_ids": text_field()}),
+    "outdoors": basic_schema("outdoors", {"__id": text_field(),
+                                          "accepted_answer_id": integer_field(),
+                                          "parent_id": text_field(), #integer fields 
+                                          "creation_date": text_field(),
+                                          "score": integer_field(),  # rename?
+                                          "view_count": integer_field(),
+                                          "body": text_field(),
+                                          "owner_user_id": text_field(),
+                                          "title": text_field(),
+                                          "tags": multivalue_text_field(),
+                                          "answer_count": integer_field(),                                          
+                                          "post_type": text_field(),
+                                          "url": text_field()}),
     "tmdb_with_embeddings": basic_schema("tmdb_with_embeddings",
-        {
-            "title": text_field(),
-            "movie_id": text_field(),
-            "image_id": text_field()
-        },
-        "image_embedding"),
-    "tmdb_lexical_plus_embeddings": basic_schema(
-        "tmdb_lexical_plus_embeddings",
-        {"title": text_field(), "overview": text_field(),
-         "movie_id": text_field(), "image_id": text_field()},
-         "image_embedding"
-    ),
+                                         {"title": text_field(), "movie_id": text_field(), "image_id": text_field()},
+                                         "image_embedding"),
+    "tmdb_lexical_plus_embeddings": basic_schema("tmdb_lexical_plus_embeddings",
+                                                 {"__id": text_field(),
+                                                  "movie_id": text_field(),
+                                                  "title": text_field(),
+                                                  "overview": text_field(),
+                                                  "image_id": text_field()},
+                                                  "image_embedding"),
     "outdoors_with_embeddings": basic_schema("outdoors_with_embeddings",
-                                             {"__id": text_field(),
-                                              "title": text_field()},
-                                             "title_embedding")
-}
+                                             {"__id": text_field(), "title": text_field()}, 
+                                             "title_embedding")}

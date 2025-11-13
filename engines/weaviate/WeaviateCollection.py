@@ -17,7 +17,7 @@ class WeaviateCollection(Collection):
         super().__init__(name)
         
     def commit(self):
-        time.sleep(7.5)
+        time.sleep(7.5) #weaviate is already committing, give it some time
 
     def get_document_count(self):
         count_operation = Operation(type="Aggregate", queries=[Query(name=self.name, fields=[Field(name="meta", fields=["count"])])])
@@ -30,13 +30,10 @@ class WeaviateCollection(Collection):
         return "weaviate"
         
     def rename_id_field(self, dataframe):
-        #Must exist because Weaviate reserves the 'id' field (and also the _id field??)
-        if "id" in dataframe.columns:
-            return dataframe.withColumnRenamed("id", "__id")
-        return dataframe
+        #Must exist because Weaviate reserves the 'id' field (seems _id field is reserved as well??)
+        return dataframe.withColumnRenamed("id", "__id") if "id" in dataframe.columns else dataframe
 
     def is_query_by_id(self, search_args):
-        #hacks for sort by not existing in bm25. This function is very tightly coupled to the books query by id requirements
         #Will catch all queries that can be done without using BM25 handler
         return len(search_args.get("query_fields", [])) == 1 and \
             len(search_args.get("order_by", [])) == 1 and \
@@ -55,7 +52,7 @@ class WeaviateCollection(Collection):
         def generate_filter_argument(name, operator, value):
             value_type = "valueText"
             if isinstance(value, bool):
-                #value_type = "valueBoolean"
+                value_type = "valueBoolean"
                 value = str(value).lower()
             if isinstance(value, list):
                 operator = "ContainsAny"
@@ -65,7 +62,11 @@ class WeaviateCollection(Collection):
                 operator = "NotEqual"
                 value_type = "valueInt"
             elif isinstance(value, str):
+                if value.lower() == "true" or value.lower() == "false":
+                    value_type == "valueBoolean"
                 value = value if value[0] == '"' else '"' + value + '"'
+            if schema_contains_id_field(self.name) and name == "id":
+                name = "__id"
             return [Argument(name="path", value=['"' + name + '"']),
                     Argument(name="operator", value=operator),
                     Argument(name=value_type, value=value)]
@@ -88,9 +89,8 @@ class WeaviateCollection(Collection):
                     if filter_clause:
                         filters.append(filter_clause)
         if len(filters) > 0:
-            filter_clause = Argument(name="where", value=[
-                Argument(name="operator", value="And"),
-                Argument(name="operands", value=filters)])
+            filter_clause = Argument(name="where", value=[Argument(name="operator", value="And"),
+                                                          Argument(name="operands", value=filters)])
         return filter_clause
         
     def generate_sort_clause(self, search_args):
@@ -124,7 +124,8 @@ class WeaviateCollection(Collection):
                 fields.remove("__weaviate_id")
                 additional_fields.append("id")
             if "id" in fields:
-                fields.remove("id")
+                while "id" in fields:
+                    fields.remove("id")
                 if schema_contains_id_field(self.name):
                     fields.append("__id")
                 else:
@@ -208,7 +209,7 @@ class WeaviateCollection(Collection):
         return dataframe
 
     def write(self, dataframe, overwrite=False): 
-        opts = {#"batchSize": 500,
+        opts = {"batchSize": 1000,
                 "scheme": "http",
                 "host": f"{WEAVIATE_HOST}:{WEAVIATE_PORT}",
                 "className": self.name}
@@ -252,7 +253,7 @@ class WeaviateCollection(Collection):
             if "query_fields" in search_args:
                 fields = self.generate_query_fields(search_args)
                 query_arguments.append(Argument(name="properties", value=fields))
-            collection_query_args.append(Argument(name="bm25", value=query_arguments)) 
+            collection_query_args.append(Argument(name="bm25", value=query_arguments))
         else: #unbound search
             pass #needs no additional collection query arguments
 

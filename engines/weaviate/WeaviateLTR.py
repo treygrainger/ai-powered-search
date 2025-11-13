@@ -64,20 +64,20 @@ class WeaviateLTR(LTR):
         return query
 
     def get_logged_features(self, model_name, doc_ids, options={},
-                            id_field="upc", fields=None, log=False):
+                            id_field="id", fields=None, log=False):
         model_features = self.model_store.load_features_for_model(model_name, log)
         if "keywords" not in options:
             raise Exception("keywords are required to log features")
         request = {"query": options["keywords"],
-                   "filters": [("upc", doc_ids)], "limit": 500}
+                   "filters": [("id", doc_ids)], "limit": 500}
         if log:
             request["log"] = True
         logged_docs = self.collection.search(**request)["docs"]
         for d in logged_docs: 
             d["[features]"] = {}
-
         for feature in model_features:
-            feature_request = request | feature["params"]["request"]
+            print(f"Logged feature {feature}")
+            feature_request = request | feature["params"].get("request", {})
             if feature["type"] != "field_value":
                 if feature["type"] == "query":
                     if feature_request["query"] == "$keywords":
@@ -88,9 +88,10 @@ class WeaviateLTR(LTR):
                     feature_request["query"] = generate_fuzzy_text(options["keywords"])
                     feature_request["query_fields"] += "_fuzzy"
                 scored_docs = self.collection.search(**feature_request)["docs"]
+                print(scored_docs)
                 scored_docs = {d[id_field]: d for d in scored_docs}
                 field = "score"
-            else:
+            else: #only used in 11.4 unrefactored demo
                 scored_docs = {d[id_field]: d for d in logged_docs}
                 field = None
             for d in logged_docs: 
@@ -127,16 +128,15 @@ class WeaviateLTR(LTR):
             print(f"No exploration candidate matching query {query}")
         return docs
 
-    def search_with_model(self, model_name, **search_args):
+    def search_with_model(self, model_name, id_field, **search_args):
         ltr_model_data = self.model_store.load_model(model_name)
         limit = search_args.get("limit", 25)
         search_args["limit"] =  limit * 10
         response = self.collection.search(**search_args)
-        id_field = "upc" #collection.get_id
         keyed_docs = {d[id_field]: d for d in response["docs"]}
         query_options = {"keywords": search_args.get("query", "*")}
         logged_docs = self.get_logged_features(model_name, list(keyed_docs.keys()),
-                                               query_options, id_field)
+                                               query_options=query_options, id_field=id_field)
         for doc in logged_docs:
             doc["ltr_score"] = 0
             for name, values in ltr_model_data["features"].items():

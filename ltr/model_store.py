@@ -36,9 +36,11 @@ class ModelStore:
             ltr_config["features"] = {}
         ltr_config["features"][model_name] = features
         self.write_ltr_config(ltr_config)
+        if log: print(f"Wrote config: [{ltr_config}]")
     
-    def load_features_for_model(self, model_name, log=False):
+    def load_features_for_model(self, model_name, log=False):        
         ltr_config = self.load_ltr_config()
+        if log: print(f"Features loaded: [{ltr_config}]")
         if model_name not in ltr_config["features"]:
             raise Exception(f"Feature set for model {model_name} not found.")
         return ltr_config["features"][model_name]
@@ -61,4 +63,3 @@ class ModelStore:
         if model_name not in ltr_config["models"]:
             raise Exception(f"Model {model_name} not found.")
         return ltr_config["models"][model_name]
-    

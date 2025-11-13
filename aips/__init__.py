@@ -1,4 +1,5 @@
 import aips.environment as environment
+from engines.Engine import AdvancedFeatures
 from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtractor, SolrSparseSemanticSearch
 from engines.solr.SolrEngine import SolrEngine
 from engines.opensearch.OpenSearchEngine import OpenSearchEngine
@@ -39,24 +40,26 @@ def set_engine(engine_name):
 def get_ltr_engine(collection):    
     return ltr_engine_map[collection.get_engine_name()](collection)
 
-def get_semantic_engine(log=False):
-    if get_engine().name == "solr":
-        return get_engine("solr")
-    else:
-        engine = get_engine("solr", "localhost")
-        if not engine.health_check(log):
-            environment.shutdown_semantic_engine(log)
-            environment.initialize_embedded_semantic_engine(log)
-        return engine
+def get_embedded_engine(log=False):
+    engine = get_engine("solr", "localhost")
+    if not engine.health_check(log):
+        environment.shutdown_semantic_engine(log)
+        environment.initialize_embedded_semantic_engine(log)
+    return engine
+
+def get_semantic_engine(feature, log=False):
+    if feature in get_engine().get_supported_advanced_features():
+        return get_engine()
+    return get_embedded_engine(log)
 
 def get_sparse_semantic_search():
     return SSS_map[get_engine().name.lower()]()
     
 def get_semantic_knowledge_graph(collection):
-    return SolrSemanticKnowledgeGraph(get_semantic_engine().get_collection(collection.name.lower()))
+    return SolrSemanticKnowledgeGraph(get_semantic_engine(AdvancedFeatures.SKG).get_collection(collection.name.lower()))
 
 def get_entity_extractor(collection):
-    return SolrEntityExtractor(get_semantic_engine().get_collection(collection.name.lower()))
+    return SolrEntityExtractor(get_semantic_engine(AdvancedFeatures.TEXT_TAGGING).get_collection(collection.name.lower()))
 
 def healthcheck():
     try:

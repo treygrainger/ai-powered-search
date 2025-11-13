@@ -5,30 +5,31 @@ from pyspark.sql.functions import concat_ws, lit
 
 def load_dataframe(csv_file):
     print("Loading Geonames...")
-    schema = StructType() \
-          .add("id",StringType(),True) \
-          .add("name",StringType(),True) \
-          .add("ascii_name_s",StringType(),True) \
-          .add("alternative_names_s",StringType(),True) \
-          .add("latitude_s",StringType(),True) \
-          .add("longitude_s",StringType(),True) \
-          .add("feature_class_s",StringType(),True) \
-          .add("feature_code_s",StringType(),True) \
-          .add("country",StringType(),True) \
-          .add("cc2_s",StringType(),True) \
-          .add("admin_area",StringType(),True) \
-          .add("admin_code_2_s",StringType(),True) \
-          .add("admin_code_3_s",StringType(),True) \
-          .add("admin_code_4_s",StringType(),True) \
-          .add("popularity",IntegerType(),True) \
-          .add("elevation_s",StringType(),True) \
-          .add("dem_s",StringType(),True) \
-          .add("timezone_s",StringType(),True) \
-          .add("modification_date_s",StringType(),True)
-
     spark = get_spark_session()
-    dataframe = spark.read.csv(csv_file, schema=schema, multiLine=True, escape="\\", sep="\t") \
+    dataframe = spark.read.csv(csv_file, schema=get_csv_schema(), multiLine=True, escape="\\", sep="\t") \
         .withColumn("type", lit("city")) \
         .withColumn("location_coordinates", concat_ws(",", "latitude_s", "longitude_s"))
 
-    return dataframe
+    desired_columns = ["admin_area", "location_coordinates", "type", "name", "popularity", "country"]
+    return dataframe.select(desired_columns)
+
+def get_csv_schema():
+    return StructType().add("id", StringType(), True) \
+                       .add("name", StringType(), True) \
+                       .add("ascii_name_s", StringType(), True) \
+                       .add("alternative_names_s", StringType(), True) \
+                       .add("latitude_s", StringType(), True) \
+                       .add("longitude_s", StringType(), True) \
+                       .add("feature_class_s", StringType(), True) \
+                       .add("feature_code_s", StringType(), True) \
+                       .add("country", StringType(), True) \
+                       .add("cc2_s", StringType(), True) \
+                       .add("admin_area", StringType(), True) \
+                       .add("admin_code_2_s", StringType(), True) \
+                       .add("admin_code_3_s", StringType(), True) \
+                       .add("admin_code_4_s", StringType(), True) \
+                       .add("popularity", IntegerType(), True) \
+                       .add("elevation_s", StringType(), True) \
+                       .add("dem_s", StringType(), True) \
+                       .add("timezone_s", StringType(), True) \
+                       .add("modification_date_s", StringType(), True)

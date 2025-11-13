@@ -1,9 +1,6 @@
 from graphql_query import Argument
 from engines.SparseSemanticSearch import SparseSemanticSearch
 
-def escape_quotes(text):
-    return text.replace('"', '\\"')
-
 class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
     def __init__(self):
         pass
@@ -17,7 +14,7 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
                     "type": "transformed",
                     "syntax": "weaviate",
                     "query": {"filter": self.create_geo_filter(next_entity['location_coordinates'],
-                                            "location_coordinates", 50)}}
+                                                               "location_coordinates", 50)}}
                 return True
         return False
 
@@ -33,10 +30,9 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
 
     def popularity(self, query, position):
         if len(query["query_tree"]) -1 > position:
-            query["query_tree"][position] = {
-                "type": "transformed",
-                "syntax": "weaviate",
-                "query": {"vector_search": {"popularity": [5]}}}
+            query["query_tree"][position] = {"type": "transformed",
+                                             "syntax": "weaviate",
+                                             "query": {"vector_search": {"popularity": [5]}}}
             return True
         return False
         
@@ -49,15 +45,13 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
                     enrichments = item["enrichments"]  
                     if "term_vector" in enrichments:
                         query_string = enrichments["term_vector"]
-                        transformed_query = escape_quotes(query_string)
-                    else:
-                        continue
+                        transformed_query = query_string
                 case _:
-                    transformed_query = escape_quotes(item["surface_form"])
+                    transformed_query = item["surface_form"].replace('"', '\\"')
             query_tree[i] = {"type": "transformed",
                              "syntax": "weaviate",
                              "query": transformed_query}                 
         return query_tree
 
     def generate_basic_query(self, query):
-        return '"' + escape_quotes(query) + '"'
+        return '"' + query.replace('"', '\\"') + '"'

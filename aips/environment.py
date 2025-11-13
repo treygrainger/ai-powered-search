@@ -69,3 +69,4 @@ def initialize_embedded_semantic_engine(log=False):
     solr_process = subprocess.Popen([SOLR_COMMAND, "start", "-z", f"localhost:{LOCAL_ZK_PORT}"],
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if log: [print(l) for l in solr_process.stdout]
+    if log: print("Embedded engine initialized")
