@@ -4,11 +4,14 @@ from engines.solr import SolrLTR, SolrSemanticKnowledgeGraph, SolrEntityExtracto
 from engines.solr.SolrEngine import SolrEngine
 from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 from engines.opensearch.OpenSearchLTR import OpenSearchLTR
+from engines.opensearch.LocalOpenSearchLTR import LocalOpenSearchLTR
 from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSemanticSearch
 
 from engines.weaviate.WeaviateEngine import WeaviateEngine
 from engines.weaviate.WeaviateLTR import WeaviateLTR
 from engines.weaviate.WeaviateSearchSparseSemanticSearch import WeaviateSearchSparseSemanticSearch
+
+from engines.bonsai.BonsaiOpenSearch import BonsaiOpenSearch
 
 import os
 from IPython.display import display, HTML
@@ -17,13 +20,16 @@ import re
 
 engine_type_map = {"solr": SolrEngine,
                    "opensearch": OpenSearchEngine,
-                   "weaviate": WeaviateEngine}
+                   "weaviate": WeaviateEngine,
+                   "bonsai": BonsaiOpenSearch}
 ltr_engine_map = {"solr": SolrLTR,
                   "opensearch": OpenSearchLTR,
-                  "weaviate": WeaviateLTR}
+                  "weaviate": WeaviateLTR,
+                  "bonsai": LocalOpenSearchLTR}
 SSS_map = {"solr": SolrSparseSemanticSearch,
            "opensearch": OpenSearchSparseSemanticSearch,
-           "weaviate": WeaviateSearchSparseSemanticSearch}
+           "weaviate": WeaviateSearchSparseSemanticSearch,
+           "bonsai": OpenSearchSparseSemanticSearch}
 
 def get_engine(override=None, host_override=None):
     engine_name = override if override else environment.get("AIPS_SEARCH_ENGINE", "solr")
