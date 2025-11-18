@@ -60,6 +60,7 @@ RUN rm ch5_spacy_requirements.txt requirements.txt
 COPY build/log4j.properties /usr/local/spark/conf/
 COPY aips/ /home/$NB_USER/aips
 COPY chapters/ /home/$NB_USER/chapters
+COPY course/ /home/$NB_USER/course
 COPY data/ /home/$NB_USER/data
 COPY engines/ /home/$NB_USER/engines
 COPY ltr/ /home/$NB_USER/ltr
