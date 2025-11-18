@@ -125,6 +125,10 @@ class SolrEngine(Engine):
             case "outdoors_with_embeddings":
                 self.upsert_text_field(collection, "title")
                 self.add_vector_field(collection, "title_embedding", 768, "dot_product")
+            case "outdoors_for_rag":
+                self.upsert_text_field(collection, "title")
+                self.upsert_text_field(collection, "body")
+                self.add_vector_field(collection, "title_embedding", 768, "dot_product")
             case "outdoors_quantization":
                 self.upsert_text_field(collection, "title")
                 self.upsert_text_field(collection, "body")

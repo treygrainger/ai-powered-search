@@ -189,10 +189,10 @@ SCHEMAS = {
                                                             "image_id": text_field()}
     ),
     "outdoors_with_embeddings": dense_vector_schema(
-        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True), "body": text_field(fielddata=True)}
+        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True)}
     ),
-    "outdoors_hybrid": dense_vector_schema(
-        "embedding", 384, "cosinesimil", "FLOAT32", {"title": text_field(fielddata=True)}, ef_search=128, ef_construction=128, m=16
+    "outdoors_for_rag": dense_vector_schema(
+        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True), "body": text_field(fielddata=True)}
     ),
     "ubi_queries": basic_schema({
         "timestamp": date_field(), # signal_time
