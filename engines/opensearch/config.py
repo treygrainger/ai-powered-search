@@ -36,12 +36,12 @@ def body_title_schema():
     return basic_schema({"title": text_field(), "body": text_field()})
 
 def dense_vector_schema(
-    field_name, dimensions, similarity_score, quantization_size, additional_fields={}
+    field_name, dimensions, similarity_score, quantization_size, additional_fields={}, ef_search=100, ef_construction=128, m=24
 ):
     datatype_map = {"FLOAT32": "float", "BINARY": "byte"}
     schema = {
         "schema": {
-            "settings": {"index": {"knn": True, "knn.algo_param.ef_search": 100}},
+            "settings": {"index": {"knn": True, "knn.algo_param.ef_search": ef_search}},
             "mappings": {
                 "properties": {
                     field_name: {
@@ -52,7 +52,7 @@ def dense_vector_schema(
                             "name": "hnsw",
                             "engine": "nmslib",
                             "space_type": similarity_score or "l2",                            
-                            "parameters": {"ef_construction": 128, "m": 24},
+                            "parameters": {"ef_construction": ef_construction, "m": m},
                         }
                     }
                 }
@@ -190,6 +190,9 @@ SCHEMAS = {
     ),
     "outdoors_with_embeddings": dense_vector_schema(
         "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True)}
+    ),
+    "outdoors_for_rag": dense_vector_schema(
+        "title_embedding", 768, "innerproduct", "FLOAT32", {"title": text_field(fielddata=True), "body": text_field(fielddata=True)}
     ),
     "ubi_queries": basic_schema({
         "timestamp": date_field(), # signal_time
