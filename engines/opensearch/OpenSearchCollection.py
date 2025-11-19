@@ -48,10 +48,7 @@ def query_string_clause(search_args):
             query_string = search_args["query"]
             if "{!func}" in search_args["query"]: #3.12 hack          
                 query_string = query_string.replace("{!func}query(", "").replace(")", "")
-    if not isinstance(query_string,list):
-        return query_string
-    else:
-        return query_string.strip()
+    return query_string.strip()
 
 def should_clauses(search_args):
     return list(filter(lambda c: isinstance(c, dict) and "geo_distance" not in c,
