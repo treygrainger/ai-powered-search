@@ -32,9 +32,6 @@ def text_field(**kwargs):
 def multivalue_text_field(**kwargs):
     return base_field("text[]", **kwargs)
 
-def boolean_field():
-    return base_field("boolean")
-
 def double_field():
     return base_field("number")
 
@@ -82,11 +79,9 @@ def body_title_schema(collection_name):
                          "category": text_field()})
 
 def signals_boosting_schema(collection_name):
-    return basic_schema(collection_name, {
-        "__id": text_field(),
-        "query": text_field(),
-        "doc": text_field(),
-        "boost": integer_field()})
+    return basic_schema(collection_name, {"query": text_field(),
+                                          "doc": text_field(),
+                                          "boost": integer_field()})
 
 PRODUCTS_SCHEMA_PROPERTIES = {"upc": text_field(indexSearchable=True),
                               "name": text_field(),
@@ -94,7 +89,7 @@ PRODUCTS_SCHEMA_PROPERTIES = {"upc": text_field(indexSearchable=True),
                               "short_description": text_field(),
                               "long_description": text_field(),
                               "manufacturer": text_field(),
-                              "has_promotion": text_field()}
+                              "has_promotion": text_field(indexSearchable=True)}
 PRODUCTS_SCHEMA = basic_schema("products", PRODUCTS_SCHEMA_PROPERTIES)
 PRODUCTS_SCHEMA["boost_field"] = "upc"
 
@@ -103,13 +98,13 @@ PRODUCT_BOOSTS_SCHEMA = basic_schema("products_with_signals_boosts",
 PRODUCT_BOOSTS_SCHEMA["boost_field"] = "upc"
 
 PRODUCTS_WITH_PROMOS_SCHEMA = basic_schema("products_with_promotions",
-                                     PRODUCTS_SCHEMA_PROPERTIES | {"has_promotion": boolean_field()})
+                                     PRODUCTS_SCHEMA_PROPERTIES | {"has_promotion": text_field(indexSearchable=True)})
 
 SCHEMAS = {
     "cat_in_the_hat": basic_schema("cat_in_the_hat", {"__id": text_field(),
                                                       "title": text_field(),
                                                       "description": text_field(**{"similarity": "BM25",
-                                                                                  "discount_overlaps": False})}),
+                                                                                   "discount_overlaps": False})}),
     "products": PRODUCTS_SCHEMA,
     "products_with_signals_boosts": PRODUCT_BOOSTS_SCHEMA,
     "products_with_promotions": PRODUCTS_WITH_PROMOS_SCHEMA,
@@ -142,8 +137,7 @@ SCHEMAS = {
                                   "company_country": text_field(),
                                   "company_zip_code": text_field(),
                                   "job_date": text_field()}),
-    "signals": basic_schema("signals", {"__id": text_field(),
-                                        "query_id": text_field(),
+    "signals": basic_schema("signals", {"query_id": text_field(),
                                         "user": text_field(),
                                         "type": text_field(),
                                         "target": text_field(),

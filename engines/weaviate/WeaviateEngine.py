@@ -40,7 +40,7 @@ class WeaviateEngine(Engine):
         if log: 
             print("Schema:", json.dumps(request, indent=2))
             print("Status:", response)
-            print("Response:", response)
+            print("Response:", response.json())
         collection = self.get_collection(name)
         return collection
 

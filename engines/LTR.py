@@ -81,7 +81,7 @@ class LTR(ABC):
         pass
 
     @abstractmethod
-    def search_with_model(self, model_name, id_field, **search_args):
+    def search_with_model(self, model_name, **search_args):
         """Search a collection using an uploaded model.
            See engines.Collection.search() for information on parameters"""
         pass

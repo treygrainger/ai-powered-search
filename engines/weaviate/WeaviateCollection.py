@@ -204,8 +204,8 @@ class WeaviateCollection(Collection):
             dataframe = transform_dataframe_for_weaviate(dataframe)
         if self.name.lower() == "products_with_signals_boosts" and "signals_boosts" not in dataframe.columns:
             dataframe = dataframe.withColumn("signals_boosts", lit(""))
-        elif self.name.lower().find("signals") != -1 and "id" not in dataframe.columns:
-            dataframe = dataframe.withColumn("id", monotonically_increasing_id())
+        #elif self.name.lower().find("signals") != -1 and "id" not in dataframe.columns:
+        #    dataframe = dataframe.withColumn("id", monotonically_increasing_id())
         return dataframe
 
     def write(self, dataframe, overwrite=False): 

@@ -17,11 +17,11 @@ def get_spark_session():
     conf.set("spark.dynamicAllocation.executorMemoryOverhead", "7g")
     return SparkSession.builder.appName("AIPS").config(conf=conf).getOrCreate()
 
-def create_view_from_collection(collection, view_name, spark=None):
+def create_view_from_collection(collection, view_name, spark=None, log=False):
     spark = spark or get_spark_session()
     match collection.get_engine_name():
         case "solr":
-            opts = {"zkhost": collection.zk_url, "collection": collection.name}    
+            opts = {"zkhost": collection.zk_host, "collection": collection.name}    
             spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
         case "opensearch":
             if collection.name == "tmdb_with_embeddings":
@@ -45,15 +45,19 @@ def create_view_from_collection(collection, view_name, spark=None):
             request = {"return_fields": fields,
                        "limit": 1000}
             all_documents = []
-            while True:
-                docs = collection.search(**request)["docs"]
-                all_documents.extend(docs)
-                if len(docs) != request["limit"]:
-                    break
-                last_doc = docs[request["limit"] - 1]
-                cursor_id = last_doc["__weaviate_id"]
-                request["after"] = cursor_id
-                
+            try:
+                while True:
+                    docs = collection.search(**request)["docs"]
+                    all_documents.extend(docs)
+                    if len(docs) != request["limit"]:
+                        break
+                    last_doc = docs[request["limit"] - 1]
+                    cursor_id = last_doc["__weaviate_id"]
+                    request["after"] = cursor_id
+            except Exception as ex:
+                print(f"create view exception {ex}")
+            
+            if log: print(f"Loaded {len(all_documents)} docs from db")
             dataframe = spark.createDataFrame(data=all_documents)
             dataframe.createOrReplaceTempView(view_name)
         case _:
