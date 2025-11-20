@@ -64,12 +64,12 @@ class WeaviateLTR(LTR):
         return query
 
     def get_logged_features(self, model_name, doc_ids, options={},
-                            id_field="id", log=False):
+                            id_field="id", fields="*", log=False):
         model_features = self.model_store.load_features_for_model(model_name, log)
         if "keywords" not in options:
             raise Exception("keywords are required to log features")
         request = {"query": options["keywords"],
-                   "filters": [(id_field, doc_ids)], "limit": 500, "log": True}
+                   "filters": [(id_field, doc_ids)], "limit": 500}
         if log:
             request["log"] = True
         logged_docs = self.collection.search(**request)["docs"]

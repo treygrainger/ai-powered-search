@@ -40,17 +40,17 @@ def set_engine(engine_name):
 def get_ltr_engine(collection):    
     return ltr_engine_map[collection.get_engine_name()](collection)
 
-def get_embedded_engine(log=False):
+def get_local_engine(log=False):
     engine = get_engine("solr", "localhost")
     if not engine.health_check(log):
         environment.shutdown_semantic_engine(log)
-        environment.initialize_embedded_semantic_engine(log)
+        environment.initialize_local_semantic_engine(engine, log=True)
     return engine
 
 def get_semantic_engine(feature, log=False):
     if feature in get_engine().get_supported_advanced_features():
         return get_engine()
-    return get_embedded_engine(log)
+    return get_local_engine(log)
 
 def get_sparse_semantic_search():
     return SSS_map[get_engine().name.lower()]()

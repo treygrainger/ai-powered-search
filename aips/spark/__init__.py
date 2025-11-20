@@ -48,7 +48,11 @@ def create_view_from_collection(collection, view_name, spark=None, log=False):
             try:
                 while True:
                     docs = collection.search(**request)["docs"]
+                    for d in docs:
+                        if "id" not in d:
+                            d["id"] = d["__weaviate_id"]
                     all_documents.extend(docs)
+
                     if len(docs) != request["limit"]:
                         break
                     last_doc = docs[request["limit"] - 1]

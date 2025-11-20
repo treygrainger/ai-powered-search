@@ -1,5 +1,4 @@
 import requests
-from engines.solr.config import SOLR_URL
 from engines.solr.SolrCollection import SolrCollection
 from engines.EntityExtractor import EntityExtractor
 
@@ -15,5 +14,5 @@ class SolrEntityExtractor(EntityExtractor):
         super().__init__(collection)
     
     def extract_entities(self, query):
-        response = requests.post(f"{SOLR_URL}/{self.collection.name}/tag", query).json()
+        response = requests.post(f"{self.collection.solr_url}/{self.collection.name}/tag", query).json()
         return transform_response(query, response)

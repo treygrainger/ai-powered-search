@@ -204,6 +204,18 @@ class WeaviateCollection(Collection):
             dataframe = transform_dataframe_for_weaviate(dataframe)
         if self.name.lower() == "products_with_signals_boosts" and "signals_boosts" not in dataframe.columns:
             dataframe = dataframe.withColumn("signals_boosts", lit(""))
+        if self.name.lower() == "entities":
+            if "id" not in dataframe.columns:
+                dataframe = dataframe.withColumn("__id", monotonically_increasing_id())
+            if "semantic_function" not in dataframe.columns:
+                dataframe = dataframe.withColumn("semantic_function", lit(""))
+            if "location_coordinates" not in dataframe.columns:
+                dataframe = dataframe.withColumn("location_coordinates", lit("0,0"))
+            if "country" not in dataframe.columns:
+                dataframe = dataframe.withColumn("country", lit("US"))
+            if "admin_area" not in dataframe.columns:
+                dataframe = dataframe.withColumn("admin_area", lit(""))
+
         #elif self.name.lower().find("signals") != -1 and "id" not in dataframe.columns:
         #    dataframe = dataframe.withColumn("id", monotonically_increasing_id())
         return dataframe

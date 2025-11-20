@@ -1,16 +1,19 @@
 from aips.spark import get_spark_session
 
 from pyspark.sql.types import StructType, StringType, IntegerType
-from pyspark.sql.functions import concat_ws, lit
+from pyspark.sql.functions import concat_ws, lit, col
 
 def load_dataframe(csv_file):
     print("Loading Geonames...")
     spark = get_spark_session()
     dataframe = spark.read.csv(csv_file, schema=get_csv_schema(), multiLine=True, escape="\\", sep="\t") \
         .withColumn("type", lit("city")) \
-        .withColumn("location_coordinates", concat_ws(",", "latitude_s", "longitude_s"))
+        .withColumn("location_coordinates", concat_ws(",", "latitude_s", "longitude_s")) \
+        .withColumn("surface_form", col("name")) \
+        .withColumn("canonical_form", col("name"))
 
-    desired_columns = ["admin_area", "location_coordinates", "type", "name", "popularity", "country"]
+    desired_columns = ["admin_area", "location_coordinates", "type", "surface_form", "canonical_form", 
+                       "popularity", "country"]
     return dataframe.select(desired_columns)
 
 def get_csv_schema():

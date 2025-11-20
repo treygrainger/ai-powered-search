@@ -61,7 +61,7 @@ def shutdown_semantic_engine(log=False):
     kill_process_using_port(LOCAL_SOLR_PORT, log)
     kill_process_using_port(LOCAL_ZK_PORT, log)
 
-def initialize_embedded_semantic_engine(log=False):
+def initialize_local_semantic_engine(engine, log=False):
     if log: print("Initializing server")
     zk_process = subprocess.Popen([ZOOKEEPER_COMMAND, "start"],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -69,4 +69,6 @@ def initialize_embedded_semantic_engine(log=False):
     solr_process = subprocess.Popen([SOLR_COMMAND, "start", "-z", f"localhost:{LOCAL_ZK_PORT}"],
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if log: [print(l) for l in solr_process.stdout]
+    if log: print("Checking for invalid shards.")
+    #recover_any_failed_shards(engine)
     if log: print("Embedded engine initialized")
