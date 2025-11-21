@@ -76,9 +76,15 @@ def get_query_fields(search_args):
     return {}
 
 class OpenSearchCollection(Collection):
-    def __init__(self, name, id_field="_id"):
+    def __init__(self, name, id_field="_id", 
+                 os_url=OPENSEARCH_URL, access_key=None, secret_key=None,
+                 headers={"Concent-Type": "application/json"}):
         super().__init__(name)
         self.id_field = id_field
+        self.os_url = os_url
+        self.__access_key = access_key
+        self.__secret_key = secret_key
+        self.__headers = headers
         
     def get_engine_name(self):
         return "opensearch"
@@ -88,13 +94,22 @@ class OpenSearchCollection(Collection):
         return response.get("count", 0)
     
     def commit(self):
-        response = requests.post(f"{OPENSEARCH_URL}/{self.name}/_flush")
+        response = requests.post(f"{self.os_url}/{self.name}/_flush", headers=self.__headers)
 
     def write(self, dataframe, overwrite=True):
+        is_ssl_connection = "https" in self.os_url
         opts = {"opensearch.nodes": OPENSEARCH_URL,
-                "opensearch.net.ssl": "false",
+                "opensearch.net.ssl": str(is_ssl_connection).lower(),
                 "opensearch.batch.size.entries": 500}
                 #"opensearch.write.field.as.array.include": "image_embedding"}
+        if is_ssl_connection:
+            opts |= {"opensearch.port": "443",
+                     "opensearch.nodes.wan.only": "true",
+                     "opensearch.batch.size.entries": 50, #shrink batch for remote
+                     "opensearch.batch.size.bytes": "500kb",
+                     "opensearch.net.http.auth.user": self.__access_key,
+                     "opensearch.net.http.auth.pass": self.__secret_key,
+                     "opensearch.net.ssl.cert.allow.self.signed": "true"}
         if self.id_field != "_id":
             opts["opensearch.mapping.id"] = self.id_field
         mode = "overwrite" if overwrite else "append"
@@ -190,7 +205,8 @@ class OpenSearchCollection(Collection):
         return response
         
     def native_search(self, request=None, data=None):
-        return requests.post(f"{OPENSEARCH_URL}/{self.name}/_search", json=request, data=data).json()
+        return requests.post(f"{self.os_url}/{self.name}/_search",
+                             headers=self.__headers, json=request, data=data).json()
 
     def search(self, **search_args):
         request = self.transform_request(**search_args)

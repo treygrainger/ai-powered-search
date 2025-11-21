@@ -27,10 +27,14 @@ def create_view_from_collection(collection, view_name, spark=None, log=False):
             if collection.name == "tmdb_with_embeddings":
                 return create_view_from_tmdb_embeddings_collection(collection, view_name, spark)            
             parse_id_udf = udf(lambda s: s["_id"], StringType())
-            opts = {"opensearch.nodes": os_config.OPENSEARCH_URL,
-                    "opensearch.net.ssl": "false"}
-            if os_config.SCHEMAS.get(collection.name.lower(), {}).get("id_field", "") == "_id":
-                opts["opensearch.read.metadata"] = "true"
+            is_ssl_connection = "https" in collection.os_url
+            opts = {"opensearch.nodes": collection.os_url,
+                    "opensearch.net.ssl": str(is_ssl_connection).lower(),
+                    "opensearch.read.metadata": "true"}
+            if is_ssl_connection:
+                opts |= {"opensearch.net.http.auth.user": collection.__access_key,
+                         "opensearch.net.http.auth.pass": collection.__secret_key,
+                         "opensearch.net.ssl.cert.allow.self.signed": "true"}
             dataframe = spark.read.format("opensearch").options(**opts).load(collection.name)
             if "_metadata" in dataframe.columns and \
                 os_config.SCHEMAS.get(collection.name.lower(), {}).get("id_field", "") == "_id":
