@@ -98,10 +98,10 @@ services:
     container_name: aips-weaviate
     hostname: aips-weaviate
     ports:
-      - 8090:8090
-      - 50051:50051
+      - "8090:8090"
+      - "50051:50051"
     expose:
-      - 8090:8090
+      - "8090"
     networks:
       - weaviate-network
     volumes:
