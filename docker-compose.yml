@@ -146,13 +146,6 @@ services:
       - all
       - ""
 
-  vespa:
-    image: vespaengine/vespa
-    container_name: aips-vespa
-    ports: 
-      - 8080:8080
-      - 19071:19071
-
 volumes:
   opensearch-data:
   weaviate-data:
