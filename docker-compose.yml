@@ -5,12 +5,12 @@ services:
       dockerfile: build/Dockerfile
     container_name: aips-notebooks
     ports:
-      - 7077:7077 # Spark Master
-      - 8082:8080 # Spark Master UI - 8082 less likely to conflict
-      - 8081:8081 # Spark Worker UI
-      - 4041:4041 # Spark UI
-      - 8888:8888 # Jupyter Notebook UI 
-      - 2345:2345 # Search Webserver
+      - "7077:7077" # Spark Master
+      - "8082:8080" # Spark Master UI - 8082 less likely to conflict
+      - "8081:8081" # Spark Worker UI
+      - "4041:4041" # Spark UI
+      - "8888:8888" # Jupyter Notebook UI 
+      - "2345:2345" # Search Webserver
     networks:
       - solr-network
       - opensearch-network
@@ -38,7 +38,7 @@ services:
     container_name: aips-solr
     hostname: aips-solr
     ports:
-      - 8983:8983 
+      - "8983:8983" 
     environment:
       - ZK_HOST=aips-zk:2181
       - SOLR_HOST=aips-solr
@@ -78,10 +78,10 @@ services:
     volumes:
       - opensearch-data:/usr/share/opensearch/data
     ports:
-      - 9200:9200
-      - 9600:9600 # required for Performance Analyzer
+      - "9200:9200"
+      - "9600:9600" # required for Performance Analyzer
     expose:
-      - 9200:9200
+      - "9200"
     networks:
       - opensearch-network
     depends_on:
@@ -94,9 +94,9 @@ services:
     image: opensearchproject/opensearch-dashboards:2.18.0
     container_name: opensearch-dashboards
     ports:
-      - 5601:5601
+      - "5601:5601"
     expose:
-      - 5601:5601
+      - "5601"
     environment:
       DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
       OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
@@ -110,7 +110,7 @@ services:
     container_name: aips-zk
     hostname: aips-zk
     ports: 
-      - 2181:2128
+      - "2181:2128"
     networks:
       - zk-solr
       - solr-network
