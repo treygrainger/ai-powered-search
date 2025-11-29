@@ -13,16 +13,12 @@ services:
       - "2345:2345" # Search Webserver
     networks:
       - solr-network
+      - weaviate-network
       - opensearch-network
     restart: unless-stopped
     environment:
-      #PYSPARK_SUBMIT_ARGS: '--jars /usr/local/spark/lib/spark-solr-4.0.0-shaded.jar pyspark-shell'
-      #NB_USER: 'aips'
-      #NB_UID: 1010
-      #NB_GID: 1020
-      #CHOWN_HOME: 'yes'
-      #CHOWN_HOME_OPTS: -R    
-      SOLR_HOST: 'aips-solr'
+      AIPS_SOLR_HOST: 'aips-solr'
+      AIPS_ZK_HOST: 'aips-zk:2181'
     volumes:
       - type: bind
         source: "."
@@ -37,11 +33,11 @@ services:
       dockerfile: Dockerfile
     container_name: aips-solr
     hostname: aips-solr
+    environment:
+      - SOLR_HOST=aips-solr
+      - ZK_HOST=aips-zk:2181
     ports:
       - "8983:8983" 
-    environment:
-      - ZK_HOST=aips-zk:2181
-      - SOLR_HOST=aips-solr
     networks:
       - zk-solr
       - solr-network
@@ -89,7 +85,38 @@ services:
       - opensearch-dashboards
     profiles:
       - all
-      
+  
+  weaviate:
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - '8090'
+      - --scheme
+      - http
+    image: cr.weaviate.io/semitechnologies/weaviate:1.34.0-rc.0
+    container_name: aips-weaviate
+    hostname: aips-weaviate
+    ports:
+      - "8090:8090"
+      - "50051:50051"
+    expose:
+      - "8090"
+    networks:
+      - weaviate-network
+    volumes:
+      - weaviate-data:/var/lib/weaviate
+    restart: on-failure:0
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      ENABLE_MODULES: ''
+      CLUSTER_HOSTNAME: 'node1'
+    profiles:
+      - all
+  
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.18.0
     container_name: opensearch-dashboards
@@ -121,8 +148,10 @@ services:
 
 volumes:
   opensearch-data:
+  weaviate-data:
   
 networks:
   zk-solr:  
   solr-network:
   opensearch-network:
+  weaviate-network:

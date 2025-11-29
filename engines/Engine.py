@@ -9,7 +9,7 @@ class AdvancedFeatures(Enum):
 class Engine(ABC):
     def __init__(self, name):
         self.name = name
-    
+
     @abstractmethod
     def get_supported_advanced_features(self):
         "Returns the list of implemented advanced features for the given engine"
@@ -30,10 +30,12 @@ class Engine(ABC):
         "Checks for the existance of the collection"
         pass
     
-    @abstractmethod
-    def is_collection_healthy(self, name, expected_count):
-        "Checks to see if the collection exists and is correctly populated"
-        pass
+    def is_collection_healthy(self, name, expected_count, log=False):
+        collection_exists = self.does_collection_exist(name)
+        if log: print(f"Collection [{name}] exists? {collection_exists}")
+        document_count = self.get_collection(name).get_document_count()
+        if log: print(f"Documents [{document_count} / {expected_count}]")
+        return collection_exists and document_count == expected_count    
 
     @abstractmethod
     def create_collection(self, name, force_rebuild=True):
