@@ -16,9 +16,13 @@ class OpenSearchEngine(Engine):
         return [AdvancedFeatures.LTR]
 
     def health_check(self):
-        status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
-        if status: print("OpenSearch engine is online")
-        return status
+        try:
+            status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
+            print(f"OpenSearch engine is {'online' if status else 'offline'}")
+            return status
+        except:
+            print("Weaviate failed the health check.")
+            return False
     
     def does_collection_exist(self, name):
         response = requests.get(f"{STATUS_URL}/{name}")

@@ -23,12 +23,16 @@ class WeaviateEngine(Engine):
         return [AdvancedFeatures.LTR]
 
     def health_check(self):
-        return requests.get(STATUS_URL).json()["status"] == "green"
+        try:
+            status = requests.get(STATUS_URL).json()["status"] == "green"
+            print(f"Weaviate engine is {'online' if status else 'offline'}")
+            return status
+        except:
+            print("Weaviate failed the health check.")
+            return False
     
     def print_status(self, response):
-        #print(json.dumps(response, indent=2))
-        "Prints the resulting status of a search engine request"
-        pass
+        print(json.dumps(response, indent=2))
 
     def create_collection(self, name, log=False):
         print(f'Wiping "{name}" collection')

@@ -8,27 +8,42 @@ class SolrEngine(Engine):
     def __init__(self, solr_host=config.AIPS_SOLR_HOST):
         self.solr_url = f"http://{solr_host}:{config.AIPS_SOLR_PORT}/solr"
         super().__init__("solr")
-        
+    
+    #def list_collections(self):
+    #    http://localhost:8983/solr/admin/collections?action=CREATE&name=techproducts_v2&collection.configName=techproducts&
+
     def get_supported_advanced_features(self):
         return [AdvancedFeatures.SKG, AdvancedFeatures.TEXT_TAGGING, AdvancedFeatures.LTR]
-    
-    def health_check(self, log=True, retries=0):
+
+    def execute_with_retries(self, url, data=None, retries=3, log=False):
+        response = None
         for i in range(retries + 1):
             try:
-                response = requests.get(f"{self.solr_url}/admin/zookeeper/status", timeout=5)
-                if log:
-                    print(response.json())
-                status = response.json()["responseHeader"]["status"] == 0
-                if status:
-                    if log:
-                        print("Solr is up and responding.")
-                        print("Zookeeper is up and responding.")
-                    break
+                response = requests.get(url, data=data, timeout=5)
+                response.raise_for_status()
+                if log: print(response.json())
+                return response
             except:
-                if log:
-                    print(f"Solr {self.solr_url} failed to respond to healthcheck.")
-                status = False
-            time.sleep(10)
+                if log: print(f"Solr {url} request failed")
+                pass
+            if i != retries:
+                time.sleep(10)
+        return response
+
+    def health_check(self, log=True, retries=0):
+        response = self.execute_with_retries(f"{self.solr_url}/admin/zookeeper/status",
+                                             log=log, retries=retries)
+        if response:
+            if log: print(response.json())
+            status = response.json()["responseHeader"]["status"] == 0
+        else:
+            status = False
+        if log:
+            if status:
+                print("Solr is up and responding.")
+                print("Zookeeper is up and responding.")
+            else:
+                print(f"Solr failed to respond to healthcheck.")
         return status
     
     def print_status(self, response):        
@@ -53,11 +68,13 @@ class SolrEngine(Engine):
                                     ("numShards", 1),
                                     ("replicationFactor", 1)]
         print(f'Creating "{name}" collection')
-        response = requests.post(f"{self.solr_url}/admin/collections" + "?commit=true", data=create_collection_params).json()
+
+        response = self.execute_with_retries(f"{self.solr_url}/admin/collections" + "?commit=true",
+                                             data=create_collection_params, log=log)
         if log:
-            print(response)
+            print(response.json())
         self.apply_schema_for_collection(collection, log=log)
-        self.print_status(response)
+        self.print_status(response.json())
         return collection
     
     def get_collection(self, name):

@@ -44,7 +44,7 @@ def get_local_engine(log=False):
     engine = get_engine("solr", "localhost")
     if not engine.health_check(log):
         environment.shutdown_semantic_engine(log)
-        environment.initialize_local_semantic_engine(engine, log=True)
+        environment.initialize_local_semantic_engine(engine, log=log)
     return engine
 
 def get_semantic_engine(feature, log=False):

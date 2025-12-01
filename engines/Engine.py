@@ -33,8 +33,10 @@ class Engine(ABC):
     def is_collection_healthy(self, name, expected_count, log=False):
         collection_exists = self.does_collection_exist(name)
         if log: print(f"Collection [{name}] exists? {collection_exists}")
+
         document_count = self.get_collection(name).get_document_count()
         if log: print(f"Documents [{document_count} / {expected_count}]")
+        
         return collection_exists and document_count == expected_count    
 
     @abstractmethod

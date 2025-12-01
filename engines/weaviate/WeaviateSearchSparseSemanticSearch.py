@@ -13,7 +13,7 @@ class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
                 query["query_tree"][position] = {
                     "type": "transformed",
                     "syntax": "weaviate",
-                    "query": {"filter": self.create_geo_filter(next_entity['location_coordinates'],
+                    "query": {"filters": self.create_geo_filter(next_entity['location_coordinates'],
                                                                "location_coordinates", 50)}}
                 return True
         return False

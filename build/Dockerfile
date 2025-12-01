@@ -38,6 +38,12 @@ ENV SPARK_WV8_PATH=/usr/local/spark/lib/${SPARK_WV8_JAR}
 COPY engines/weaviate/build/$SPARK_WV8_JAR /usr/local/spark/lib/
 RUN chmod a+rwx $SPARK_WV8_PATH
 
+#ENV SPARK_WV8_VERSION=1.4.0
+#ENV SPARK_WV8_JAR=spark-connector-assembly-${SPARK_WV8_VERSION}.jar
+#ENV SPARK_WV8_PATH=/usr/local/spark/lib/${SPARK_WV8_JAR}
+#ENV SPARK_WV8_REMOTE_JAR=https://github.com/weaviate/spark-connector/releases/download/v${SPARK_WV8_VERSION}/${SPARK_WV8_JAR}
+#RUN cd /usr/local/spark/lib/ && wget -q ${SPARK_WV8_REMOTE_JAR} -O $SPARK_WV8_PATH && chmod 0777 $SPARK_WV8_PATH
+
 WORKDIR /home/$NB_USER
 
 # Install Python dependencies

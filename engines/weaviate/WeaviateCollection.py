@@ -45,7 +45,9 @@ class WeaviateCollection(Collection):
             not self.is_query_by_id(search_args)
 
     def is_hybrid_search(self, search_args):
-        #This ensures at least one vector and one lexical search
+        return False
+    
+    def is_compound_search(self, search_args):
         return "query" in search_args and isinstance(search_args["query"], list)
 
     def generate_filter_clause(self, search_args):    
@@ -251,6 +253,11 @@ class WeaviateCollection(Collection):
             query_vector = f"[{','.join(map(str, search_args['query']))}]"
             query_arguments = [Argument(name="vector", value=query_vector)]
             collection_query_args.append(Argument(name="nearVector", value=query_arguments))
+        elif self.is_compound_search(search_args):
+            text_query = " ".join([query for query in search_args["query"] if isinstance(query, str)])
+            text_query = " ".join([s.split("^")[0] for s in text_query.replace('"', "").split(" ")])
+            query_arguments = Argument(name="query", value='"' + text_query + '"')
+            collection_query_args.append(Argument(name="bm25", value=query_arguments))
         elif self.is_hybrid_search(search_args):
             query_vector = list(filter(lambda qc: "vector_search" in qc, search_args["query"]))[0]["vector_search"]
             query_vector = query_vector[list(query_vector.keys())[0]]

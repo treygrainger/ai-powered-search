@@ -14,5 +14,8 @@ class SolrEntityExtractor(EntityExtractor):
         super().__init__(collection)
     
     def extract_entities(self, query):
-        response = requests.post(f"{self.collection.solr_url}/{self.collection.name}/tag", query).json()
-        return transform_response(query, response)
+        response = requests.post(f"{self.collection.solr_url}/{self.collection.name}/tag", query)
+        if response.status_code != 200:
+            print(response)
+            response.raise_for_status()
+        return transform_response(query, response.json())
