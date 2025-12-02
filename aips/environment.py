@@ -5,11 +5,6 @@ import time
     
 import signal
 
-LOCAL_SOLR_PORT = 8983
-LOCAL_ZK_PORT = 2181
-SOLR_COMMAND = "/opt/solr/bin/solr"
-ZOOKEEPER_COMMAND = "/opt/zk/zookeeper-3.4.5/bin/zkServer.sh"
-
 AIPS_ZK_HOST = os.getenv("AIPS_ZK_HOST") or "aips-zk:2181"
 
 AIPS_WEBSERVER_HOST = os.getenv("AIPS_WEBSERVER_HOST") or "localhost"
@@ -57,16 +52,17 @@ def kill_process_using_port(port, log=False):
             continue
         os.kill(int(data[1]), signal.SIGKILL)
 
-def shutdown_semantic_engine(log=False):
-    kill_process_using_port(LOCAL_SOLR_PORT, log)
-    kill_process_using_port(LOCAL_ZK_PORT, log)
+def shutdown_semantic_engine(log=False, local_solr_port=8983, local_zk_port=2181):
+    kill_process_using_port(local_solr_port, log)
+    kill_process_using_port(local_zk_port, log)
 
-def initialize_local_semantic_engine(engine, log=False):
+def initialize_local_semantic_engine(log=False, solr_command="/opt/solr/bin/solr",
+                                     local_zk_port=2181, zk_command="/opt/zk/zookeeper-3.4.5/bin/zkServer.sh"):
     if log: print("Initializing server")
-    zk_process = subprocess.Popen([ZOOKEEPER_COMMAND, "start"],
+    zk_process = subprocess.Popen([zk_command, "start"],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if log: [print(l) for l in zk_process.stdout]
-    solr_process = subprocess.Popen([SOLR_COMMAND, "start", "-z", f"localhost:{LOCAL_ZK_PORT}"],
+    solr_process = subprocess.Popen([solr_command, "start", "-z", f"localhost:{local_zk_port}"],
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if log: [print(l) for l in solr_process.stdout]
     if log: print("Embedded engine initialized")

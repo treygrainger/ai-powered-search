@@ -31,18 +31,11 @@ RUN cd /usr/local/spark/lib/ && \
     echo "5b9ae056b6ac21ae009f79a3a761774c7178b995fbe035572a4f35d5738e055d02828d2ec0ff98dd063ffffe37f4c48dc9a418d71269fc560f65b33c94493f2d *${SPARK_OS_JAR}" \
     | sha512sum -c - && chmod 0777 $SPARK_OS_PATH
 
-# Install Spark-Weaviate
-ENV SPARK_WV8_VERSION=1.3.4a 
+ENV SPARK_WV8_VERSION=1.3.4a
 ENV SPARK_WV8_JAR=spark-connector-${SPARK_WV8_VERSION}.jar
 ENV SPARK_WV8_PATH=/usr/local/spark/lib/${SPARK_WV8_JAR}
-COPY engines/weaviate/build/$SPARK_WV8_JAR /usr/local/spark/lib/
-RUN chmod a+rwx $SPARK_WV8_PATH
-
-#ENV SPARK_WV8_VERSION=1.4.0
-#ENV SPARK_WV8_JAR=spark-connector-assembly-${SPARK_WV8_VERSION}.jar
-#ENV SPARK_WV8_PATH=/usr/local/spark/lib/${SPARK_WV8_JAR}
-#ENV SPARK_WV8_REMOTE_JAR=https://github.com/weaviate/spark-connector/releases/download/v${SPARK_WV8_VERSION}/${SPARK_WV8_JAR}
-#RUN cd /usr/local/spark/lib/ && wget -q ${SPARK_WV8_REMOTE_JAR} -O $SPARK_WV8_PATH && chmod 0777 $SPARK_WV8_PATH
+ENV SPARK_WV8_REMOTE_JAR=https://github.com/ai-powered-search/weaviate-patched-spark-connector/raw/refs/heads/main/spark-connector-${SPARK_WV8_VERSION}.jar
+RUN cd /usr/local/spark/lib/ && wget -q ${SPARK_WV8_REMOTE_JAR} -O $SPARK_WV8_PATH && chmod 0777 $SPARK_WV8_PATH
 
 WORKDIR /home/$NB_USER
 

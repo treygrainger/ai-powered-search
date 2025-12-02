@@ -50,6 +50,4 @@ class WeaviateEngine(Engine):
 
     def get_collection(self, name):
         "Returns initialized object for a given collection"
-        #id_field = SCHEMAS.get(name, {}).get("id_field", "_id")
-        name = name.capitalize()
-        return WeaviateCollection(name)#, id_field)
+        return WeaviateCollection(name.capitalize())
