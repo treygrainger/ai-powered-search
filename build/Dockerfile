@@ -29,11 +29,6 @@ WORKDIR /home/$NB_USER
 # Install Python dependencies
 ENV BLIS_ARCH="generic" PIP_CACHE_DIR=/var/cache/pip
 RUN mkdir -p $PIP_CACHE_DIR
-COPY build/course_requirements.txt /home/$NB_USER
-RUN conda create --name course-environment python=3.11.0 -y
-RUN --mount=type=cache,target=$PIP_CACHE_DIR conda run --name course-environment pip install -r course_requirements.txt
-RUN conda run --name course-environment python -m ipykernel install --name course-environment --display-name "[Agentic Search Course] Agentic Search Course environment kernel"
-
 COPY build/ch5_spacy_requirements.txt /home/$NB_USER
 RUN conda create --name ch5-spacy python=3.10.0 -y
 RUN --mount=type=cache,target=$PIP_CACHE_DIR \
@@ -45,7 +40,7 @@ COPY build/requirements.txt /home/$NB_USER
 RUN --mount=type=cache,target=$PIP_CACHE_DIR \
     pip install -r requirements.txt && \
     python -m spacy download en_core_web_sm
-RUN rm course_requirements.txt ch5_spacy_requirements.txt requirements.txt
+RUN rm ch5_spacy_requirements.txt requirements.txt
 
 # Configure home directory
 COPY build/log4j.properties /usr/local/spark/conf/
