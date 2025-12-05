@@ -4,5 +4,7 @@ spacy==3.4.4
 numpy==1.26.4
 matplotlib==3.9.2 
 networkx==3.3
+graphql_query==1.1.1
+plotly==5.24.1
 https://github.com/explosion/spacy-experimental/releases/download/v0.6.1/en_coreference_web_trf-3.4.0a2-py3-none-any.whl
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.4.1/en_core_web_sm-3.4.1-py3-none-any.whl

@@ -1,6 +1,10 @@
 from abc import ABC, abstractmethod
 import aips.environment as env
 import json
+import numbers
+
+DEFAULT_SEARCH_SIZE = 10
+DEFAULT_NEIGHBORS = 10
 
 class Collection(ABC):
     def __init__(self, name):
@@ -73,7 +77,11 @@ class Collection(ABC):
         request = self.transform_request(**search_args)
         if "log" in search_args or env.get("PRINT_REQUESTS", False):
             print(json.dumps(request, indent=2))
-        search_response = self.native_search(request=request)
+        try:
+            search_response = self.native_search(request=request)
+        except Exception as ex:
+            print(f"Search failed: {str(ex)}")
+            return []
         if "log" in search_args:
             print(json.dumps(search_response, indent=2))
         return self.transform_response(search_response)
@@ -82,32 +90,23 @@ class Collection(ABC):
         hybrid_search_results = None
         match algorithm:
             case "rrf":
-                search_results = [self.search(**request)["docs"]
-                                  for request in searches]
-
-                hybrid_search_scores = reciprocal_rank_fusion(search_results,
-                                                              algorithm_params.get("k"))
-                scored_docs = merge_search_results(search_results, 
-                                                   hybrid_search_scores)    
-                return {"docs": scored_docs[:limit]}
+                search_results = [self.search(**request)["docs"] for request in searches]
+                hybrid_search_scores = reciprocal_rank_fusion(search_results, algorithm_params.get("k"))
+                scored_docs = merge_search_results(search_results, hybrid_search_scores)    
+                hybrid_search_results = {"docs": scored_docs[:limit]}
             case "lexical_vector_rerank":
                 lexical_search_request = searches[0]
                 searches[1]["k"] = algorithm_params.get("k", 10) #TODO: should probably default to "limit" instead of 10
                 lexical_search_request["rerank_query"] = searches[1]
-                return self.search(**lexical_search_request)
+                hybrid_search_results = self.search(**lexical_search_request)
         return hybrid_search_results
 
 def merge_search_results(search_results, scores):
     merged_results = {}
     for results in search_results:
         for doc in results:
-            if doc["id"] in merged_results:
-                merged_results[doc["id"]] = {**doc, **merged_results[doc["id"]]}
-            else: 
-                merged_results[doc["id"]] = doc
-    return [{**merged_results[id], "score": score}
-            for id, score in scores.items()]
-    
+            merged_results[doc["id"]] = doc | merged_results.get(doc["id"], {})
+    return [merged_results[id] | {"score": score} for id, score in scores.items()]    
     
 def reciprocal_rank_fusion(search_results, k=None):
     if k is None: k = 60
@@ -117,3 +116,9 @@ def reciprocal_rank_fusion(search_results, k=None):
             scores[doc["id"]] = scores.get(doc["id"], 0)  + (1.0 / (k + rank))
     sorted_scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
     return sorted_scores
+
+def is_vector_search(search_args):
+    return "query" in search_args and \
+           isinstance(search_args["query"], list) and \
+           len(search_args["query"]) == len(list(filter(lambda o: isinstance(o, numbers.Number),
+                                                        search_args["query"])))

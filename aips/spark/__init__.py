@@ -1,7 +1,8 @@
-import json
-from aips.environment import AIPS_ZK_HOST
+from pyspark.sql.functions import col, udf
+from pyspark.sql.types import StringType 
+from pyspark.conf import SparkConf
+from pyspark.sql import SparkSession
 import engines.opensearch.config as os_config
-
 from pyspark.conf import SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, udf
@@ -16,13 +17,12 @@ def get_spark_session():
     conf.set("spark.dynamicAllocation.executorMemoryOverhead", "7g")
     return SparkSession.builder.appName("AIPS").config(conf=conf).getOrCreate()
 
-def create_view_from_collection(collection, view_name, spark=None):
+def create_view_from_collection(collection, view_name, spark=None, log=False):
     spark = spark or get_spark_session()
     match collection.get_engine_name():
         case "solr":
-            opts = {"zkhost": AIPS_ZK_HOST, "collection": collection.name}    
-            dataframe = spark.read.format("solr").options(**opts).load()
-            dataframe.createOrReplaceTempView(view_name)
+            opts = {"zkhost": collection.zk_host, "collection": collection.name}    
+            spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
         case "opensearch":
             if collection.name == "tmdb_with_embeddings":
                 return create_view_from_tmdb_embeddings_collection(collection, view_name, spark)            
@@ -37,11 +37,38 @@ def create_view_from_collection(collection, view_name, spark=None):
                 dataframe = dataframe.withColumn("id", parse_id_udf(col("_metadata")))
                 dataframe = dataframe.drop("_metadata")
             dataframe.createOrReplaceTempView(view_name)
+        case "weaviate":
+            #Weaviate's current spark connector read functionality not yet implemented
+            #Resort to batch paged reading
+            fields = collection.get_collection_field_names()
+            fields.append("__weaviate_id")            
+            request = {"return_fields": fields,
+                       "limit": 1000}
+            all_documents = []
+            try:
+                while True:
+                    docs = collection.search(**request)["docs"]
+                    for d in docs:
+                        if "id" not in d:
+                            d["id"] = d["__weaviate_id"]
+                    all_documents.extend(docs)
+
+                    if len(docs) != request["limit"]:
+                        break
+                    last_doc = docs[request["limit"] - 1]
+                    cursor_id = last_doc["__weaviate_id"]
+                    request["after"] = cursor_id
+            except Exception as ex:
+                print(f"create view exception {ex}")
+            
+            if log: print(f"Loaded {len(all_documents)} docs from db")
+            dataframe = spark.createDataFrame(data=all_documents)
+            dataframe.createOrReplaceTempView(view_name)
         case _:
             raise NotImplementedError(type(collection))
 
-#This hack exists solely for avoid the knn_vector embedding return bug which
-#the following attempts failed to fix this issue:
+#This work around exists solely for avoid the knn_vector embedding return bug 
+# in spark which the following attempts failed to fix this issue:
 #specifying a query for spark to execute which has image_embedding requested
 #query = {"query": {"match_all": {}},
 #         "_source": ["image_id", "movie_id", "title", "image_embedding"]}

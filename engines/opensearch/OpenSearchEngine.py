@@ -10,25 +10,23 @@ STATUS_URL = f"{OPENSEARCH_URL}/_cluster/health"
 
 class OpenSearchEngine(Engine):
     def __init__(self):
-        super().__init__("OpenSearch")
+        super().__init__("opensearch")
 
     def get_supported_advanced_features(self):
         return [AdvancedFeatures.LTR]
 
     def health_check(self):
-        status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
-        if status: print("OpenSearch engine is online")
-        return status
+        try:
+            status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
+            print(f"OpenSearch engine is {'online' if status else 'offline'}")
+            return status
+        except:
+            print("Weaviate failed the health check.")
+            return False
     
     def does_collection_exist(self, name):
         response = requests.get(f"{STATUS_URL}/{name}")
         return response.status_code == 200
-    
-    def is_collection_healthy(self, name, expected_count, log=False):
-        exists = self.does_collection_exist(name)
-        document_count = self.get_collection(name).get_document_count()
-        if log: print(exists, document_count)
-        return exists and document_count  == expected_count
 
     def print_status(self, response):
         print(json.dumps(response, indent=2))
