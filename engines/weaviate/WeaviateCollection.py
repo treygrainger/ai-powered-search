@@ -3,11 +3,13 @@ import requests
 from aips.data_loaders.reviews import transform_dataframe_for_weaviate
 from aips.search_request_functions import generate_fuzzy_text
 from aips.spark import get_spark_session
+from aips.spark.dataframe import from_sql
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 from engines.weaviate.config import WEAVIATE_HOST, WEAVIATE_PORT, WEAVIATE_URL, get_vector_field_name, \
     schema_contains_custom_vector_field, schema_contains_id_field, SCHEMAS, get_boost_field
 import time
-from pyspark.sql.functions import col, lit, udf, monotonically_increasing_id
+from pyspark.sql.types import StringType 
+from pyspark.sql.functions import col, lit, udf, monotonically_increasing_id, collect_list, create_map
 from pyspark.sql import Row
 
 from graphql_query import Query, Argument, Field, Operation    
@@ -43,9 +45,6 @@ class WeaviateCollection(Collection):
         return "query" in search_args and \
             search_args["query"] not in ["", "*"] and \
             not self.is_query_by_id(search_args)
-
-    def is_hybrid_search(self, search_args):
-        return False
     
     def is_compound_search(self, search_args):
         return "query" in search_args and isinstance(search_args["query"], list)
@@ -230,9 +229,9 @@ class WeaviateCollection(Collection):
         vector_field = SCHEMAS.get(self.name.lower(), {}).get("vector_field", None)
         if vector_field:
             opts["vector"] = vector_field
-        mode = "append" #"overwrite" if overwrite else "append" #overwrite seems to be broken with message 
+        mode = "append" #"overwrite" if overwrite else "append" - overwrite mode throws exceptions to be broken with message 
         if overwrite:
-            self.get_engine_name()
+            requests.delete(f"{WEAVIATE_URL}/v1/schema/{self.name.capitalize()}")            
         dataframe = self.apply_weaviate_specific_transformations(dataframe)
         dataframe = self.rename_id_field(dataframe)
         dataframe.write.format("io.weaviate.spark.Weaviate").options(**opts).mode(mode).save(self.name)
@@ -258,14 +257,6 @@ class WeaviateCollection(Collection):
             text_query = " ".join([s.split("^")[0] for s in text_query.replace('"', "").split(" ")])
             query_arguments = Argument(name="query", value='"' + text_query + '"')
             collection_query_args.append(Argument(name="bm25", value=query_arguments))
-        elif self.is_hybrid_search(search_args):
-            query_vector = list(filter(lambda qc: "vector_search" in qc, search_args["query"]))[0]["vector_search"]
-            query_vector = query_vector[list(query_vector.keys())[0]]
-            text_query = list(filter(lambda qc: isinstance(qc, str), search_args["query"]))[0]
-            query_arg = Argument(name="query", value='"' + text_query.replace('"', "") + '"')
-            vector_arg = Argument(name="vector", value=f"[{','.join(map(str, query_vector))}]")
-            hybrid_args = [query_arg, vector_arg]
-            collection_query_args.append(Argument(name="hybrid", value=hybrid_args))
         elif self.is_bm25_search(search_args):
             query = self.generate_bm25_query(search_args)
             query_arguments = [Argument(name="query", value=query)]
@@ -333,3 +324,48 @@ class WeaviateCollection(Collection):
     def spell_check(self, query, log=False):
         #Needs the contextionary and text spell checker. Currently stubbed out
         return {'modes': 421, 'model': 159, 'modern': 139, 'modem': 56, 'mode6': 9}
+    
+    def create_view_from_collection(self, view_name, spark, log=False):
+        #Weaviate's current spark connector read functionality not yet implemented
+        #Resort to batch paged reading
+        fields = self.get_collection_field_names()
+        fields.append("__weaviate_id")            
+        request = {"return_fields": fields, "limit": 1000}
+        all_documents = []
+        try:
+            while True:
+                docs = self.search(**request)["docs"]
+                for d in docs:
+                    if "id" not in d:
+                        d["id"] = d["__weaviate_id"]
+                all_documents.extend(docs)
+
+                if len(docs) != request["limit"]:
+                    break
+                last_doc = docs[request["limit"] - 1]
+                cursor_id = last_doc["__weaviate_id"]
+                request["after"] = cursor_id
+        except Exception as ex:
+            print(f"Create view exception: {ex}")
+        
+        if log:
+            print(f"Loaded {len(all_documents)} docs from db")
+        dataframe = spark.createDataFrame(data=all_documents)
+        dataframe.createOrReplaceTempView(view_name)
+    
+    def load_index_time_boosting_dataframe(self, boosts_collection_name, boosted_products_collection_name):
+        #Weaviate does not support index time boosting. 
+        # Option 1: Keyword stuff a field 
+        # Option 2: Rerank weaviate results (in code) based on indexed weights from the collection
+        def generate_signals_field(signals):
+            return " ".join([(term + " ") * boost for term, boost in signals.items()])                
+        generate_stuffed_column = udf(generate_signals_field, StringType())
+
+        product_query = f"SELECT upc, name, short_description, long_description, manufacturer FROM {boosted_products_collection_name}"
+        boosts_query = f"SELECT doc, boost, REPLACE(query, '.', '') AS query FROM {boosts_collection_name}"
+        grouped_boosts = from_sql(boosts_query).groupBy("doc") \
+            .agg(collect_list(create_map("query", "boost"))[0].alias("signals_boosts")) \
+            .withColumnRenamed("doc", "upc")
+        grouped_boosts = grouped_boosts.withColumn("signals_boosts", generate_stuffed_column(col("signals_boosts")))
+        boosts_dataframe = from_sql(product_query).join(grouped_boosts, "upc")
+        return boosts_dataframe

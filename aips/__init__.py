@@ -15,19 +15,19 @@ from IPython.display import display, HTML
 import pandas
 import re
 
-engine_type_map = {"solr": SolrEngine,
-                   "opensearch": OpenSearchEngine,
-                   "weaviate": WeaviateEngine}
+engine_name_type_map = {"solr": SolrEngine,
+                        "opensearch": OpenSearchEngine,
+                        "weaviate": WeaviateEngine}
 ltr_engine_map = {"solr": SolrLTR,
                   "opensearch": OpenSearchLTR,
                   "weaviate": WeaviateLTR}
-SSS_map = {"solr": SolrSparseSemanticSearch,
-           "opensearch": OpenSearchSparseSemanticSearch,
-           "weaviate": WeaviateSearchSparseSemanticSearch}
+sparse_semantic_search_engine_map = {"solr": SolrSparseSemanticSearch,
+                                     "opensearch": OpenSearchSparseSemanticSearch,
+                                     "weaviate": WeaviateSearchSparseSemanticSearch}
 
 def get_engine(override=None, host_override=None):
     engine_name = override if override else environment.get("AIPS_SEARCH_ENGINE", "solr")
-    engine_type = engine_type_map[engine_name.lower()]
+    engine_type = engine_name_type_map[engine_name.lower()]
     return engine_type() if not host_override else engine_type(host_override)
 
 def set_engine(engine_name):
@@ -53,7 +53,7 @@ def get_semantic_engine(feature, log=False):
     return get_local_engine(log)
 
 def get_sparse_semantic_search():
-    return SSS_map[get_engine().name.lower()]()
+    return sparse_semantic_search_engine_map[get_engine().name.lower()]()
     
 def get_semantic_knowledge_graph(collection):
     return SolrSemanticKnowledgeGraph(get_semantic_engine(AdvancedFeatures.SKG).get_collection(collection.name.lower()))

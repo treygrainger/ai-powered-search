@@ -1,6 +1,7 @@
 import random
 from numpy import isin
 import requests
+from aips.spark.dataframe import from_sql
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 import engines.solr.config as config
 from aips.environment import AIPS_ZK_HOST
@@ -159,3 +160,14 @@ class SolrCollection(Collection):
                             for r in response["spellcheck"]["collations"]
                             if r != "collation"}
         return suggestions
+
+    def create_view_from_collection(self, view_name, spark, log=False):
+        opts = {"zkhost": self.zk_host, "collection": self.name}    
+        spark.read.format("solr").options(**opts).load().createOrReplaceTempView(view_name)
+
+    def load_index_time_boosting_dataframe(self, boosts_collection_name, boosted_products_collection_name):
+        query = f"""SELECT p.*, b.signals_boosts FROM (
+                    SELECT doc, CONCAT_WS(',', COLLECT_LIST(CONCAT(query, '|', boost)))
+                    AS signals_boosts FROM {boosts_collection_name} GROUP BY doc
+                    ) b INNER JOIN {boosted_products_collection_name} p ON p.upc = b.doc"""
+        return from_sql(query)

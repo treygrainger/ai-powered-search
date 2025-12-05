@@ -59,10 +59,10 @@ def shutdown_semantic_engine(log=False, local_solr_port=8983, local_zk_port=2181
 def initialize_local_semantic_engine(log=False, solr_command="/opt/solr/bin/solr",
                                      local_zk_port=2181, zk_command="/opt/zk/zookeeper-3.4.5/bin/zkServer.sh"):
     if log: print("Initializing server")
-    zk_process = subprocess.Popen([zk_command, "start"],
+    zk_process = subprocess.Popen([zk_command, "start -m 512m"],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if log: [print(l) for l in zk_process.stdout]
     solr_process = subprocess.Popen([solr_command, "start", "-z", f"localhost:{local_zk_port}"],
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if log: [print(l) for l in solr_process.stdout]
-    if log: print("Embedded engine initialized")
+    if log: print("Localized engine initialized")

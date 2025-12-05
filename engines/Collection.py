@@ -54,6 +54,16 @@ class Collection(ABC):
     def spell_check(self, query, log=False):
         "Execute a spellcheck against the collection"
         pass
+
+    @abstractmethod
+    def create_view_from_collection(self, view_name, spark, log=False):
+        "Creates a spark view from the collection"
+        pass
+    
+    @abstractmethod
+    def load_index_time_boosting_dataframe(self, boosts_collection_name, boosted_products_collection_name):
+        "Loads index time boosting data from boosting collections"
+        pass
     
     def search(self, **search_args):
         """

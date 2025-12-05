@@ -60,7 +60,9 @@ class SolrEngine(Engine):
         if force_rebuild:
             wipe_collection_params = [("action", "delete"), ("name", name)]
             print(f'Wiping "{name}" collection')
-            response = requests.post(self.solr_url + "/admin/collections", data=wipe_collection_params).json()
+            response = requests.post(self.solr_url + "/admin/collections", data=wipe_collection_params)
+            if log:
+                print(response)
             requests.get(f"{self.solr_url}/admin/configs?action=DELETE&name={name}.AUTOCREATED")
 
         create_collection_params = [("action", "CREATE"),
