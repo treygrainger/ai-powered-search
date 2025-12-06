@@ -30,7 +30,7 @@ WORKDIR /home/$NB_USER
 ENV BLIS_ARCH="generic" PIP_CACHE_DIR=/var/cache/pip
 RUN mkdir -p $PIP_CACHE_DIR
 COPY build/course_requirements.txt /home/$NB_USER
-RUN conda create --name course-environment python=3.11.0 -y
+RUN conda create --name course-environment python=3.10.0 -y
 RUN --mount=type=cache,target=$PIP_CACHE_DIR conda run --name course-environment pip install -r course_requirements.txt
 RUN conda run --name course-environment python -m ipykernel install --name course-environment --display-name "[Agentic Search Course] Agentic Search Course environment kernel"
 

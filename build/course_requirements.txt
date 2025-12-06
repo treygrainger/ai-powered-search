@@ -1,4 +1,3 @@
-
-ipykernel
-git+https://github.com/softwaredoug/cheat-at-search.git
-sentence-transformers
+ipykernel==7.1.0
+git+https://github.com/softwaredoug/cheat-at-search.git@04b243764b805c645bd21928e5f142934f5d1f39
+sentence-transformers==5.1.2
