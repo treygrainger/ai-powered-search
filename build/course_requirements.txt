@@ -1,3 +1,4 @@
 
 ipykernel
 git+https://github.com/softwaredoug/cheat-at-search.git
+sentence-transformers
