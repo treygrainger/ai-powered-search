@@ -6,9 +6,11 @@ from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 from engines.opensearch.OpenSearchLTR import OpenSearchLTR
 from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSemanticSearch
 
+from engines.vespa import VespaLTR, VespaSparseSemanticSearch
+from engines.vespa.VespaEngine import VespaEngine
 from engines.weaviate.WeaviateEngine import WeaviateEngine
 from engines.weaviate.WeaviateLTR import WeaviateLTR
-from engines.weaviate.WeaviateSearchSparseSemanticSearch import WeaviateSearchSparseSemanticSearch
+from engines.weaviate.WeaviateSparseSemanticSearch import WeaviateSparseSemanticSearch
 
 import os
 from IPython.display import display, HTML
@@ -17,13 +19,18 @@ import re
 
 engine_name_type_map = {"solr": SolrEngine,
                         "opensearch": OpenSearchEngine,
+                        "vespa": VespaEngine,
                         "weaviate": WeaviateEngine}
+
 ltr_engine_map = {"solr": SolrLTR,
                   "opensearch": OpenSearchLTR,
+                  "vespa": VespaLTR,
                   "weaviate": WeaviateLTR}
+
 sparse_semantic_search_engine_map = {"solr": SolrSparseSemanticSearch,
                                      "opensearch": OpenSearchSparseSemanticSearch,
-                                     "weaviate": WeaviateSearchSparseSemanticSearch}
+                                     "vepsa": VespaSparseSemanticSearch,
+                                     "weaviate": WeaviateSparseSemanticSearch}
 
 def get_engine(override=None, host_override=None):
     engine_name = override if override else environment.get("AIPS_SEARCH_ENGINE", "solr")
@@ -32,7 +39,7 @@ def get_engine(override=None, host_override=None):
 
 def set_engine(engine_name):
     engine_name = engine_name.lower()
-    if engine_name not in ltr_engine_map:
+    if engine_name not in engine_name_type_map:
         raise ValueError(f"No search engine implementation found for {engine_name}")
     else:
         environment.set("AIPS_SEARCH_ENGINE", engine_name)

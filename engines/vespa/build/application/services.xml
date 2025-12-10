@@ -1,0 +1,18 @@
+<services version="1.0">
+    <container version="1.0" id="queryfeedendpoint">
+        <search>
+        </search>
+        <document-api/>
+    </container>
+    <content id="aips" version="1.0">
+        <min-redundancy>1</min-redundancy>
+        <documents>
+            <document type="cat_in_the_hat" mode="index"/>
+            <document type="products" mode="index"/>
+            <document type="signals" mode="index"/>
+        </documents>
+        <nodes>
+            <node hostalias="node1" distribution-key="0" />
+        </nodes>
+    </content>
+</services>

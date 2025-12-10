@@ -12,9 +12,7 @@ services:
       - "8888:8888" # Jupyter Notebook UI 
       - "2345:2345" # Search Webserver
     networks:
-      - solr-network
-      - weaviate-network
-      - opensearch-network
+      - aips-network
     restart: unless-stopped
     environment:
       AIPS_SOLR_HOST: 'aips-solr'
@@ -39,8 +37,7 @@ services:
     ports:
       - "8983:8983" 
     networks:
-      - zk-solr
-      - solr-network
+      - aips-network
     restart: unless-stopped
     depends_on:
       - zookeeper
@@ -79,7 +76,7 @@ services:
     expose:
       - "9200"
     networks:
-      - opensearch-network
+      - aips-network
     depends_on:
       - notebooks
       - opensearch-dashboards
@@ -103,7 +100,7 @@ services:
     expose:
       - "8090"
     networks:
-      - weaviate-network
+      - aips-network
     volumes:
       - weaviate-data:/var/lib/weaviate
     restart: on-failure:0
@@ -128,9 +125,19 @@ services:
       DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
       OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
     networks:
-      - opensearch-network
+      - aips-network
     profiles:
       - all
+      
+  vespa:
+    image: vespaengine/vespa
+    container_name: aips-vespa
+    hostname: aips-vespa
+    networks:
+      - aips-network
+    ports: 
+      - 8080:8080
+      - 19071:19071
 
   zookeeper:
     image: zookeeper:3.5.8
@@ -139,8 +146,7 @@ services:
     ports: 
       - "2181:2128"
     networks:
-      - zk-solr
-      - solr-network
+      - aips-network
     restart: unless-stopped
     profiles:
       - all
@@ -151,7 +157,4 @@ volumes:
   weaviate-data:
   
 networks:
-  zk-solr:  
-  solr-network:
-  opensearch-network:
-  weaviate-network:
+  aips-network:

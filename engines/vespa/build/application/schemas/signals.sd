@@ -1,0 +1,37 @@
+schema signals {
+    document signals {
+        field query type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field user type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field type type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field target type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field signal_time type long {
+            indexing: summary | attribute
+        }
+    }
+
+    fieldset default {
+        fields: query, user, type, target
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: nativeRank(query, user, type, target)
+        }
+    }
+}

@@ -1,7 +1,7 @@
 from graphql_query import Argument
 from engines.SparseSemanticSearch import SparseSemanticSearch
 
-class WeaviateSearchSparseSemanticSearch(SparseSemanticSearch):
+class WeaviateSparseSemanticSearch(SparseSemanticSearch):
     def __init__(self):
         pass
 

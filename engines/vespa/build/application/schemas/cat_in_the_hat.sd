@@ -1,0 +1,33 @@
+schema cat_in_the_hat {
+    document cat_in_the_hat {
+        field id type string {
+            indexing: summary | attribute
+        }
+
+        field title type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field description type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+    }
+
+    fieldset default {
+        fields: title, description
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: nativeRank(title, description)
+        }
+    }
+
+    rank-profile bm25 inherits default {
+        first-phase {
+            expression: bm25(title) + bm25(description)
+        }
+    }
+}
