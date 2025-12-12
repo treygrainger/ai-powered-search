@@ -52,8 +52,10 @@ class SolrEngine(Engine):
 
     def does_collection_exist(self, name, log=False):
         url = f"{self.solr_url}/admin/collections?action=LIST&wt=json"
-        response = requests.get(url).json()
-        return name in response["collections"]
+        response = requests.get(url)
+        if response.status_code != 200:
+            return False
+        return name in response.json()["collections"]
 
     def create_collection(self, name, force_rebuild=True, log=False):
         collection = self.get_collection(name)

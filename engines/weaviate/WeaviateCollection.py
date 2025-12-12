@@ -24,7 +24,7 @@ class WeaviateCollection(Collection):
     def get_document_count(self):
         count_operation = Operation(type="Aggregate", queries=[Query(name=self.name, fields=[Field(name="meta", fields=["count"])])])
         response = self.native_search(request={"query": "{" + count_operation.render() + "}"})        
-        if not response or "errors" in response:
+        if not response or "errors" in response or "data" not in response:
             return 0        
         return response["data"]["Aggregate"][self.name][0]["meta"]["count"]
 
@@ -231,7 +231,8 @@ class WeaviateCollection(Collection):
             opts["vector"] = vector_field
         mode = "append" #"overwrite" if overwrite else "append" - overwrite mode throws exceptions to be broken with message 
         if overwrite:
-            requests.delete(f"{WEAVIATE_URL}/v1/schema/{self.name.capitalize()}")            
+            requests.delete(f"{WEAVIATE_URL}/v1/schema/{self.name.capitalize()}")
+            response = requests.post(f"{WEAVIATE_URL}/v1/schema", json=SCHEMAS[self.name.lower()]["schema"])          
         dataframe = self.apply_weaviate_specific_transformations(dataframe)
         dataframe = self.rename_id_field(dataframe)
         dataframe.write.format("io.weaviate.spark.Weaviate").options(**opts).mode(mode).save(self.name)

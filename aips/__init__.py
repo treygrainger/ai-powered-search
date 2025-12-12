@@ -50,8 +50,11 @@ def get_ltr_engine(collection):
 def get_local_engine(log=False):
     engine = get_engine("solr", "localhost")
     if not engine.health_check(log):
+        if log: print("Initializing server")
         environment.shutdown_semantic_engine(log)
         environment.initialize_local_semantic_engine(log=log)
+        healthy = engine.health_check(retries=2)
+        if log: print("Localized engine initialized" if healthy else "Localized engine failed to initialized")
     return engine
 
 def get_semantic_engine(feature, log=False):
