@@ -1,6 +1,6 @@
 schema signals {
     document signals {
-        field query type string {
+        field query_id type string {
             indexing: summary | index | attribute
             match: text
         }
@@ -26,12 +26,12 @@ schema signals {
     }
 
     fieldset default {
-        fields: query, user, type, target
+        fields: query_id, user, type, target, signal_time
     }
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(query, user, type, target)
+            expression: nativeRank(user, type, target)
         }
     }
 }

@@ -1,3 +1,9 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import random
+import threading
+from typing import Any, Coroutine
+import httpx
 import requests
 from aips.spark import get_spark_session
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
@@ -5,13 +11,96 @@ import engines.vespa.config as config
 import time
 import json
 from pyspark.sql import Row
+  
+def run_coroutine_sync(coroutine, timeout=30):
+    def run_in_new_loop():
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        try:
+            return new_loop.run_until_complete(coroutine)
+        finally:
+            new_loop.close()
 
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coroutine)
+
+    if threading.current_thread() is threading.main_thread():
+        if not loop.is_running():
+            return loop.run_until_complete(coroutine)
+        else:
+            with ThreadPoolExecutor() as pool:
+                future = pool.submit(run_in_new_loop)
+                return future.result(timeout=timeout)
+    else:
+        return asyncio.run_coroutine_threadsafe(coroutine, loop).result()
+    
 class VespaCollection(Collection):
     def __init__(self, name, vespa_url=config.VESPA_URL):
         self.vespa_url = vespa_url
         self.namespace = config.DEFAULT_NAMESPACE
         super().__init__(name)
-        
+
+    def write(self, dataframe, overwrite=False):
+        print(f"\nWriting {dataframe.count()} documents to '{self.name}' collection")
+
+        session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections=16, pool_maxsize=16)
+        session.mount('http://', adapter)
+
+        if overwrite:
+            url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}"
+            response = requests.delete(url)
+            if response.status_code not in [200, 201]:
+                print(response)
+
+        client = httpx.AsyncClient(http2=True)
+
+        async def async_write(doc):
+            retries = 5 
+            while retries >= 0:
+                try:
+                    doc = {k: str(v) for k, v in doc.items()}
+                    doc_id = doc.get("id", doc.get("upc", str(hash(json.dumps(doc, sort_keys=True)))))
+                    json_document = {"fields": doc}
+                    url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid/{doc_id}"                    
+                    response = await client.post(url, json=json_document, headers={"Content-Type": "application/json"})
+                    response.raise_for_status()
+                    return True
+                except Exception as ex:
+                    print(str(retries) + "  " + str(ex))
+                    print(response.content)
+                    retries -= 1
+                    time.sleep(5 + 20 * random.random())
+
+        async def write_all_async(docs):
+            await asyncio.gather(*[async_write(d) for d in docs])
+            retries = 5 
+            while retries >= 0:
+                try:
+                    doc = {k: str(v) for k, v in doc.items()}
+                    doc_id = doc.get("id", doc.get("upc", str(hash(json.dumps(doc, sort_keys=True)))))
+                    json_document = {"fields": doc}
+                    url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid/{doc_id}"
+                    response = session.post(url, json=json_document, headers={"Content-Type": "application/json"})
+                    response.raise_for_status()
+                    return True
+                except Exception as ex:
+                    print(str(retries) + "  " + str(ex))
+                    print(response.content)
+                    retries -= 1
+                    time.sleep(5 + 20 * random.random())
+                  
+
+        run_coroutine_sync(write_all_async)
+        #with ThreadPoolExecutor(max_workers=16) as executor:
+        #    for row in dataframe.collect():
+        #        last_future = executor.submit(async_write, row.asDict())
+
+        print(f"Successfully written {dataframe.count()} documents")
+        self.commit()
+
     def commit(self):
         time.sleep(2)
 
@@ -107,39 +196,6 @@ class VespaCollection(Collection):
         except Exception as ex:
             print(f"Error getting field names: {ex}")
         return []
-
-    def write(self, dataframe, overwrite=False):
-        #Vespa's document api supports only a single document,
-        #https://stackoverflow.com/questions/79285315/how-is-vespa-feed-client-implemented
-        print(f"\nWriting {dataframe.count()} documents to '{self.name}' collection")
-        docs = [row.asDict() for row in dataframe.collect()][:1000]
-        error_count = 0
-        if overwrite:
-            url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}"
-            response = requests.delete(url)
-            if response.status_code not in [200, 201]:
-                print(response)
-
-        for doc in docs:
-            try:
-                doc_id = doc.get("id", doc.get("upc", str(hash(json.dumps(doc, sort_keys=True)))))
-                json_document = {"fields": {k: v for k, v in doc.items() if k != "id"}}
-                url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid/{doc_id}"
-                response = requests.post(url, json=json_document, headers={"Content-Type": "application/json"})
-                
-                if response.status_code not in [200, 201]:
-                    error_count += 1
-                    if error_count <= 5:
-                        print(f"Error writing document {doc_id}: {response.status_code} - {response.text}")
-                        print(url)
-                        print(json_document)
-            except Exception as ex:
-                error_count += 1
-                if error_count <= 5:
-                    print(f"Exception writing document: {ex}")
-        
-        self.commit()
-        print(f"Successfully written {len(docs) - error_count} documents ({error_count} errors)")
     
     def add_documents(self, docs, commit=True):
         spark = get_spark_session()
@@ -160,12 +216,10 @@ class VespaCollection(Collection):
             query = self.generate_bm25_query(search_args)
             query_fields = self.generate_query_fields(search_args)
             
-            if query_fields and len(query_fields) > 1:
+            if query_fields:
                 field_conditions = [f'{field} contains "{query}"' for field in query_fields]
                 where_conditions.append(f"weakAnd({', '.join(field_conditions)})")
-            else:
-                request["query"] = query
-                #where_conditions.append("userQuery()")        
+
         elif self.is_query_by_id(search_args):
             query_fields = self.generate_query_fields(search_args)
             if query_fields:
