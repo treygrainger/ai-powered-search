@@ -1,5 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import datetime
 import random
 import threading
 from typing import Any, Coroutine
@@ -12,12 +13,12 @@ import time
 import json
 from pyspark.sql import Row
   
-def run_coroutine_sync(coroutine, timeout=30):
+def run_coroutine_sync(coroutine, collection, docs):
     def run_in_new_loop():
         new_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(new_loop)
         try:
-            return new_loop.run_until_complete(coroutine)
+            return new_loop.run_until_complete(coroutine(collection, docs))
         finally:
             new_loop.close()
 
@@ -28,14 +29,47 @@ def run_coroutine_sync(coroutine, timeout=30):
 
     if threading.current_thread() is threading.main_thread():
         if not loop.is_running():
-            return loop.run_until_complete(coroutine)
+            return loop.run_until_complete(coroutine(collection, docs))
         else:
             with ThreadPoolExecutor() as pool:
                 future = pool.submit(run_in_new_loop)
-                return future.result(timeout=timeout)
+                return future.result(timeout=30)
     else:
         return asyncio.run_coroutine_threadsafe(coroutine, loop).result()
     
+client = httpx.AsyncClient(http2=True, http1=False, verify=True)
+
+def format_document_for_writing(doc):
+    #{k: int(v.timestamp()) if isinstance(v, datetime.datetime) else v for k, v in doc.items()}
+    for field, value in doc.items():
+        if isinstance(value, datetime.datetime):
+            value = int(value.timestamp())
+        doc[field] = value
+    return doc
+
+def get_document_id(doc):
+    return doc.get("id", doc.get("upc", str(hash(json.dumps(doc, sort_keys=True)))))
+
+async def async_write(collection, doc, retries=3):
+    while retries >= 0:
+        try:
+            doc = format_document_for_writing(doc)
+            doc_id = get_document_id(doc)
+            json_document = {"fields": doc}
+            url = f"{collection.vespa_url}/document/v1/{collection.namespace}/{collection.name}/docid/{doc_id}"                    
+            response = await client.post(url, json=json_document, headers={"Content-Type": "application/json"})
+            response.raise_for_status()
+            return True
+        except Exception as ex:
+            print(str(retries) + "  " + str(ex))
+            retries -= 1
+            time.sleep(5)
+
+async def write_all_async(collection, docs, batch_size=1000):
+    for i in range(int(len(docs) / batch_size) + 1):
+        print(f"writing {i}")
+        await asyncio.gather(*[async_write(collection, d) for d in docs[i * batch_size:(i + 1) * batch_size]])
+
 class VespaCollection(Collection):
     def __init__(self, name, vespa_url=config.VESPA_URL):
         self.vespa_url = vespa_url
@@ -43,61 +77,25 @@ class VespaCollection(Collection):
         super().__init__(name)
 
     def write(self, dataframe, overwrite=False):
+        
         print(f"\nWriting {dataframe.count()} documents to '{self.name}' collection")
-
-        session = requests.Session()
-        adapter = requests.adapters.HTTPAdapter(pool_connections=16, pool_maxsize=16)
-        session.mount('http://', adapter)
-
         if overwrite:
             url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}"
             response = requests.delete(url)
-            if response.status_code not in [200, 201]:
-                print(response)
+        docs = [d.asDict() for d in dataframe.collect()]
 
-        client = httpx.AsyncClient(http2=True)
-
-        async def async_write(doc):
-            retries = 5 
-            while retries >= 0:
+        with ThreadPoolExecutor() as pool:
+            def run_in_new_loop():
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
                 try:
-                    doc = {k: str(v) for k, v in doc.items()}
-                    doc_id = doc.get("id", doc.get("upc", str(hash(json.dumps(doc, sort_keys=True)))))
-                    json_document = {"fields": doc}
-                    url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid/{doc_id}"                    
-                    response = await client.post(url, json=json_document, headers={"Content-Type": "application/json"})
-                    response.raise_for_status()
-                    return True
-                except Exception as ex:
-                    print(str(retries) + "  " + str(ex))
-                    print(response.content)
-                    retries -= 1
-                    time.sleep(5 + 20 * random.random())
-
-        async def write_all_async(docs):
-            await asyncio.gather(*[async_write(d) for d in docs])
-            retries = 5 
-            while retries >= 0:
-                try:
-                    doc = {k: str(v) for k, v in doc.items()}
-                    doc_id = doc.get("id", doc.get("upc", str(hash(json.dumps(doc, sort_keys=True)))))
-                    json_document = {"fields": doc}
-                    url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid/{doc_id}"
-                    response = session.post(url, json=json_document, headers={"Content-Type": "application/json"})
-                    response.raise_for_status()
-                    return True
-                except Exception as ex:
-                    print(str(retries) + "  " + str(ex))
-                    print(response.content)
-                    retries -= 1
-                    time.sleep(5 + 20 * random.random())
-                  
-
-        run_coroutine_sync(write_all_async)
-        #with ThreadPoolExecutor(max_workers=16) as executor:
-        #    for row in dataframe.collect():
-        #        last_future = executor.submit(async_write, row.asDict())
-
+                    return new_loop.run_until_complete(write_all_async(self, docs))
+                finally:
+                    new_loop.close()
+                    
+            future = pool.submit(run_in_new_loop)
+            return future.result()
+        
         print(f"Successfully written {dataframe.count()} documents")
         self.commit()
 
