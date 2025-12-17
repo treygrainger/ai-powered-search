@@ -128,7 +128,7 @@ class WeaviateLTR(LTR):
         return docs
 
     def search_with_model(self, model_name, **search_args):
-        id_field = "id" if "products" in self.collection.name else "upc"
+        id_field = "upc" if "products" in self.collection.name else "id"
         ltr_model_data = self.model_store.load_model(model_name)
         limit = search_args.get("limit", 25)
         search_args["limit"] =  limit * 10
