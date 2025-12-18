@@ -1,6 +1,6 @@
 from engines.SparseSemanticSearch import SparseSemanticSearch
 
-class WeaviateVespaSparseSemanticSearch(SparseSemanticSearch):
+class VespaSparseSemanticSearch(SparseSemanticSearch):
     def __init__(self):
         pass
 

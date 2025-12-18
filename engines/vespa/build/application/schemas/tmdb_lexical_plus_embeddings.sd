@@ -1,0 +1,65 @@
+schema tmdb_lexical_plus_embeddings {
+    document tmdb_lexical_plus_embeddings {
+        field title type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field overview type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field movie_id type string {
+            indexing: summary | attribute
+        }
+
+        field image_id type string {
+            indexing: summary | attribute
+        }
+
+        field image_embedding type tensor<float>(x[512]) {
+            indexing: summary | attribute | index
+            attribute {
+                distance-metric: innerproduct
+            }
+            index {
+                hnsw {
+                    max-links-per-node: 16
+                    neighbors-to-explore-at-insert: 200
+                }
+            }
+        }
+    }
+
+    fieldset default {
+        fields: title, overview
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: nativeRank(title, overview)
+        }
+    }
+
+    rank-profile bm25 inherits default {
+        first-phase {
+            expression: bm25(title) + bm25(overview)
+        }
+    }
+
+    rank-profile vector_similarity {
+        inputs {
+            query(query_vector) tensor<float>(x[512])
+        }
+        first-phase {
+            expression: closeness(field, image_embedding)
+        }
+    }
+
+    rank-profile hybrid inherits vector_similarity {
+        first-phase {
+            expression: bm25(title) + bm25(overview) + closeness(field, image_embedding)
+        }
+    }
+}

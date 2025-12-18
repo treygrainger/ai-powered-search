@@ -1,0 +1,27 @@
+schema signals_boosting {
+    document signals_boosting {
+        field query type string {
+            indexing: summary | attribute
+            match: word
+        }
+
+        field doc type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field boost type int {
+            indexing: summary | attribute
+        }
+    }
+
+    fieldset default {
+        fields: query, doc
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: attribute(boost)
+        }
+    }
+}

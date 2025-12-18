@@ -1,0 +1,29 @@
+schema stackexchange {
+    document stackexchange {
+        field title type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field body type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+    }
+
+    fieldset default {
+        fields: title, body
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: nativeRank(title, body)
+        }
+    }
+
+    rank-profile bm25 inherits default {
+        first-phase {
+            expression: bm25(title) + bm25(body)
+        }
+    }
+}

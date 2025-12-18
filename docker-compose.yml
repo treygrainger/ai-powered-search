@@ -97,8 +97,6 @@ services:
     ports:
       - "8090:8090"
       - "50051:50051"
-    expose:
-      - "8090"
     networks:
       - aips-network
     volumes:
@@ -119,8 +117,6 @@ services:
     container_name: opensearch-dashboards
     ports:
       - "5601:5601"
-    expose:
-      - "5601"
     environment:
       DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
       OPENSEARCH_HOSTS: '["http://opensearch-node1:9200"]'
@@ -133,6 +129,7 @@ services:
     image: vespaengine/vespa
     container_name: aips-vespa
     hostname: aips-vespa
+    cpuset: "0-24"
     networks:
       - aips-network
     ports: 

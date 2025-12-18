@@ -1,0 +1,37 @@
+schema tmdb {
+    document tmdb {
+        field id type string {
+            indexing: summary | attribute
+        }
+
+        field title type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field overview type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field release_year type double {
+            indexing: summary | attribute
+        }
+    }
+
+    fieldset default {
+        fields: title, overview
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: nativeRank(title, overview)
+        }
+    }
+
+    rank-profile bm25 inherits default {
+        first-phase {
+            expression: bm25(title) + bm25(overview)
+        }
+    }
+}

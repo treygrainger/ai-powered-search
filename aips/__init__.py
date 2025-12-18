@@ -5,9 +5,10 @@ from engines.solr.SolrEngine import SolrEngine
 from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 from engines.opensearch.OpenSearchLTR import OpenSearchLTR
 from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSemanticSearch
-
-from engines.vespa import VespaLTR, VespaSparseSemanticSearch
 from engines.vespa.VespaEngine import VespaEngine
+from engines.vespa.VespaLTR import VespaLTR 
+from engines.vespa.VespaSparseSemanticSearch import VespaSparseSemanticSearch 
+
 from engines.weaviate.WeaviateEngine import WeaviateEngine
 from engines.weaviate.WeaviateLTR import WeaviateLTR
 from engines.weaviate.WeaviateSparseSemanticSearch import WeaviateSparseSemanticSearch

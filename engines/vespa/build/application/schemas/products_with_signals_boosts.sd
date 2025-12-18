@@ -1,0 +1,54 @@
+schema products_with_signals_boosts {
+    document products_with_signals_boosts {
+        field upc type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field name type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+        
+        field name_fuzzy type string {
+            indexing: summary | index
+            match: text
+        }
+
+        field short_description type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field long_description type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field manufacturer type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field signals_boosts type string {
+            indexing: summary | index
+            match: text
+        }
+    }
+
+    fieldset default {
+        fields: name, short_description, long_description, manufacturer, signals_boosts
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: nativeRank(name, short_description, long_description, manufacturer, signals_boosts)
+        }
+    }
+
+    rank-profile bm25 inherits default {
+        first-phase {
+            expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer) + bm25(signals_boosts)
+        }
+    }
+}

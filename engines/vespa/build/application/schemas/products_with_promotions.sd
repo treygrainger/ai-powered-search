@@ -1,0 +1,53 @@
+schema products_with_promotions {
+    document products_with_promotions {
+        field upc type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field name type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+        
+        field name_fuzzy type string {
+            indexing: summary | index
+            match: text
+        }
+
+        field short_description type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field long_description type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field manufacturer type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field has_promotion type bool {
+            indexing: summary | attribute
+        }
+    }
+
+    fieldset default {
+        fields: name, short_description, long_description, manufacturer
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: nativeRank(name, short_description, long_description, manufacturer)
+        }
+    }
+
+    rank-profile bm25 inherits default {
+        first-phase {
+            expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer)
+        }
+    }
+}

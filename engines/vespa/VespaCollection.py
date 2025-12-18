@@ -52,6 +52,7 @@ def get_document_id(doc):
 
 async def async_write(collection, doc, retries=3):
     while retries >= 0:
+        response = None
         try:
             doc = format_document_for_writing(doc)
             doc_id = get_document_id(doc)
@@ -62,6 +63,7 @@ async def async_write(collection, doc, retries=3):
             return True
         except Exception as ex:
             print(str(retries) + "  " + str(ex))
+            print(response.content)
             retries -= 1
             time.sleep(5)
 

@@ -1,15 +1,15 @@
 from random import random
 from aips.search_request_functions import generate_fuzzy_text
-from engines.weaviate.WeaviateCollection import WeaviateCollection
+from engines.vespa.VespaCollection import VespaCollection
 from engines.LTR import LTR
 from ltr.model_store import ModelStore
 
-class WeaviateLTR(LTR):
+class VespaLTR(LTR):
 
     def __init__(self, collection):
-        if not isinstance(collection, WeaviateCollection):
-            raise TypeError("Only supports a WeaviateCollection")
-        self.model_store = ModelStore("weaviate_ltr.cfg")
+        if not isinstance(collection, VespaCollection):
+            raise TypeError("Only supports a VespaCollection")
+        self.model_store = ModelStore("vespa_ltr.cfg")
         super().__init__(collection)
 
     def enable_ltr(self, log=True):
