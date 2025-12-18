@@ -46,7 +46,7 @@ def get_local_engine(log=False):
         if log: print("Initializing server")
         environment.shutdown_semantic_engine(log)
         environment.initialize_local_semantic_engine(log=log)
-        healthy = engine.health_check(retries=2)
+        healthy = engine.health_check(retries=2, log=log)
         if log: print("Localized engine initialized" if healthy else "Localized engine failed to initialized")
     return engine
 
