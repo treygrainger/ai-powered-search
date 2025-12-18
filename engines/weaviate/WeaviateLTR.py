@@ -36,9 +36,6 @@ class WeaviateLTR(LTR):
         
     def generate_field_value_feature(self, feature_name, field_name):
         return self.generate_feature(feature_name, {"field_name": field_name}, "field_value")
-        
-    def generate_field_length_feature(self, feature_name, field_name):
-        pass
 
     def delete_feature_store(self, name, log=False):
         self.model_store.delete_feature_store(name, log)
