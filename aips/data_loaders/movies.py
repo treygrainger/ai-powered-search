@@ -1,3 +1,4 @@
+import re
 from aips.spark import get_spark_session
 import json
 from pyspark.sql import Row
@@ -14,13 +15,13 @@ def load_dataframe(movie_file="data/tmdb.json", movie_image_ids={}):
             full_poster_path = ""
             if "poster_path" in tmdbMovie and tmdbMovie["poster_path"] is not None and len(tmdbMovie["poster_path"]) > 0:
                 full_poster_path = "https://image.tmdb.org/t/p/w185" + tmdbMovie["poster_path"]
-
+            
             movie = {"id": movieId,
-                     "title": tmdbMovie["title"],
-                     "overview": tmdbMovie["overview"],
+                     "title": tmdbMovie.get("title") or "",
+                     "overview": tmdbMovie.get("overview") or "",
                      "tagline": tmdbMovie["tagline"],
                      "directors": [director["name"] for director in tmdbMovie["directors"]],
-                     "cast": " ".join([castMember["name"] for castMember in tmdbMovie["cast"]]),
+                     "cast": " ".join([re.sub("[\W_]+", "", castMember.get("name") or "") for castMember in tmdbMovie["cast"]]),
                      "genres": [genre["name"] for genre in tmdbMovie["genres"]],
                      "release_date": releaseDate,
                      "release_year": releaseYear,

@@ -76,7 +76,6 @@ class WeaviateLTR(LTR):
         for d in logged_docs: 
             d["[features]"] = {}
         for feature in model_features:
-            print(f"Logged feature {feature}")
             feature_request = request | feature["params"].get("request", {})
             if feature["type"] != "field_value":
                 if feature["type"] == "query":

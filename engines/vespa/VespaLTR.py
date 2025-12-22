@@ -58,25 +58,17 @@ class VespaLTR(LTR):
 
     def generate_bigram_query(self, query):
         pass
-
-    def get_logged_features(self, model_name, doc_ids, options={},
-                            id_field="id", fields="*", log=False):
-        model_features = self.model_store.load_features_for_model(model_name, log)
-        if "keywords" not in options:
-            raise Exception("keywords are required to log features")
-        request = {"query": options["keywords"],
-                   "filters": [(id_field, doc_ids)], "limit": 500}
-        if log:
-            request["log"] = True
-        logged_docs = self.collection.search(**request)["docs"]
-        for d in logged_docs: 
-            d["[features]"] = {}
-        for feature in model_features:
-            pass
-        return logged_docs
     
-    def get_feature_score(self, doc, feature, field=None):
-        pass
+    def get_explore_candidate(self, query, explore_vector, feature_config, log=False):
+        request = {"query": query or "*",
+                   "limit": 1,
+                   "return_fields": ["upc", "name", "manufacturer", "short_description", "long_description", "has_promotion"],
+                   "order_by": [(f"random_{random()}", "DESC")]}
+        if log: request["log"] = log
+        docs = self.collection.search(**request)["docs"]
+        if log and not docs:
+            print(f"No exploration candidate matching query {query}")
+        return docs
     
     def generate_model(self, model_name, feature_names, means, std_devs, weights):
         linear_model = {"name": model_name,
@@ -87,25 +79,53 @@ class VespaLTR(LTR):
                                               "weight": float(weights[i])}
         return linear_model
     
-    def get_explore_candidate(self, query,
-                              explore_vector, feature_config, log=False):
-        request = {"query": query or "*",
-                   "limit": 1,
-                   "return_fields": ["upc", "name", "manufacturer", "short_description", "long_description", "has_promotion"],
-                   "order_by": [(f"random_{random()}", "DESC")]}
-        if log: request["log"] = log
-        docs = self.collection.search(**request)["docs"]
-        if log and not docs:
-            print(f"No exploration candidate matching query {query}")
-        return docs
+    def get_logged_features(self, model_name, doc_ids, options={},
+                            id_field="id", fields="*", log=False):
+        query_fields = ["title", "overview"] if self.collection.name == "tmdb" else ["short_description", "long_description",
+                                                                                     "has_promotion", "name", "name_fuzzy", "name_bigram",
+                                                                                     "manufacturer"]
+        feature_keys = {"title_bm25": "bm25(title)",
+                        "overview_bm25": "bm25(overview)",
+                        "release_year": "attribute(release_year)",
+                        "short_description_bm25": "bm25(short_description)",
+                        "short_description_constant": "fieldMatch(short_description)",
+                        "short_description_match": "fieldMatch(short_description)",
+                        "long_description_bm25": "bm25(long_description)",
+                        "long_description_match": "fieldMatch(long_description)",
+                        "manufacturer_match": "fieldMatch(manufacturer_match)",
+                        "has_promotion": "fieldMatch(has_promotion)",
+                        "name_match": "fieldMatch(name)",
+                        "name_fuzzy": "fieldMatch(name_fuzzy)",
+                        "name_bigram": "fieldMatch(name_bigram)",
+                        "short_description_bigram": "fieldMatch(short_description_bigram)"}
+        model_features = self.model_store.load_features_for_model(model_name, log)
+        if "keywords" not in options:
+            raise Exception("keywords are required to log features")
+        request = {"query": options["keywords"],
+                   #"return_fields": fields,
+                   "query_fields": query_fields,
+                   "filters": [(id_field, doc_ids)], "limit": 400,
+                   "ranking_profile": "with_features"} #400 is maximum returnable docs in Vespa}
+        if log:
+            request["log"] = True
+
+        logged_docs = self.collection.search(**request)["docs"]
+
+        for d in logged_docs: 
+            d["[features]"] = {}
+            for feature in model_features:
+                d["[features]"][feature["name"]] = d["summaryfeatures"][feature_keys[feature["name"]]]
+            d.pop("summaryfeatures", None)
+              
+        return logged_docs
 
     def search_with_model(self, model_name, **search_args):
-        id_field = "id" if "products" in self.collection.name else "upc"
+        id_field = "upc" if "products" in self.collection.name else "id"
         ltr_model_data = self.model_store.load_model(model_name)
         limit = search_args.get("limit", 25)
         search_args["limit"] =  limit * 10
         response = self.collection.search(**search_args)
-        keyed_docs = {d[id_field]: d for d in response["docs"]}
+        keyed_docs = {str(d[id_field]): d for d in response["docs"]}
         query_options = {"keywords": search_args.get("query", "*")}
         logged_docs = self.get_logged_features(model_name, list(keyed_docs.keys()),
                                                options=query_options, id_field=id_field)

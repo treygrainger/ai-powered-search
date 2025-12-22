@@ -63,7 +63,7 @@ async def async_write(collection, doc, retries=3):
             return True
         except Exception as ex:
             print(str(retries) + "  " + str(ex))
-            print(response.content)
+            print(response.json())
             retries -= 1
             time.sleep(5)
 
@@ -72,18 +72,24 @@ async def write_all_async(collection, docs, batch_size=1000):
         print(f"writing {i}")
         await asyncio.gather(*[async_write(collection, d) for d in docs[i * batch_size:(i + 1) * batch_size]])
 
+def format_query_value(value):
+    if isinstance(value, str) and value.lower() not in ["true", "false"]:
+        value = f'"{value}"'
+    return value
+
 class VespaCollection(Collection):
     def __init__(self, name, vespa_url=config.VESPA_URL):
         self.vespa_url = vespa_url
         self.namespace = config.DEFAULT_NAMESPACE
         super().__init__(name)
 
-    def write(self, dataframe, overwrite=False):
-        
+    def write(self, dataframe, overwrite=False):        
         print(f"\nWriting {dataframe.count()} documents to '{self.name}' collection")
+
         if overwrite:
             url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}"
             response = requests.delete(url)
+
         docs = [d.asDict() for d in dataframe.collect()]
 
         with ThreadPoolExecutor() as pool:
@@ -109,9 +115,10 @@ class VespaCollection(Collection):
             request = {"yql": f"select * from {self.name} where true limit 0", "hits": 0}
             response = requests.post(f"{self.vespa_url}/search/", json=request, 
                                      headers={"Content-Type": "application/json"})
+            result = response.json()
+            print(result)
             if response.status_code != 200:
                 return 0
-            result = response.json()
             return result.get("root", {}).get("fields", {}).get("totalCount", 0)
         except Exception as ex:
             print(f"Error getting document count: {ex}")
@@ -123,13 +130,12 @@ class VespaCollection(Collection):
     def is_query_by_id(self, search_args):
         return "query_fields" in search_args and \
                len(search_args.get("query_fields", [])) == 1 and \
-               search_args["query_fields"][0] in ["id", "documentid"]
+               search_args["query_fields"][0] in ["id", "upc"]
     
     def is_bm25_search(self, search_args):
         return "query" in search_args and \
             search_args["query"] not in ["", "*", None] and \
-            not is_vector_search(search_args) and \
-            not self.is_query_by_id(search_args)
+            not is_vector_search(search_args)
     
     def generate_filter_clause(self, search_args):
         conditions = []
@@ -141,12 +147,12 @@ class VespaCollection(Collection):
                 field = field.lstrip("-")
                 
                 if isinstance(value, list):
-                    or_conditions = " OR ".join([f'{field} = "{v}"' for v in value])
+                    or_conditions = " OR ".join([f'{field} = {format_query_value(v)}' for v in value])
                     conditions.append(f"({or_conditions})")
                 elif value == "*":
                     conditions.append(f'{field} matches ".*"')
                 else:
-                    conditions.append(f'{field} {operator} "{value}"')
+                    conditions.append(f'{field} {operator} {format_query_value(value)}')
         
         return " AND ".join(conditions) if conditions else None
         
@@ -212,20 +218,18 @@ class VespaCollection(Collection):
             vector = search_args.get("query")
             pass
         
-        elif self.is_bm25_search(search_args):
-            query = self.generate_bm25_query(search_args)
+
+        if self.is_query_by_id(search_args):
+            field = search_args["query_fields"][0]
+            values = ", ".join(f"'{s}'" for s in search_args["query"].split(" "))
+            where_conditions.append(f'{field} in ({values})')
+        else:
+            #elif self.is_bm25_search(search_args):
+            query = self.generate_bm25_query(search_args)            
             query_fields = self.generate_query_fields(search_args)
-            
             if query_fields:
                 field_conditions = [f'{field} contains "{query}"' for field in query_fields]
                 where_conditions.append(f"weakAnd({', '.join(field_conditions)})")
-
-        elif self.is_query_by_id(search_args):
-            query_fields = self.generate_query_fields(search_args)
-            if query_fields:
-                field = query_fields[0]
-                value = search_args.get("query", "")
-                where_conditions.append(f'{field} = "{value}"')
         
         filter_clause = self.generate_filter_clause(search_args)
         if filter_clause:
@@ -242,6 +246,11 @@ class VespaCollection(Collection):
         yql += f" limit {limit}"
 
         request = {"hits": limit, "yql": yql}
+        #request["model.filter"] 
+
+        if "ranking_profile" in search_args:
+            request["ranking"] = {"profile": search_args["ranking_profile"]} # , "listFeatures": True
+
         if search_args.get("explain", False):
             request["tracelevel"] = 1
         
@@ -272,8 +281,7 @@ class VespaCollection(Collection):
         
     def native_search(self, request=None, data=None):
         response = requests.post(f"{self.vespa_url}/search/", json=request,
-                                 headers={"Content-Type": "application/json"})
-        response.raise_for_status()
+                                 headers={"Content-Type": "application/json"})        
         return response.json()
     
     def spell_check(self, query, log=False):

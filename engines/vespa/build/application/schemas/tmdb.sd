@@ -1,21 +1,63 @@
 schema tmdb {
     document tmdb {
-        field id type string {
+        field id type long {
             indexing: summary | attribute
         }
 
         field title type string {
             indexing: summary | index | attribute
+            index: enable-bm25
             match: text
         }
 
         field overview type string {
             indexing: summary | index | attribute
+            index: enable-bm25
             match: text
         }
 
-        field release_year type double {
+        field tagline type string {
+            indexing: summary | index | attribute
+        }
+
+        field directors type array<string> {
+            indexing: summary | index | attribute
+        }
+
+        field cast type string {
+            indexing: summary | index | attribute
+        }
+
+        field genres type array<string> {
+            indexing: summary | index | attribute
+        }
+
+        field release_date type string {
+            indexing: summary | index | attribute
+        }
+
+        field release_year type int {
             indexing: summary | attribute
+        }
+
+        field poster_file type string {
+            indexing: summary | index | attribute
+        }
+
+        field poster_path type string {
+            indexing: summary | index | attribute
+        }
+
+        field vote_average type float {
+            indexing: summary | attribute
+        }
+
+        field vote_count type int {
+            indexing: summary |  attribute
+        }
+
+        field movie_image_ids type string {
+            indexing: summary | index | attribute
         }
     }
 
@@ -24,14 +66,13 @@ schema tmdb {
     }
 
     rank-profile default {
-        first-phase {
-            expression: nativeRank(title, overview)
-        }
     }
 
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(title) + bm25(overview)
+    rank-profile with_features inherits default {
+        summary-features {
+            bm25(title)
+            bm25(overview)
+            attribute(release_year)
         }
     }
 }

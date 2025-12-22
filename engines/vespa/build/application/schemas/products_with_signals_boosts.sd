@@ -9,11 +9,6 @@ schema products_with_signals_boosts {
             indexing: summary | index | attribute
             match: text
         }
-        
-        field name_fuzzy type string {
-            indexing: summary | index
-            match: text
-        }
 
         field short_description type string {
             indexing: summary | index | attribute
@@ -51,4 +46,5 @@ schema products_with_signals_boosts {
             expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer) + bm25(signals_boosts)
         }
     }
+
 }

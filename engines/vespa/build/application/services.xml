@@ -8,8 +8,22 @@
         <min-redundancy>1</min-redundancy>
         <documents>
             <document type="cat_in_the_hat" mode="index"/>
+            <document type="cooking" mode="index"/>
+            <document type="devops" mode="index"/>
+            <document type="health" mode="index"/>
+            <document type="jobs" mode="index"/>
+            <document type="outdoors" mode="index"/>
+            <document type="outdoors_with_embeddings" mode="index"/>
             <document type="products" mode="index"/>
+            <document type="products_with_promotions" mode="index"/>
+            <document type="products_with_signals_boosts" mode="index"/>
+            <document type="scifi" mode="index"/>
             <document type="signals" mode="index"/>
+            <document type="signals_boosting" mode="index"/>
+            <document type="stackexchange" mode="index"/>
+            <document type="tmdb" mode="index"/>
+            <document type="tmdb_lexical_plus_embeddings" mode="index"/>
+            <document type="travel" mode="index"/>
         </documents>
         <nodes>
             <node hostalias="node1" distribution-key="0" />
