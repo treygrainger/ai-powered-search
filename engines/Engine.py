@@ -37,6 +37,7 @@ class Engine(ABC):
         document_count = self.get_collection(name).get_document_count()
         if log: print(f"Documents [{document_count} / {expected_count}]")
         
+        #expected_count = [expected_count] if isinstance(expected_count, int) else expected_count
         return collection_exists and document_count == expected_count    
 
     @abstractmethod

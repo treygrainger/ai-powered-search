@@ -81,9 +81,11 @@ class VespaLTR(LTR):
     
     def get_logged_features(self, model_name, doc_ids, options={},
                             id_field="id", fields="*", log=False):
-        query_fields = ["title", "overview"] if self.collection.name == "tmdb" else ["short_description", "long_description",
-                                                                                     "has_promotion", "name", "name_fuzzy", "name_bigram",
-                                                                                     "manufacturer"]
+        if self.collection.name == "tmdb":
+            query_fields = ["title", "overview"]
+        else:
+            query_fields = ["short_description", "long_description", "has_promotion",
+                            "name", "name_fuzzy", "name_bigram", "manufacturer"]
         feature_keys = {"title_bm25": "bm25(title)",
                         "overview_bm25": "bm25(overview)",
                         "release_year": "attribute(release_year)",

@@ -43,7 +43,7 @@ schema outdoors {
             match: text
         }
 
-        field tags type string {
+        field tags type array<string> {
             indexing: summary | index | attribute
         }
 
