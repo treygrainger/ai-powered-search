@@ -1,5 +1,9 @@
 schema outdoors_with_embeddings {
     document outdoors_with_embeddings {
+        field id type int {
+            indexing: summary | attribute
+        }
+
         field title type string {
             indexing: summary | index | attribute
             match: text
@@ -35,7 +39,7 @@ schema outdoors_with_embeddings {
         }
     }
 
-    rank-profile vector_similarity {
+    rank-profile outdoors_with_embeddings_vector_similarity {
         inputs {
             query(query_vector) tensor<float>(x[768])
         }
@@ -44,7 +48,7 @@ schema outdoors_with_embeddings {
         }
     }
 
-    rank-profile hybrid inherits vector_similarity {
+    rank-profile hybrid inherits outdoors_with_embeddings_vector_similarity {
         first-phase {
             expression: bm25(title) + closeness(field, title_embedding)
         }

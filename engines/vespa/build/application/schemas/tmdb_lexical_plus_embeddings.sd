@@ -1,5 +1,9 @@
 schema tmdb_lexical_plus_embeddings {
     document tmdb_lexical_plus_embeddings {
+        field id type long {
+            indexing: summary | attribute
+        }
+        
         field title type string {
             indexing: summary | index | attribute
             match: text
@@ -48,7 +52,7 @@ schema tmdb_lexical_plus_embeddings {
         }
     }
 
-    rank-profile vector_similarity {
+    rank-profile tmdb_lexical_plus_embeddings_vector_similarity {
         inputs {
             query(query_vector) tensor<float>(x[512])
         }
@@ -57,9 +61,9 @@ schema tmdb_lexical_plus_embeddings {
         }
     }
 
-    rank-profile hybrid inherits vector_similarity {
+    rank-profile hybrid inherits tmdb_lexical_plus_embeddings_vector_similarity {
         first-phase {
-            expression: bm25(title) + bm25(overview) + closeness(field, image_embedding)
+            expression: bm25(title) + closeness(field, image_embedding)
         }
     }
 }

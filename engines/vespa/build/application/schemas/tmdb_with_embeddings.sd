@@ -1,5 +1,9 @@
 schema tmdb_with_embeddings {
     document tmdb_with_embeddings {
+        field id type long {
+            indexing: summary | attribute
+        }
+        
         field title type string {
             indexing: summary | index | attribute
             match: text
@@ -37,7 +41,7 @@ schema tmdb_with_embeddings {
         }
     }
 
-    rank-profile vector_similarity {
+    rank-profile tmdb_with_embeddings_vector_similarity {
         inputs {
             query(query_vector) tensor<float>(x[512])
         }
@@ -46,7 +50,7 @@ schema tmdb_with_embeddings {
         }
     }
 
-    rank-profile hybrid inherits vector_similarity {
+    rank-profile hybrid inherits tmdb_with_embeddings_vector_similarity {
         first-phase {
             expression: nativeRank(title) + closeness(field, image_embedding)
         }

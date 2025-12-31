@@ -122,7 +122,7 @@ class VespaCollection(Collection):
             return result.get("root", {}).get("fields", {}).get("totalCount", 0)
         except Exception as ex:
             print(f"Error getting document count: {ex}")
-            return 0
+            raise
 
     def get_engine_name(self):
         return "vespa"
@@ -156,7 +156,7 @@ class VespaCollection(Collection):
         
         return " AND ".join(conditions) if conditions else None
         
-    def generate_sort_clause(self, search_args):
+    def generate_order_by_clause(self, search_args):
         if "order_by" not in search_args:
             return None
             
@@ -214,15 +214,22 @@ class VespaCollection(Collection):
         limit = search_args.get("limit", DEFAULT_SEARCH_SIZE)        
         where_conditions = []
         
+        request = {"hits": limit, "offset": search_args.get("offset") or 0}
+
         if is_vector_search(search_args):
             vector = search_args.get("query")
             pass
-        
 
         if self.is_query_by_id(search_args):
             field = search_args["query_fields"][0]
             values = ", ".join(f"'{s}'" for s in search_args["query"].split(" "))
             where_conditions.append(f'{field} in ({values})')
+        elif is_vector_search(search_args):
+            field = search_args["query_fields"][0]
+            request["ranking"] = f"{self.name}_vector_similarity"
+            vector_string = ",".join(str(s) for s in search_args["query"])
+            request["input.query(query_vector)"] = f"[{vector_string}]"
+            where_conditions.append("{targetHits: 100}" + f"nearestNeighbor({field}, query_vector)")
         else:
             #elif self.is_bm25_search(search_args):
             query = self.generate_bm25_query(search_args)            
@@ -238,18 +245,11 @@ class VespaCollection(Collection):
             where_conditions.append("true")
         
         where_clause = " AND ".join(where_conditions)
-        order_by_clause = self.generate_sort_clause(search_args)
-        yql = f"select {select_fields} from {self.name} where {where_clause}"
+        request["yql"] = f"select {select_fields} from {self.name} where {where_clause}"
         
+        order_by_clause = self.generate_order_by_clause(search_args)
         if order_by_clause:
-            yql += f" order by {order_by_clause}"
-        yql += f" limit {limit}"
-
-        request = {"hits": limit, "yql": yql}
-        #request["model.filter"] 
-
-        if "ranking_profile" in search_args:
-            request["ranking"] = {"profile": search_args["ranking_profile"]} # , "listFeatures": True
+            request["yql"] += f" order by {order_by_clause}"
 
         if search_args.get("explain", False):
             request["tracelevel"] = 1
@@ -258,29 +258,25 @@ class VespaCollection(Collection):
     
     def transform_response(self, search_response):
         docs = []
-        
         if "root" in search_response and "children" in search_response["root"]:
             for child in search_response["root"]["children"]:
-                doc = child.get("fields", {}).copy()
-                
-                # Add relevance score
+                doc = child.get("fields", {}).copy()                
                 doc["score"] = child.get("relevance", 0.0)
-                
-                # Extract document ID from Vespa format
-                # Format: "id:namespace:doctype::actualid"
                 vespa_id = child.get("id", "")
                 if "::" in vespa_id:
                     doc["id"] = vespa_id.split("::")[-1]
                 elif "id" not in doc:
                     doc["id"] = vespa_id
+                    
+                for field in doc.keys(): #flatten complex types
+                    if isinstance(doc[field], dict) and "tensor" in doc[field].get("type", ""):
+                        doc[field] = doc[field]["values"]
                 
                 docs.append(doc)
-        
-        response = {"docs": docs}
-        return response
+        return {"docs": docs}
         
     def native_search(self, request=None, data=None):
-        response = requests.post(f"{self.vespa_url}/search/", json=request,
+        response = requests.post(f"{self.vespa_url}/search?queryProfile=standard", json=request,
                                  headers={"Content-Type": "application/json"})        
         return response.json()
     
@@ -288,20 +284,20 @@ class VespaCollection(Collection):
         return {}
     
     def create_view_from_collection(self, view_name, spark, log=False):
-        request = {"return_fields": "*", "limit": 1000}
+        request = {"query": "*", "return_fields": "*", "limit": 1000, "offset": 0}
+        if log:
+            request["log"] = True
         all_documents = []
         
         try:
-            page = 0
             while True:
                 if log:
-                    print(f"Fetching page {page}...")                
+                    print(f'Fetching from offset {request["offset"]}...')                
                 docs = self.search(**request)["docs"]
                 all_documents.extend(docs)                
                 if len(docs) < request["limit"]:
                     break
-                page += 1
-                request["offset"] = page * request["limit"]                    
+                request["offset"] += request["limit"]                    
         except Exception as ex:
             print(f"Create view exception: {ex}")
         

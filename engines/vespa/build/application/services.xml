@@ -22,6 +22,7 @@
             <document type="signals_boosting" mode="index"/>
             <document type="stackexchange" mode="index"/>
             <document type="tmdb" mode="index"/>
+            <document type="tmdb_with_embeddings" mode="index"/>
             <document type="tmdb_lexical_plus_embeddings" mode="index"/>
             <document type="travel" mode="index"/>
         </documents>
