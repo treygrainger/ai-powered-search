@@ -25,26 +25,18 @@ schema products_with_signals_boosts {
             match: text
         }
 
-        field signals_boosts type string {
-            indexing: summary | index
-            match: text
+        field signals_boosts type weightedset<string> {
+            indexing: attribute | summary
         }
     }
 
     fieldset default {
-        fields: name, short_description, long_description, manufacturer, signals_boosts
+        fields: name, short_description, long_description, manufacturer
     }
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(name, short_description, long_description, manufacturer, signals_boosts)
+            expression: nativeRank(name, short_description, long_description, manufacturer)
         }
     }
-
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer) + bm25(signals_boosts)
-        }
-    }
-
 }

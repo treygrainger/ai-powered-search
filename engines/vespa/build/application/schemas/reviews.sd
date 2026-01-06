@@ -57,10 +57,4 @@ schema reviews {
             expression: nativeRank(content, categories, business_name, name)
         }
     }
-
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(content) + bm25(categories) + bm25(business_name) + bm25(name)
-        }
-    }
 }

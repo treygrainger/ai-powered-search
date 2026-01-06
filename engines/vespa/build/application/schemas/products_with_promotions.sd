@@ -61,12 +61,6 @@ schema products_with_promotions {
         }
     }
 
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer)
-        }
-    }
-
     rank-profile with_features{
         summary-features {
             bm25(short_description)

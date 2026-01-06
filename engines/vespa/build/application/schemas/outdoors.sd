@@ -65,10 +65,4 @@ schema outdoors {
             expression: nativeRank(title, body, tags)
         }
     }
-
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(title) + bm25(body) + bm25(tags)
-        }
-    }
 }

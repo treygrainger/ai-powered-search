@@ -58,42 +58,48 @@ dataset_info = {
              "loader_fn": from_csv,
              "loader_args": {"additional_columns": {"category": "jobs"},
                              "drop_id": True,
-                             "multiline_csv": True},
+                             "multiline_csv": True,
+                             "desired_columns": ["title", "body"]},
              "feature_requirement": AdvancedFeatures.SKG},
     "health": {"url": "https://github.com/ai-powered-search/health.git",
                "count": 12892,
                "loader_fn": from_csv,
                "data_file_name": "posts.csv",
                "loader_args": {"additional_columns": {"category": "health"},
-                               "drop_id": True},
+                               "drop_id": True,
+                               "desired_columns": ["title", "body"]},
                "feature_requirement": AdvancedFeatures.SKG},
     "cooking": {"url": "https://github.com/ai-powered-search/cooking.git",
                 "count": 79324,
                 "loader_fn": from_csv,
                 "data_file_name": "posts.csv",
                 "loader_args": {"additional_columns": {"category": "cooking"},
-                                "drop_id": True},
+                                "drop_id": True,
+                                "desired_columns": ["title", "body"]},
                 "feature_requirement": AdvancedFeatures.SKG},
     "scifi": {"url": "https://github.com/ai-powered-search/scifi.git",
               "count": 177547,
               "loader_fn": from_csv,
               "data_file_name": "posts.csv",
               "loader_args": {"additional_columns": {"category": "scifi"},
-                              "drop_id": True},
+                              "drop_id": True,
+                              "desired_columns": ["title", "body"]},
                "feature_requirement": AdvancedFeatures.SKG},
     "travel": {"url": "https://github.com/ai-powered-search/travel.git",
                "count": 111130,
                "loader_fn": from_csv,
                "data_file_name": "posts.csv",
                "loader_args": {"additional_columns": {"category": "travel"},
-                               "drop_id": True},
+                               "drop_id": True,
+                               "desired_columns": ["title", "body"]},
                "feature_requirement": AdvancedFeatures.SKG},
     "devops": {"url": "https://github.com/ai-powered-search/devops.git",
                "count": 9216,
                "loader_fn": from_csv,
                "data_file_name": "posts.csv",
                "loader_args": {"additional_columns": {"category": "devops"},
-                               "drop_id": True},
+                               "drop_id": True,
+                               "desired_columns": ["title", "body"]},
                "feature_requirement": AdvancedFeatures.SKG},
     "stackexchange": {"source_datasets": ["health", "cooking", "scifi", "travel", "devops"],
                       "feature_requirement": AdvancedFeatures.SKG},
@@ -156,15 +162,15 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
         engines.append(get_local_engine(log=log))
     for engine in engines:
         if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, log=log):
-            if log: print(f"Reindexing [{dataset}] collection")
+            if log: print(f"Reindexing [{dataset}] collection into {engine.name}")
             collection = engine.create_collection(dataset, log=log)
             local_engine_collection = None
             overwrite = len(source_datasets) == 1
-            for dataset in source_datasets:
-                csv_file_path = download_data_files(dataset, log=log)
-                loader_args = dataset_info[dataset].get("loader_args", {})
-                dataframe = dataset_info[dataset]["loader_fn"](csv_file_path, **loader_args)
-                if dataset_info[dataset].get("enable_ltr", False):
+            for source_dataset in source_datasets:
+                csv_file_path = download_data_files(source_dataset, log=log)
+                loader_args = dataset_info[source_dataset].get("loader_args", {})
+                dataframe = dataset_info[source_dataset]["loader_fn"](csv_file_path, **loader_args)
+                if dataset_info[source_dataset].get("enable_ltr", False):
                     get_ltr_engine(collection).enable_ltr()
                 collection.write(dataframe, overwrite=overwrite)
                 if local_engine_collection:

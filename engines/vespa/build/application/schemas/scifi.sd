@@ -20,10 +20,4 @@ schema scifi {
             expression: nativeRank(title, body)
         }
     }
-
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(title) + bm25(body)
-        }
-    }
 }

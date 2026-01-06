@@ -33,12 +33,6 @@ schema outdoors_with_embeddings {
         }
     }
 
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(title)
-        }
-    }
-
     rank-profile outdoors_with_embeddings_vector_similarity {
         inputs {
             query(query_vector) tensor<float>(x[768])

@@ -1,8 +1,8 @@
 schema signals_boosting {
     document signals_boosting {
         field query type string {
-            indexing: summary | attribute
-            match: word
+            indexing: summary | index | attribute
+            match: text
         }
 
         field doc type string {
@@ -16,12 +16,12 @@ schema signals_boosting {
     }
 
     fieldset default {
-        fields: query, doc
+        fields: query, doc, boost
     }
 
     rank-profile default {
         first-phase {
-            expression: attribute(boost)
+            expression: nativeRank(query)
         }
     }
 }

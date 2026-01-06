@@ -21,12 +21,6 @@ schema cat_in_the_hat {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(title, description)
-        }
-    }
-
-    rank-profile bm25 inherits default {
-        first-phase {
             expression: bm25(title) + bm25(description)
         }
     }

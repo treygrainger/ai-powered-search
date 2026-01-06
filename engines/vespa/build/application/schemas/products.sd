@@ -40,10 +40,4 @@ schema products {
             expression: nativeRank(name, short_description, long_description, manufacturer)
         }
     }
-
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer)
-        }
-    }
 }

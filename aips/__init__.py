@@ -30,7 +30,7 @@ ltr_engine_map = {"solr": SolrLTR,
 
 sparse_semantic_search_engine_map = {"solr": SolrSparseSemanticSearch,
                                      "opensearch": OpenSearchSparseSemanticSearch,
-                                     "vepsa": VespaSparseSemanticSearch,
+                                     "vespa": VespaSparseSemanticSearch,
                                      "weaviate": WeaviateSparseSemanticSearch}
 
 def get_engine(override=None, host_override=None):
@@ -50,18 +50,18 @@ def get_ltr_engine(collection):
 
 def get_local_engine(log=False):
     engine = get_engine("solr", "localhost")
-    if not engine.health_check(log):
+    if not engine.health_check(log=log):
         if log: print("Initializing server")
-        environment.shutdown_semantic_engine(log)
+        environment.shutdown_semantic_engine(log=log)
         environment.initialize_local_semantic_engine(log=log)
-        healthy = engine.health_check(retries=2)
+        healthy = engine.health_check(retries=2, log=log)
         if log: print("Localized engine initialized" if healthy else "Localized engine failed to initialized")
     return engine
 
 def get_semantic_engine(feature, log=False):
     if feature in get_engine().get_supported_advanced_features():
         return get_engine()
-    return get_local_engine(log)
+    return get_local_engine(log=log)
 
 def get_sparse_semantic_search():
     return sparse_semantic_search_engine_map[get_engine().name.lower()]()

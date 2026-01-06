@@ -1,17 +1,20 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import datetime
+import functools
 import random
 import threading
 from typing import Any, Coroutine
 import httpx
 import requests
 from aips.spark import get_spark_session
+from aips.spark.dataframe import from_sql
 from engines.Collection import Collection, is_vector_search, DEFAULT_SEARCH_SIZE, DEFAULT_NEIGHBORS
 import engines.vespa.config as config
 import time
 import json
 from pyspark.sql import Row
+from pyspark.sql.functions import col, udf, collect_list, create_map
   
 def run_coroutine_sync(coroutine, collection, docs):
     def run_in_new_loop():
@@ -43,14 +46,17 @@ def format_document_for_writing(doc):
     #{k: int(v.timestamp()) if isinstance(v, datetime.datetime) else v for k, v in doc.items()}
     for field, value in doc.items():
         if isinstance(value, datetime.datetime):
-            value = int(value.timestamp())
-        doc[field] = value
+            doc[field] = int(value.timestamp())
+        elif field == "location_coordinates":
+            if not isinstance(value, dict):
+                (lat, lon) = (value or "0,0").split(",")
+                doc[field] = {"lat": float(lat), "lng": float(lon)}
     return doc
 
 def get_document_id(doc):
     return doc.get("id", doc.get("upc", str(hash(json.dumps(doc, sort_keys=True)))))
 
-async def async_write(collection, doc, retries=3):
+async def async_write(collection, doc, retries=0):
     while retries >= 0:
         response = None
         try:
@@ -61,11 +67,17 @@ async def async_write(collection, doc, retries=3):
             response = await client.post(url, json=json_document, headers={"Content-Type": "application/json"})
             response.raise_for_status()
             return True
+        except RuntimeError as ex:
+            raise
         except Exception as ex:
-            print(str(retries) + "  " + str(ex))
-            print(response.json())
             retries -= 1
-            time.sleep(5)
+            #if retries < 0:
+            if response:
+                print(response.json())
+            print("Error writing batch: " + str(ex))
+            print(type(ex))
+            raise
+            time.sleep(2.5)            
 
 async def write_all_async(collection, docs, batch_size=1000):
     for i in range(int(len(docs) / batch_size) + 1):
@@ -89,20 +101,12 @@ class VespaCollection(Collection):
         if overwrite:
             url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}"
             response = requests.delete(url)
-
+            
         docs = [d.asDict() for d in dataframe.collect()]
 
-        with ThreadPoolExecutor() as pool:
-            def run_in_new_loop():
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
-                try:
-                    return new_loop.run_until_complete(write_all_async(self, docs))
-                finally:
-                    new_loop.close()
-                    
-            future = pool.submit(run_in_new_loop)
-            return future.result()
+        loop = asyncio.get_event_loop()     
+        write_task = loop.create_task(write_all_async(self, docs))
+        #Somehow wait for the task without blocking current event loop...
         
         print(f"Successfully written {dataframe.count()} documents")
         self.commit()
@@ -116,13 +120,12 @@ class VespaCollection(Collection):
             response = requests.post(f"{self.vespa_url}/search/", json=request, 
                                      headers={"Content-Type": "application/json"})
             result = response.json()
-            print(result)
             if response.status_code != 200:
                 return 0
             return result.get("root", {}).get("fields", {}).get("totalCount", 0)
         except Exception as ex:
             print(f"Error getting document count: {ex}")
-            raise
+            return 0
 
     def get_engine_name(self):
         return "vespa"
@@ -232,6 +235,7 @@ class VespaCollection(Collection):
             where_conditions.append("{targetHits: 100}" + f"nearestNeighbor({field}, query_vector)")
         else:
             #elif self.is_bm25_search(search_args):
+            #"yql": "select * from reviews where content contains ({weight:65}\"banchan\" or content contains ({weight:54}\"bulgogi\"))"
             query = self.generate_bm25_query(search_args)            
             query_fields = self.generate_query_fields(search_args)
             if query_fields:
@@ -281,6 +285,8 @@ class VespaCollection(Collection):
         return response.json()
     
     def spell_check(self, query, log=False):
+        #https://docs.vespa.ai/en/ranking/reranking-in-searcher.html
+        #https://hunspell.github.io/
         return {}
     
     def create_view_from_collection(self, view_name, spark, log=False):
@@ -311,4 +317,10 @@ class VespaCollection(Collection):
             print(f"Warning: No documents found in collection {self.name}")
     
     def load_index_time_boosting_dataframe(self, boosts_collection_name, boosted_products_collection_name):
-        pass
+        product_query = f"SELECT * FROM {boosted_products_collection_name}"
+        boosts_query = f"SELECT doc, boost, REPLACE(query, '.', '') AS query FROM {boosts_collection_name}"
+
+        grouped_boosts = from_sql(boosts_query).groupBy("doc") \
+            .agg(collect_list(create_map("query", "boost"))[0].alias("signals_boosts")) \
+            .withColumnRenamed("doc", "upc")
+        return from_sql(product_query).join(grouped_boosts, "upc")

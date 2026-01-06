@@ -46,12 +46,6 @@ schema tmdb_lexical_plus_embeddings {
         }
     }
 
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(title) + bm25(overview)
-        }
-    }
-
     rank-profile tmdb_lexical_plus_embeddings_vector_similarity {
         inputs {
             query(query_vector) tensor<float>(x[512])

@@ -25,10 +25,4 @@ schema jobs {
             expression: nativeRank(company_country, job_description, company_description)
         }
     }
-
-    rank-profile bm25 inherits default {
-        first-phase {
-            expression: bm25(company_country) + bm25(job_description) + bm25(company_description)
-        }
-    }
 }

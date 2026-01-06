@@ -10,6 +10,7 @@
             <document type="cat_in_the_hat" mode="index"/>
             <document type="cooking" mode="index"/>
             <document type="devops" mode="index"/>
+            <document type="entities" mode="index"/>
             <document type="health" mode="index"/>
             <document type="jobs" mode="index"/>
             <document type="outdoors" mode="index"/>
@@ -17,6 +18,7 @@
             <document type="products" mode="index"/>
             <document type="products_with_promotions" mode="index"/>
             <document type="products_with_signals_boosts" mode="index"/>
+            <document type="reviews" mode="index"/>
             <document type="scifi" mode="index"/>
             <document type="signals" mode="index"/>
             <document type="signals_boosting" mode="index"/>
@@ -29,5 +31,16 @@
         <nodes>
             <node hostalias="node1" distribution-key="0" />
         </nodes>
+        <engine>
+            <proton>
+                <tuning>
+                    <searchnode>
+                        <feeding>
+                            <concurrency>0.95</concurrency>
+                        </feeding>
+                    </searchnode>
+                </tuning>
+            </proton>
+        </engine>
     </content>
 </services>
