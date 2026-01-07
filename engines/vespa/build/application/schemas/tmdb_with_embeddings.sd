@@ -24,8 +24,8 @@ schema tmdb_with_embeddings {
             }
             index {
                 hnsw {
-                    max-links-per-node: 16
-                    neighbors-to-explore-at-insert: 200
+                    max-links-per-node: 24
+                    neighbors-to-explore-at-insert: 128
                 }
             }
         }
@@ -37,7 +37,7 @@ schema tmdb_with_embeddings {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(title)
+            expression: bm25(title)
         }
     }
 
@@ -52,7 +52,7 @@ schema tmdb_with_embeddings {
 
     rank-profile hybrid inherits tmdb_with_embeddings_vector_similarity {
         first-phase {
-            expression: nativeRank(title) + closeness(field, image_embedding)
+            expression: bm25(title) + closeness(field, image_embedding)
         }
     }
 }

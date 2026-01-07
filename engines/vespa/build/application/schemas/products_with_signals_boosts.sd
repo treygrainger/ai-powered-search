@@ -36,7 +36,7 @@ schema products_with_signals_boosts {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(name, short_description, long_description, manufacturer)
+            expression: bm25(name, short_description, long_description, manufacturer)
         }
     }
 }

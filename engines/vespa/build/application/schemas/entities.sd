@@ -48,7 +48,7 @@ schema entities {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(name)
+            expression: bm25(name)
         }
     }
 }

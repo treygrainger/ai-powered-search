@@ -31,7 +31,7 @@ schema signals {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(user, type, target)
+            expression: bm25(user, type, target)
         }
     }
 }

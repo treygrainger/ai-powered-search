@@ -17,7 +17,7 @@ schema travel {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(title, body)
+            expression: bm25(title, body)
         }
     }
 }

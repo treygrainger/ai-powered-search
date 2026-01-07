@@ -54,7 +54,7 @@ schema reviews {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(content, categories, business_name, name)
+            expression: bm25(content, categories, business_name, name)
         }
     }
 }

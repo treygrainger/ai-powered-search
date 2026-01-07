@@ -62,7 +62,7 @@ schema outdoors {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(title, body, tags)
+            expression: bm25(title, body, tags)
         }
     }
 }

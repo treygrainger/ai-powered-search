@@ -22,7 +22,7 @@ schema jobs {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(company_country, job_description, company_description)
+            expression: bm25(company_country, job_description, company_description)
         }
     }
 }

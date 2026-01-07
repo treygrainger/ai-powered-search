@@ -57,11 +57,11 @@ schema products_with_promotions {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(name, short_description, long_description, manufacturer)
+            expression: bm25(name, short_description, long_description, manufacturer)
         }
     }
 
-    rank-profile with_features{
+    rank-profile with_features inherits default{
         summary-features {
             bm25(short_description)
             fieldMatch(short_description)

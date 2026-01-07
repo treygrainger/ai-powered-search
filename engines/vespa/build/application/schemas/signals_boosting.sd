@@ -2,12 +2,10 @@ schema signals_boosting {
     document signals_boosting {
         field query type string {
             indexing: summary | index | attribute
-            match: text
         }
 
         field doc type string {
             indexing: summary | index | attribute
-            match: text
         }
 
         field boost type int {
@@ -21,7 +19,7 @@ schema signals_boosting {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(query)
+            expression: bm25(query)
         }
     }
 }

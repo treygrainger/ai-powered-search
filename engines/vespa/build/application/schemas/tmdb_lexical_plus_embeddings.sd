@@ -29,8 +29,8 @@ schema tmdb_lexical_plus_embeddings {
             }
             index {
                 hnsw {
-                    max-links-per-node: 16
-                    neighbors-to-explore-at-insert: 200
+                    max-links-per-node: 24
+                    neighbors-to-explore-at-insert: 128
                 }
             }
         }
@@ -42,7 +42,7 @@ schema tmdb_lexical_plus_embeddings {
 
     rank-profile default {
         first-phase {
-            expression: nativeRank(title, overview)
+            expression: bm25(title, overview)
         }
     }
 
