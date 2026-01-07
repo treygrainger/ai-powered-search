@@ -1,7 +1,10 @@
 import asyncio
+import math
+from multiprocessing import Process
 from concurrent.futures import ThreadPoolExecutor
 import datetime
 import functools
+import os
 import random
 import threading
 from typing import Any, Coroutine
@@ -14,34 +17,8 @@ import engines.vespa.config as config
 import time
 import json
 from pyspark.sql import Row
-from pyspark.sql.functions import col, udf, collect_list, create_map
+from pyspark.sql.functions import collect_list, create_map
   
-def run_coroutine_sync(coroutine, collection, docs):
-    def run_in_new_loop():
-        new_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(new_loop)
-        try:
-            return new_loop.run_until_complete(coroutine(collection, docs))
-        finally:
-            new_loop.close()
-
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coroutine)
-
-    if threading.current_thread() is threading.main_thread():
-        if not loop.is_running():
-            return loop.run_until_complete(coroutine(collection, docs))
-        else:
-            with ThreadPoolExecutor() as pool:
-                future = pool.submit(run_in_new_loop)
-                return future.result(timeout=30)
-    else:
-        return asyncio.run_coroutine_threadsafe(coroutine, loop).result()
-    
-client = httpx.AsyncClient(http2=True, http1=False, verify=True)
-
 def format_document_for_writing(doc):
     #{k: int(v.timestamp()) if isinstance(v, datetime.datetime) else v for k, v in doc.items()}
     for field, value in doc.items():
@@ -56,44 +33,32 @@ def format_document_for_writing(doc):
 def get_document_id(doc):
     return doc.get("id", doc.get("upc", str(hash(json.dumps(doc, sort_keys=True)))))
 
-async def async_write(collection, doc, retries=0):
-    while retries >= 0:
+def format_query_value(value):
+    if isinstance(value, str) and value.lower() not in ["true", "false"]:
+        value = f'"{value}"'
+    return value
+
+def write_batch(collection, client, documents):    
+    for i, doc in enumerate(documents):
         response = None
         try:
             doc = format_document_for_writing(doc)
             doc_id = get_document_id(doc)
             json_document = {"fields": doc}
             url = f"{collection.vespa_url}/document/v1/{collection.namespace}/{collection.name}/docid/{doc_id}"                    
-            response = await client.post(url, json=json_document, headers={"Content-Type": "application/json"})
+            response = client.post(url, json=json_document, headers={"Content-Type": "application/json"})
             response.raise_for_status()
-            return True
-        except RuntimeError as ex:
-            raise
         except Exception as ex:
-            retries -= 1
-            #if retries < 0:
-            if response:
-                print(response.json())
-            print("Error writing batch: " + str(ex))
-            print(type(ex))
-            raise
-            time.sleep(2.5)            
-
-async def write_all_async(collection, docs, batch_size=1000):
-    for i in range(int(len(docs) / batch_size) + 1):
-        print(f"writing {i}")
-        await asyncio.gather(*[async_write(collection, d) for d in docs[i * batch_size:(i + 1) * batch_size]])
-
-def format_query_value(value):
-    if isinstance(value, str) and value.lower() not in ["true", "false"]:
-        value = f'"{value}"'
-    return value
+            print("Error writing doc: " + str(ex))
+            print(doc)
+            raise     
 
 class VespaCollection(Collection):
     def __init__(self, name, vespa_url=config.VESPA_URL):
         self.vespa_url = vespa_url
         self.namespace = config.DEFAULT_NAMESPACE
         super().__init__(name)
+ 
 
     def write(self, dataframe, overwrite=False):        
         print(f"\nWriting {dataframe.count()} documents to '{self.name}' collection")
@@ -101,13 +66,27 @@ class VespaCollection(Collection):
         if overwrite:
             url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}"
             response = requests.delete(url)
-            
+        
         docs = [d.asDict() for d in dataframe.collect()]
 
-        loop = asyncio.get_event_loop()     
-        write_task = loop.create_task(write_all_async(self, docs))
-        #Somehow wait for the task without blocking current event loop...
-        
+        client = httpx.Client(http2=True, http1=False, verify=True)
+        procs = []
+        workers = os.cpu_count() * (8 if len(docs) > 100000 else 2)
+        workload_size = math.ceil(len(docs) / workers)
+
+        for i in range(workers):
+            p = Process(target=write_batch, args=(self, client, docs[i * workload_size:(i + 1) * workload_size]))
+            p.start()
+
+        for p in procs:
+            p.join()
+
+        for p in procs:
+            p.terminate()
+            del p
+
+        client.close()
+
         print(f"Successfully written {dataframe.count()} documents")
         self.commit()
 
@@ -191,7 +170,11 @@ class VespaCollection(Collection):
         return query
 
     def generate_bm25_query(self, search_args):
-        query = self.parse_query_functions(search_args["query"])
+        query = self.parse_query_functions(search_args.get("query") or "")
+        if query == "*":
+            query = ""
+        if "^" in query:
+            query = self.format_boosts
         return query
 
     def get_collection_field_names(self):
@@ -218,10 +201,9 @@ class VespaCollection(Collection):
         where_conditions = []
         
         request = {"hits": limit, "offset": search_args.get("offset") or 0}
-
-        if is_vector_search(search_args):
-            vector = search_args.get("query")
-            pass
+        
+        if "ranking_profile" in search_args:
+            request["ranking"] = search_args["ranking_profile"]
 
         if self.is_query_by_id(search_args):
             field = search_args["query_fields"][0]
@@ -236,11 +218,14 @@ class VespaCollection(Collection):
         else:
             #elif self.is_bm25_search(search_args):
             #"yql": "select * from reviews where content contains ({weight:65}\"banchan\" or content contains ({weight:54}\"bulgogi\"))"
-            query = self.generate_bm25_query(search_args)            
+            query = self.generate_bm25_query(search_args)
             query_fields = self.generate_query_fields(search_args)
             if query_fields:
-                field_conditions = [f'{field} contains "{query}"' for field in query_fields]
+                field_conditions = [f'{field} contains userQuery()' for field in query_fields]
                 where_conditions.append(f"weakAnd({', '.join(field_conditions)})")
+            elif query:
+                request["model.queryString"] = query
+                where_conditions.append("userQuery()")
         
         filter_clause = self.generate_filter_clause(search_args)
         if filter_clause:

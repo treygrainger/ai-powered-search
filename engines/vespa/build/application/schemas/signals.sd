@@ -31,7 +31,7 @@ schema signals {
 
     rank-profile default {
         first-phase {
-            expression: bm25(user, type, target)
+            expression: bm25(user) + bm25(type) + bm25(target)
         }
     }
 }

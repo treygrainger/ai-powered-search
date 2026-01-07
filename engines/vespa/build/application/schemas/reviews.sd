@@ -54,7 +54,7 @@ schema reviews {
 
     rank-profile default {
         first-phase {
-            expression: bm25(content, categories, business_name, name)
+            expression: bm25(content) + bm25(categories) + bm25(business_name) + bm25(name)
         }
     }
 }

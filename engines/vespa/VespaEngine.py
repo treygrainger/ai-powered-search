@@ -61,8 +61,8 @@ class VespaEngine(Engine):
         except:
             return False
     
-    def deploy_application(self, force_deploy=True, log=False):
-        if not self.is_application_deployed() or force_deploy:
+    def deploy_application(self, force_deploy=False, log=False):
+        if not self.is_application_deployed(log=log) or force_deploy:
             response = requests.post(DEPLOY_URL, headers={"Content-Type": "application/zip"},
                                      data=self.generate_zip_binary())
             if log: print(response, response.json())

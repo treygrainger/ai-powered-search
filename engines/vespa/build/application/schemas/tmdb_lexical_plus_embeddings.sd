@@ -42,7 +42,7 @@ schema tmdb_lexical_plus_embeddings {
 
     rank-profile default {
         first-phase {
-            expression: bm25(title, overview)
+            expression: bm25(title) + bm25(overview)
         }
     }
 
