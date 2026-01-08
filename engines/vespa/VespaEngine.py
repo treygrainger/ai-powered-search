@@ -47,7 +47,7 @@ class VespaEngine(Engine):
         print(json.dumps(response, indent=2))
       
     def generate_zip_binary(self, directory="./engines/vespa/build/application/"): 
-        zip_file = shutil.make_archive("any.zip", 'zip', directory)
+        zip_file = shutil.make_archive("any.zip", "zip", directory)
         with open(zip_file, mode='rb') as file:
             fileContent = file.read()
         os.remove(zip_file)

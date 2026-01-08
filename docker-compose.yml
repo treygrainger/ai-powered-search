@@ -129,12 +129,11 @@ services:
     image: vespaengine/vespa
     container_name: aips-vespa
     hostname: aips-vespa
-    cpuset: "0-24"
     networks:
       - aips-network
     ports: 
-      - 8080:8080
-      - 19071:19071
+      - "8080:8080"
+      - "19071:19071"
 
   zookeeper:
     image: zookeeper:3.5.8
