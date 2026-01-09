@@ -18,16 +18,28 @@ import time
 import json
 from pyspark.sql import Row
 from pyspark.sql.functions import collect_list, create_map
-  
+import dateutil.parser 
+
+def parse_datetime_string(value):
+    if not isinstance(value, str):
+        return None
+    try: 
+        return datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return None
+
 def format_document_for_writing(doc):
     #{k: int(v.timestamp()) if isinstance(v, datetime.datetime) else v for k, v in doc.items()}
     for field, value in doc.items():
-        if isinstance(value, datetime.datetime):
-            doc[field] = int(value.timestamp())
-        elif field == "location_coordinates":
+        if field == "location_coordinates":
             if not isinstance(value, dict):
                 (lat, lon) = (value or "0,0").split(",")
                 doc[field] = {"lat": float(lat), "lng": float(lon)}
+        value_as_datetime = parse_datetime_string(value)
+        if value_as_datetime:
+            value = value_as_datetime
+        if isinstance(value, datetime.datetime):
+            doc[field] = int(value.timestamp())
     return doc
 
 def get_document_id(doc):
@@ -38,6 +50,34 @@ def format_query_value(value):
         value = f'"{value}"'
     return value
 
+def write_batch_asyncio(collection, client, documents):    
+    async def write_async(doc):
+        response = None
+        try:
+            doc = format_document_for_writing(doc)
+            doc_id = get_document_id(doc)
+            json_document = {"fields": doc}
+            url = f"{collection.vespa_url}/document/v1/{collection.namespace}/{collection.name}/docid/{doc_id}"                    
+            response = await client.post(url, json=json_document, headers={"Content-Type": "application/json"})
+            response.raise_for_status()
+        except Exception as ex:
+            print("Error writing document: " + str(ex))
+            if response:
+                print(response)
+                print(response.json())
+            print(doc)
+            raise 
+
+    async def async_write_batch(docs, batch_size=25):
+        for i in range(int(len(docs) / batch_size) + 1):
+            await asyncio.gather(*[write_async(d) for d in docs[i * batch_size:(i + 1) * batch_size]])
+
+    new_loop = asyncio.new_event_loop()
+    try:
+        return new_loop.run_until_complete(async_write_batch(documents))
+    finally:
+        new_loop.close()
+            
 def write_batch(collection, client, documents):    
     for i, doc in enumerate(documents):
         response = None
@@ -49,9 +89,12 @@ def write_batch(collection, client, documents):
             response = client.post(url, json=json_document, headers={"Content-Type": "application/json"})
             response.raise_for_status()
         except Exception as ex:
-            print("Error writing doc: " + str(ex))
+            print("Error writing document: " + str(ex))
+            if response:
+                print(response)
+                print(response.json())
             print(doc)
-            raise     
+            raise  
 
 class VespaCollection(Collection):
     def __init__(self, name, vespa_url=config.VESPA_URL):
@@ -59,7 +102,6 @@ class VespaCollection(Collection):
         self.namespace = config.DEFAULT_NAMESPACE
         super().__init__(name)
  
-
     def write(self, dataframe, overwrite=False):        
         print(f"\nWriting {dataframe.count()} documents to '{self.name}' collection")
 
@@ -77,21 +119,16 @@ class VespaCollection(Collection):
         for i in range(workers):
             p = Process(target=write_batch, args=(self, client, docs[i * workload_size:(i + 1) * workload_size]))
             p.start()
+            procs.append(p)
 
         for p in procs:
             p.join()
-
-        for p in procs:
-            p.terminate()
-            del p
-
-        client.close()
 
         print(f"Successfully written {dataframe.count()} documents")
         self.commit()
 
     def commit(self):
-        time.sleep(2)
+        pass
 
     def get_document_count(self):
         try:
@@ -165,30 +202,41 @@ class VespaCollection(Collection):
     
     def parse_query_functions(self, query):
         # '{!func}query("one") {!func}query("two") {!func}query("three")
-        if query.find("{!func}") != -1:
+        if isinstance(query, str) and query.find("{!func}") != -1:
             query = query.replace('{!func}query("', "").replace(')"', "")
         return query
 
-    def generate_bm25_query(self, search_args):
-        query = self.parse_query_functions(search_args.get("query") or "")
-        if query == "*":
-            query = ""
+    def parse_simple_query_weights(self, query):
+        simple_query = ""
         if "^" in query:
-            query = self.format_boosts
-        return query
+            for query_part in query.split(" "):
+                if "^" in query_part:
+                    token, weight = query_part.split("^")
+                    if "." in weight:
+                        weight = int(float(weight) * 100)
+                    query_part = f"{token}!{weight}"
+                simple_query += f"{query_part} "
+        return simple_query.rstrip()
 
-    def get_collection_field_names(self):
-        try:
-            request = {"yql": f"select * from {self.name} where true limit 1", "hits": 1}
-            response = self.native_search(request)
-            if response.status_code == 200:
-                children = response.json().get("root", {}).get("children", [])
-                if children:
-                    return list(children[0].get("fields", {}).keys())
-        except Exception as ex:
-            print(f"Error getting field names: {ex}")
-        return []
-    
+    def get_index_of_first_query(self, query):
+        if query and isinstance(query, list):
+            for i, q in enumerate(query):
+                q = q["query"] if isinstance(q, dict) else q
+                if "(" not in q: 
+                    return i
+            return 0
+        return None
+
+    def generate_bm25_query(self, search_args):
+        query = search_args.get("query") or ""
+        if isinstance(query, list):
+            i = self.get_index_of_first_query(query)
+            query = query[i] if isinstance(query[i], str) else query[i]["query"]
+        query = self.parse_query_functions(query)
+        if query == "*":
+            query = ""            
+        return self.parse_simple_query_weights(query)
+
     def add_documents(self, docs, commit=True):
         spark = get_spark_session()
         dataframe = spark.createDataFrame(Row(**d) for d in docs)
@@ -220,12 +268,20 @@ class VespaCollection(Collection):
             #"yql": "select * from reviews where content contains ({weight:65}\"banchan\" or content contains ({weight:54}\"bulgogi\"))"
             query = self.generate_bm25_query(search_args)
             query_fields = self.generate_query_fields(search_args)
-            if query_fields:
-                field_conditions = [f'{field} contains userQuery()' for field in query_fields]
-                where_conditions.append(f"weakAnd({', '.join(field_conditions)})")
-            elif query:
+            if query:
                 request["model.queryString"] = query
-                where_conditions.append("userQuery()")
+                clauses = ["userQuery()"]
+                if "query_boosts" in search_args:
+                    request["query_boosts"] = self.parse_query_functions(search_args["query_boosts"])
+                    clauses.append("userQuery(@query_boosts)")
+                if isinstance(search_args["query"], list):
+                    main_query_i = self.get_index_of_first_query(search_args["query"])
+                    for i, q in enumerate(search_args["query"]):
+                        if i != main_query_i:
+                            q = self.parse_query_functions(q["query"] if isinstance(q, dict) else q)
+                            request[f"query_clause_{i}"] = q
+                            clauses.append(f"userQuery(@query_clause_{i})")
+                where_conditions.append("rank(" + ", ".join(clauses) + ")")
         
         filter_clause = self.generate_filter_clause(search_args)
         if filter_clause:
@@ -274,12 +330,11 @@ class VespaCollection(Collection):
         #https://hunspell.github.io/
         return {}
     
-    def create_view_from_collection(self, view_name, spark, log=False):
-        request = {"query": "*", "return_fields": "*", "limit": 1000, "offset": 0}
-        if log:
-            request["log"] = True
+    def create_view_from_collection(self, view_name, spark, log=False):        
+        request = {"query": "*", "return_fields": "*", "limit": 10000, "offset": 0}
+        #if log:
+        #    request["log"] = True
         all_documents = []
-        
         try:
             while True:
                 if log:
