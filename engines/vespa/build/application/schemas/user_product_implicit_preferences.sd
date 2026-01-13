@@ -1,0 +1,15 @@
+schema user_product_implicit_preferences  {
+    document user_product_implicit_preferences {
+        field user type string {
+            indexing: summary | index | attribute
+        }
+
+        field product type string {
+            indexing: summary | index | attribute
+        }
+
+        field rating type int {
+            indexing: summary | attribute
+        }
+    }
+}

@@ -22,6 +22,12 @@
             <document type="scifi" mode="index"/>
             <document type="signals" mode="index"/>
             <document type="signals_boosting" mode="index"/>
+            <document type="basic_signals_boosts" mode="index"/>
+            <document type="normalized_signals_boosts" mode="index"/>
+            <document type="signals_boosts_with_spam" mode="index"/>
+            <document type="signals_boosts_anti_spam" mode="index"/>
+            <document type="signals_boosts_weighted_types" mode="index"/>
+            <document type="signals_boosts_time_weighted" mode="index"/>            
             <document type="stackexchange" mode="index"/>
             <document type="tmdb" mode="index"/>
             <document type="tmdb_with_embeddings" mode="index"/>

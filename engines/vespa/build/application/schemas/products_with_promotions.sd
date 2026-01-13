@@ -12,7 +12,10 @@ schema products_with_promotions {
 
         field name_fuzzy type string {
             indexing: summary | index
-            match: text
+            match {
+                gram
+                gram-size: 2
+            }
         }
         
         field name_bigram type string {
@@ -52,12 +55,12 @@ schema products_with_promotions {
     }
 
     fieldset default {
-        fields: name, short_description, long_description, manufacturer
+        fields: name, short_description, long_description, manufacturer, has_promotion, name_fuzzy, name_bigram, short_description_bigram
     }
 
     rank-profile default {
         first-phase {
-            expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer)
+            expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer) + bm25(has_promotion) + bm25(name_fuzzy) + bm25(name_bigram) + bm25(short_description_bigram)
         }
     }
 
@@ -68,7 +71,7 @@ schema products_with_promotions {
             bm25(long_description)
             fieldMatch(long_description)
             fieldMatch(manufacturer)
-            fieldMatch(has_promotion)
+            attribute(has_promotion)
             fieldMatch(name)
             fieldMatch(name_fuzzy)
             fieldMatch(name_bigram)

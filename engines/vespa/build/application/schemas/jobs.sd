@@ -1,28 +1,4 @@
-schema jobs {
-    document jobs {
-        field company_country type string {
-            indexing: summary | index | attribute
-            match: text
-        }
-
-        field job_description type string {
-            indexing: summary | index | attribute
-            match: text
-        }
-
-        field company_description type string {
-            indexing: summary | index | attribute
-            match: text
-        }
-    }
-
-    fieldset default {
-        fields: company_country, job_description, company_description
-    }
-
-    rank-profile default {
-        first-phase {
-            expression: bm25(company_country) + bm25(job_description) + bm25(company_description)
-        }
+schema jobs inherits stackexchange {
+    document jobs inherits stackexchange {
     }
 }

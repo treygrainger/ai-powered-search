@@ -1,0 +1,4 @@
+schema signals_boosts_with_spam inherits signals_boosting {
+    document signals_boosts_with_spam inherits signals_boosting {
+    }
+}

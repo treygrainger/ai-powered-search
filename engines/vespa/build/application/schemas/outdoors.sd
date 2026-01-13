@@ -1,6 +1,6 @@
 schema outdoors {
     document outdoors {
-        field id type string {
+        field id type int {
             indexing: summary | attribute
         }
 
@@ -10,6 +10,10 @@ schema outdoors {
         }
 
         field accepted_answer_id type int {
+            indexing: summary | attribute
+        }
+
+        field accepted_answer_id_exists type bool {
             indexing: summary | attribute
         }
 
@@ -57,7 +61,7 @@ schema outdoors {
     }
 
     fieldset default {
-        fields: title, body, tags
+        fields: title, body
     }
 
     rank-profile default {

@@ -1,0 +1,4 @@
+schema normalized_signals_boosts inherits signals_boosting {
+    document normalized_signals_boosts inherits signals_boosting {
+    }
+}

@@ -32,7 +32,7 @@ schema products {
     }
 
     fieldset default {
-        fields: name, short_description, long_description, manufacturer
+        fields: name, manufacturer, long_description
     }
 
     rank-profile default {
