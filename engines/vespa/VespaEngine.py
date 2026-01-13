@@ -9,12 +9,13 @@ import zipfile
 import requests
 
 from engines.Engine import AdvancedFeatures, Engine
-from engines.vespa.config import VESPA_URL, VESPA_CONFIG_URL
+import engines.vespa.config as config #import VESPA_URL, VESPA_CONFIG_URL
 from engines.vespa.VespaCollection import VespaCollection
 
-STATUS_URL = f"{VESPA_URL}/state/v1/health"
-APP_INFO_URL = f"{VESPA_CONFIG_URL}/application/v2/tenant/default/application/default"
-DEPLOY_URL = f"{VESPA_CONFIG_URL}/application/v2/tenant/default/prepareandactivate"
+STATUS_URL = f"{config.VESPA_URL}/state/v1/health"
+APP_STATUS_URL = f"{config.VESPA_URL}/ApplicationStatus"
+APP_INFO_URL = f"{config.VESPA_CONFIG_URL}/application/v2/tenant/default/application/default"
+DEPLOY_URL = f"{config.VESPA_CONFIG_URL}/application/v2/tenant/default/prepareandactivate"
 
 #https://docs.vespa.ai/en/reference/query-api-reference.html
 #https://docs.vespa.ai/en/writing/document-v1-api-guide.html
@@ -61,17 +62,37 @@ class VespaEngine(Engine):
         except:
             return False
     
-    def deploy_application(self, force_deploy=False, log=False):
+    def execute_with_retry(self, http_fn, url, headers={}, data=None, message="Request", log=False):
+        response = None
+        while retries >= 0:
+            response = None
+            try:
+                response = http_fn(url, headers=headers, data=data)
+                if log: print(response, response.json())
+            except:
+                pass
+            if response and response.status_code == 200:
+                if log: print(f"{message}: Succeeded")
+                return response
+            time.sleep(5)
+            retries -= 1
+        if retries == -1:
+            if log: print(f"{message}: Failed")
+            response.raise_for_status()
+
+    def deploy_application(self, force_deploy=False, log=False, retries=12):
         if not self.is_application_deployed(log=log) or force_deploy:
-            response = requests.post(DEPLOY_URL, headers={"Content-Type": "application/zip"},
-                                     data=self.generate_zip_binary())
-            if log: print(response, response.json())
-            session_id = response.json()["session-id"]
-            response = requests.put(f"{VESPA_CONFIG_URL}/application/v2/tenant/default/session/{session_id}/active")
-            if log: print(response, response.json())
+            self.execute_with_retry(requests.post, DEPLOY_URL, headers={"Content-Type": "application/zip"},
+                                    data=self.generate_zip_binary(), message="Application Deployment", log=log)
+            self.execute_with_retry(requests.get, APP_STATUS_URL, message="Application Initialization", log=log)
             
-    def create_collection(self, name, log=False):
+    def create_collection(self, name, force_rebuild=False, log=False):
         self.deploy_application(log=log)
+        if force_rebuild:
+            try:
+                requests.delete(f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}")
+            except:
+                pass
         return self.get_collection(name)
 
     def get_collection(self, name):

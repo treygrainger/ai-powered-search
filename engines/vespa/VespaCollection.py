@@ -28,18 +28,26 @@ def parse_datetime_string(value):
     except ValueError:
         return None
 
-def format_document_for_writing(doc):
-    #{k: int(v.timestamp()) if isinstance(v, datetime.datetime) else v for k, v in doc.items()}
+def format_document_for_writing(collection, doc):
+    empty_fields = []
     for field, value in doc.items():
         if field == "location_coordinates":
             if not isinstance(value, dict):
                 (lat, lon) = (value or "0,0").split(",")
                 doc[field] = {"lat": float(lat), "lng": float(lon)}
-        value_as_datetime = parse_datetime_string(value)
-        if value_as_datetime:
-            value = value_as_datetime
-        if isinstance(value, datetime.datetime):
-            doc[field] = int(value.timestamp())
+        elif value is None:
+            empty_fields.append(field)
+        else:
+            value_as_datetime = parse_datetime_string(value)
+            if value_as_datetime:
+                value = value_as_datetime
+            if isinstance(value, datetime.datetime):
+                doc[field] = int(value.timestamp())
+    if collection.name == "outdoors":
+        doc["accepted_answer_id_exists"] = ((doc.get("accepted_answer_id") or -1) > 0) or False
+
+    #[doc.pop(f) for f in empty_fields]
+
     return doc
 
 def get_document_id(doc):
@@ -54,7 +62,7 @@ def write_batch_asyncio(collection, client, documents):
     async def write_async(doc):
         response = None
         try:
-            doc = format_document_for_writing(doc)
+            doc = format_document_for_writing(collection, doc)
             doc_id = get_document_id(doc)
             json_document = {"fields": doc}
             url = f"{collection.vespa_url}/document/v1/{collection.namespace}/{collection.name}/docid/{doc_id}"                    
@@ -82,7 +90,7 @@ def write_batch(collection, client, documents):
     for i, doc in enumerate(documents):
         response = None
         try:
-            doc = format_document_for_writing(doc)
+            doc = format_document_for_writing(collection, doc)
             doc_id = get_document_id(doc)
             json_document = {"fields": doc}
             url = f"{collection.vespa_url}/document/v1/{collection.namespace}/{collection.name}/docid/{doc_id}"                    
@@ -106,8 +114,11 @@ class VespaCollection(Collection):
         print(f"\nWriting {dataframe.count()} documents to '{self.name}' collection")
 
         if overwrite:
-            url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}"
-            response = requests.delete(url)
+            try:
+                url = f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}"
+                response = requests.delete(url)
+            except:
+                pass
         
         docs = [d.asDict() for d in dataframe.collect()]
 
@@ -128,6 +139,7 @@ class VespaCollection(Collection):
         self.commit()
 
     def commit(self):
+        time.sleep(2)
         pass
 
     def get_document_count(self):
@@ -145,11 +157,6 @@ class VespaCollection(Collection):
 
     def get_engine_name(self):
         return "vespa"
-        
-    def is_query_by_id(self, search_args):
-        return "query_fields" in search_args and \
-               len(search_args.get("query_fields", [])) == 1 and \
-               search_args["query_fields"][0] in ["id", "upc"]
     
     def is_bm25_search(self, search_args):
         return "query" in search_args and \
@@ -158,20 +165,25 @@ class VespaCollection(Collection):
     
     def generate_filter_clause(self, search_args):
         conditions = []
-        if "filters" in search_args and len(search_args["filters"]) > 0:
-            for filter_item in search_args["filters"]:
-                field, value = filter_item[0], filter_item[1]
-                
-                operator = "=" if not field.startswith("-") else "!="
-                field = field.lstrip("-")
-                
-                if isinstance(value, list):
-                    or_conditions = " OR ".join([f'{field} = {format_query_value(v)}' for v in value])
-                    conditions.append(f"({or_conditions})")
-                elif value == "*":
-                    conditions.append(f'{field} matches ".*"')
-                else:
-                    conditions.append(f'{field} {operator} {format_query_value(value)}')
+        for filter_item in search_args.get("filters") or {}:
+            field, value = filter_item[0], filter_item[1]
+            condition = ""
+            is_negation = field.startswith("-")
+            field = field.lstrip("-")
+            
+            if isinstance(value, list):
+                values = ", ".join(format_query_value(v) for v in values)
+                conditions.append(f"{field} in ({values})")
+            elif value == "*":
+                condition = f'{field}_exists = true'
+            else:
+                operator = "contains" if isinstance(value, str) else "="
+                condition = f'{field} {operator} {format_query_value(value)}'
+
+            if condition:
+                if is_negation:
+                    condition = f"!({condition})"
+                conditions.append(condition)
         
         return " AND ".join(conditions) if conditions else None
         
@@ -207,8 +219,9 @@ class VespaCollection(Collection):
         return query
 
     def parse_simple_query_weights(self, query):
-        simple_query = ""
+        simple_query = query
         if "^" in query:
+            simple_query = ""
             for query_part in query.split(" "):
                 if "^" in query_part:
                     token, weight = query_part.split("^")
@@ -253,11 +266,7 @@ class VespaCollection(Collection):
         if "ranking_profile" in search_args:
             request["ranking"] = search_args["ranking_profile"]
 
-        if self.is_query_by_id(search_args):
-            field = search_args["query_fields"][0]
-            values = ", ".join(f"'{s}'" for s in search_args["query"].split(" "))
-            where_conditions.append(f'{field} in ({values})')
-        elif is_vector_search(search_args):
+        if is_vector_search(search_args):
             field = search_args["query_fields"][0]
             request["ranking"] = f"{self.name}_vector_similarity"
             vector_string = ",".join(str(s) for s in search_args["query"])
@@ -271,6 +280,8 @@ class VespaCollection(Collection):
             if query:
                 request["model.queryString"] = query
                 clauses = ["userQuery()"]
+                if query_fields and len(query_fields) == 1:
+                    request["model.defaultIndex"] = query_fields[0]
                 if "query_boosts" in search_args:
                     request["query_boosts"] = self.parse_query_functions(search_args["query_boosts"])
                     clauses.append("userQuery(@query_boosts)")

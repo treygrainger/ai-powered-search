@@ -134,6 +134,8 @@ services:
     ports: 
       - "8080:8080"
       - "19071:19071"
+    depends_on:
+      - notebooks
 
   zookeeper:
     image: zookeeper:3.5.8

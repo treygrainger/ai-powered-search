@@ -152,13 +152,12 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
     """
     source_datasets = dataset_info[dataset].get("source_datasets", [dataset])
     expected_count = sum([dataset_info[r]["count"] for r in source_datasets])
-    without_dupes = expected_count - sum([dataset_info[r].get("duplicates", 0) for r in source_datasets]) 
+    duplicate_count = sum([dataset_info[r].get("duplicates", 0) for r in source_datasets]) 
     engines = [engine]
     if not is_feature_supported(engine, dataset):
         engines.append(get_local_engine(log=log))
     for engine in engines:
-        if force_rebuild or not (engine.is_collection_healthy(dataset, expected_count, log=log) or
-                                 engine.is_collection_healthy(dataset, without_dupes, log=log)):
+        if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, duplicate_count, log=log):
             if log: print(f"Reindexing [{dataset}] collection into {engine.name}")
             collection = engine.create_collection(dataset, log=log)
             local_engine_collection = None
