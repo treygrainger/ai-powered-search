@@ -81,11 +81,6 @@ class VespaLTR(LTR):
     
     def get_logged_features(self, model_name, doc_ids, options={},
                             id_field="id", fields="*", log=False):
-        if self.collection.name == "tmdb":
-            query_fields = ["title", "overview"]
-        else:
-            query_fields = ["short_description", "long_description", "has_promotion",
-                            "name", "name_fuzzy", "name_bigram", "manufacturer"]
         feature_keys = {"title_bm25": "bm25(title)",
                         "overview_bm25": "bm25(overview)",
                         "release_year": "attribute(release_year)",
@@ -95,7 +90,7 @@ class VespaLTR(LTR):
                         "long_description_bm25": "bm25(long_description)",
                         "long_description_match": "fieldMatch(long_description)",
                         "manufacturer_match": "fieldMatch(manufacturer_match)",
-                        "has_promotion": "fieldMatch(has_promotion)",
+                        "has_promotion": "attribute(has_promotion)",
                         "name_match": "fieldMatch(name)",
                         "name_fuzzy": "fieldMatch(name_fuzzy)",
                         "name_bigram": "fieldMatch(name_bigram)",
@@ -104,8 +99,6 @@ class VespaLTR(LTR):
         if "keywords" not in options:
             raise Exception("keywords are required to log features")
         request = {"query": options["keywords"],
-                   #"return_fields": fields,
-                   "query_fields": query_fields,
                    "filters": [(id_field, doc_ids)], "limit": 400,
                    "ranking_profile": "with_features"} #400 is maximum returnable docs in Vespa}
         if log:

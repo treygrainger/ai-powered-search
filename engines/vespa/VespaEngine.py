@@ -62,7 +62,8 @@ class VespaEngine(Engine):
         except:
             return False
     
-    def execute_with_retry(self, http_fn, url, headers={}, data=None, message="Request", log=False):
+    def execute_with_retry(self, http_fn, url, headers={}, data=None, message="Request", log=False,
+                           retries=10):
         response = None
         while retries >= 0:
             response = None
@@ -82,12 +83,15 @@ class VespaEngine(Engine):
 
     def deploy_application(self, force_deploy=False, log=False, retries=12):
         if not self.is_application_deployed(log=log) or force_deploy:
+            print("Deploying Vespa Application")
             self.execute_with_retry(requests.post, DEPLOY_URL, headers={"Content-Type": "application/zip"},
                                     data=self.generate_zip_binary(), message="Application Deployment", log=log)
-            self.execute_with_retry(requests.get, APP_STATUS_URL, message="Application Initialization", log=log)
+            self.execute_with_retry(requests.get, APP_STATUS_URL, message="Application Initialization", log=log,
+                                    retries=60)
+            print("Vespa Application Deployed")
             
     def create_collection(self, name, force_rebuild=False, log=False):
-        self.deploy_application(log=log)
+        self.deploy_application(force_deploy=True, log=log)
         if force_rebuild:
             try:
                 requests.delete(f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}")

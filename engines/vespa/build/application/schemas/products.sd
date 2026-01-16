@@ -1,12 +1,12 @@
 schema products {
     document products {
         field upc type string {
-            indexing: summary | index | attribute
+            indexing: summary | attribute
             match: text
         }
 
         field name type string {
-            indexing: summary | index | attribute
+            indexing: summary | index
             match: text
         }
         
@@ -16,17 +16,17 @@ schema products {
         }
 
         field short_description type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field long_description type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field manufacturer type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
     }
@@ -37,7 +37,7 @@ schema products {
 
     rank-profile default {
         first-phase {
-            expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer)
+            expression: bm25(name) + bm25(long_description) + bm25(manufacturer)
         }
     }
 }

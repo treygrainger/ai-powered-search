@@ -172,10 +172,10 @@ class VespaCollection(Collection):
             field = field.lstrip("-")
             
             if isinstance(value, list):
-                values = ", ".join(format_query_value(v) for v in values)
+                values = ", ".join(format_query_value(v) for v in value)
                 conditions.append(f"{field} in ({values})")
-            elif value == "*":
-                condition = f'{field}_exists = true'
+            elif value == "*": #range queries are the easiest work around, need to know field type 
+                condition = f"range({field}, -Infinity, Infinity)"
             else:
                 operator = "contains" if isinstance(value, str) else "="
                 condition = f'{field} {operator} {format_query_value(value)}'
@@ -278,20 +278,20 @@ class VespaCollection(Collection):
             query = self.generate_bm25_query(search_args)
             query_fields = self.generate_query_fields(search_args)
             if query:
-                request["model.queryString"] = query
-                clauses = ["userQuery()"]
+                request["input_query"] = query
+                clauses = ["userInput(@input_query)"]
                 if query_fields and len(query_fields) == 1:
                     request["model.defaultIndex"] = query_fields[0]
                 if "query_boosts" in search_args:
                     request["query_boosts"] = self.parse_query_functions(search_args["query_boosts"])
-                    clauses.append("userQuery(@query_boosts)")
+                    clauses.append("userInput(@query_boosts)")
                 if isinstance(search_args["query"], list):
                     main_query_i = self.get_index_of_first_query(search_args["query"])
                     for i, q in enumerate(search_args["query"]):
                         if i != main_query_i:
                             q = self.parse_query_functions(q["query"] if isinstance(q, dict) else q)
                             request[f"query_clause_{i}"] = q
-                            clauses.append(f"userQuery(@query_clause_{i})")
+                            clauses.append(f"userInput(@query_clause_{i})")
                 where_conditions.append("rank(" + ", ".join(clauses) + ")")
         
         filter_clause = self.generate_filter_clause(search_args)

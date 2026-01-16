@@ -1,11 +1,11 @@
 schema user_product_implicit_preferences  {
     document user_product_implicit_preferences {
         field user type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field product type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field rating type int {

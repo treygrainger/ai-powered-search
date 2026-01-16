@@ -1,22 +1,22 @@
 schema signals {
     document signals {
         field query_id type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field user type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field type type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field target type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 

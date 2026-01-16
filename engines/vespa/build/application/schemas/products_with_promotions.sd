@@ -1,55 +1,43 @@
 schema products_with_promotions {
     document products_with_promotions {
         field upc type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field name type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field name_fuzzy type string {
             indexing: summary | index
-            match {
-                gram
-                gram-size: 2
-            }
         }
         
         field name_bigram type string {
             indexing: summary | index
-            match {
-                gram
-                gram-size: 2
-            }
         }
 
         field short_description type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
         
         field short_description_bigram type string {
             indexing: summary | index
-            match {
-                gram
-                gram-size: 2
-            }
         }
 
         field long_description type string {
-            indexing: summary | index | attribute
+            indexing: summary | index
             match: text
         }
 
         field has_promotion type string {
-            indexing: summary | index | attribute
+            indexing: summary | index
         }
 
         field manufacturer type string {
-            indexing: summary | index | attribute
+            indexing: summary | index
             match: text
         }
     }
@@ -71,7 +59,7 @@ schema products_with_promotions {
             bm25(long_description)
             fieldMatch(long_description)
             fieldMatch(manufacturer)
-            attribute(has_promotion)
+            fieldMatch(has_promotion)
             fieldMatch(name)
             fieldMatch(name_fuzzy)
             fieldMatch(name_bigram)

@@ -5,7 +5,7 @@ schema tmdb_with_embeddings {
         }
         
         field title type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 

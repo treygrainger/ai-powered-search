@@ -1,11 +1,11 @@
 schema user_item_recommendations  {
     document user_item_recommendations {
         field user type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field product type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field rating type int {

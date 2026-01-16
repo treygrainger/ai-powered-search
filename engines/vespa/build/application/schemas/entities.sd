@@ -2,23 +2,23 @@ schema entities {
     document entities {
         
         field id type string {
-            indexing: summary | index | attribute
+            indexing: summary | index
         }
 
         field type type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field name type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
         
         field surface_form type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field canonical_form type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field popularity type int {
@@ -30,11 +30,11 @@ schema entities {
         }
 
         field admin_area type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field country type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field location_coordinates type position {

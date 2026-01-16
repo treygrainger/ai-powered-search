@@ -1,11 +1,11 @@
 schema signals_boosting {
     document signals_boosting {
         field query type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field doc type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
         }
 
         field boost type int {

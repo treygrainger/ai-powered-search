@@ -5,17 +5,17 @@ schema reviews {
         }
 
         field content type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field categories type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field doc_type type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
@@ -24,22 +24,22 @@ schema reviews {
         }
 
         field city type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field state type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field business_name type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field name type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 

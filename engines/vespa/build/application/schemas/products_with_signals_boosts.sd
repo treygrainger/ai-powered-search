@@ -1,27 +1,27 @@
 schema products_with_signals_boosts {
     document products_with_signals_boosts {
         field upc type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field name type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field short_description type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field long_description type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field manufacturer type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 

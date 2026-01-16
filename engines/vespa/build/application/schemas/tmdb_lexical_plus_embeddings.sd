@@ -5,12 +5,12 @@ schema tmdb_lexical_plus_embeddings {
         }
         
         field title type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 
         field overview type string {
-            indexing: summary | index | attribute
+            indexing: summary | index 
             match: text
         }
 

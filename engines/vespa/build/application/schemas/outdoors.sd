@@ -5,15 +5,11 @@ schema outdoors {
         }
 
         field post_type type string {
-            indexing: summary | index | attribute
+            indexing: summary | index
             match: text
         }
 
         field accepted_answer_id type int {
-            indexing: summary | attribute
-        }
-
-        field accepted_answer_id_exists type bool {
             indexing: summary | attribute
         }
 
@@ -34,7 +30,7 @@ schema outdoors {
         }
 
         field body type string {
-            indexing: summary | index | attribute
+            indexing: summary | index
             match: text
         }
 
@@ -43,12 +39,12 @@ schema outdoors {
         }
 
         field title type string {
-            indexing: summary | index | attribute
+            indexing: summary | index
             match: text
         }
 
         field tags type array<string> {
-            indexing: summary | index | attribute
+            indexing: summary | index
         }
 
         field url type string {
