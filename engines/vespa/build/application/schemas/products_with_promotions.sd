@@ -12,10 +12,16 @@ schema products_with_promotions {
 
         field name_fuzzy type string {
             indexing: summary | index
+            linguistics {
+                profile: luceneNgram
+            }
         }
         
         field name_bigram type string {
             indexing: summary | index
+            linguistics {
+                profile: luceneShingle
+            }
         }
 
         field short_description type string {
@@ -25,6 +31,9 @@ schema products_with_promotions {
         
         field short_description_bigram type string {
             indexing: summary | index
+            linguistics {
+                profile: luceneShingle
+            }
         }
 
         field long_description type string {
@@ -43,7 +52,7 @@ schema products_with_promotions {
     }
 
     fieldset default {
-        fields: name, short_description, long_description, manufacturer, has_promotion, name_fuzzy, name_bigram, short_description_bigram
+        fields: name, short_description, long_description, manufacturer, has_promotion
     }
 
     rank-profile default {
