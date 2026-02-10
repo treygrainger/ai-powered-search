@@ -36,7 +36,7 @@ schema products_with_signals_boosts {
 
     rank-profile default {
         first-phase {
-            expression: bm25(name) + bm25(short_description) + bm25(long_description) + bm25(manufacturer)
+            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer) / 2)
         }
     }
 }

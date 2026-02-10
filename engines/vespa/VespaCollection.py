@@ -289,9 +289,12 @@ class VespaCollection(Collection):
                     main_query_i = self.get_index_of_first_query(search_args["query"])
                     for i, q in enumerate(search_args["query"]):
                         if i != main_query_i:
-                            q = self.parse_query_functions(q["query"] if isinstance(q, dict) else q)
-                            request[f"query_clause_{i}"] = q
-                            clauses.append(f"userInput(@query_clause_{i})")
+                            if "geoLocation" in q:
+                                where_conditions.append(q)
+                            else:
+                                q = self.parse_query_functions(q["query"] if isinstance(q, dict) else q)
+                                request[f"query_clause_{i}"] = q
+                                clauses.append(f"userInput(@query_clause_{i})")
                 where_conditions.append("rank(" + ", ".join(clauses) + ")")
         
         filter_clause = self.generate_filter_clause(search_args)
