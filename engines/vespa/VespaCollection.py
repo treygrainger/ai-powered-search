@@ -45,6 +45,10 @@ def format_document_for_writing(collection, doc):
                 doc[field] = int(value.timestamp())
     if collection.name == "outdoors":
         doc["accepted_answer_id_exists"] = ((doc.get("accepted_answer_id") or -1) > 0) or False
+    elif collection.name == "products_with_promotions":
+        doc["short_description_bigram"] = doc.get("short_description") or ""
+        doc["name_fuzzy"] = doc.get("name") or ""
+        doc["name_bigram"] = doc.get("name") or ""
 
     #[doc.pop(f) for f in empty_fields]
 
@@ -297,6 +301,8 @@ class VespaCollection(Collection):
                         if i != main_query_i:
                             if "geoLocation" in q:
                                 where_conditions.append(q)
+                            elif "userInput" in q and "defaultIndex" in q:
+                                clauses.append(q)                                
                             else:
                                 q = self.parse_query_functions(q["query"] if isinstance(q, dict) else q)
                                 request[f"query_clause_{i}"] = q
@@ -317,7 +323,7 @@ class VespaCollection(Collection):
             request["yql"] += f" order by {order_by_clause}"
 
         if search_args.get("explain", False):
-            request["tracelevel"] = 1
+            request["tracelevel"] = 7
         
         return request
     

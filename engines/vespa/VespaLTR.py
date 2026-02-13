@@ -98,7 +98,13 @@ class VespaLTR(LTR):
         model_features = self.model_store.load_features_for_model(model_name, log)
         if "keywords" not in options:
             raise Exception("keywords are required to log features")
-        request = {"query": options["keywords"],
+        
+        additional_queries = []
+        if "products" in self.collection.name:
+            additional_queries = ["{defaultIndex:'name_fuzzy'}userInput(@input_query)",
+                                  "{defaultIndex:'name_bigram'}userInput(@input_query)",
+                                  "{defaultIndex:'short_description_bigram'}userInput(@input_query)"]
+        request = {"query": [options["keywords"]] + additional_queries,
                    "filters": [(id_field, doc_ids)], "limit": 400,
                    "ranking_profile": "with_features"} #400 is maximum returnable docs in Vespa}
         if log:
