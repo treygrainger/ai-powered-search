@@ -1,4 +1,4 @@
-from random import random
+import random
 from aips.search_request_functions import generate_fuzzy_text
 from engines.vespa.VespaCollection import VespaCollection
 from engines.LTR import LTR
@@ -60,15 +60,19 @@ class VespaLTR(LTR):
         pass
     
     def get_explore_candidate(self, query, explore_vector, feature_config, log=False):
+        query = ""
+        for feature_name, config in feature_config.items():
+            if feature_name in explore_vector:
+                if explore_vector[feature_name] == 1.0:
+                    query += f' {config["field"]}:({config["value"]})'
+                elif explore_vector[feature_name] == -1.0:
+                    query += f' -{config["field"]}:({config["value"]})'
         request = {"query": query or "*",
-                   "limit": 1,
-                   "return_fields": ["upc", "name", "manufacturer", "short_description", "long_description", "has_promotion"],
-                   "order_by": [(f"random_{random()}", "DESC")]}
+                   "limit": 100,
+                   "return_fields": ["upc", "name", "manufacturer", "short_description", "long_description", "has_promotion"]}
         if log: request["log"] = log
         docs = self.collection.search(**request)["docs"]
-        if log and not docs:
-            print(f"No exploration candidate matching query {query}")
-        return docs
+        return [random.choice(docs)]
     
     def generate_model(self, model_name, feature_names, means, std_devs, weights):
         linear_model = {"name": model_name,
@@ -83,14 +87,14 @@ class VespaLTR(LTR):
                             id_field="id", fields="*", log=False):
         feature_keys = {"title_bm25": "bm25(title)",
                         "overview_bm25": "bm25(overview)",
-                        "release_year": "attribute(release_year)",
+                        "release_year": "attributeMatch(release_year)",
                         "short_description_bm25": "bm25(short_description)",
                         "short_description_constant": "fieldMatch(short_description)",
                         "short_description_match": "fieldMatch(short_description)",
                         "long_description_bm25": "bm25(long_description)",
                         "long_description_match": "fieldMatch(long_description)",
                         "manufacturer_match": "fieldMatch(manufacturer_match)",
-                        "has_promotion": "attribute(has_promotion)",
+                        "has_promotion": "fieldMatch(has_promotion)",
                         "name_match": "fieldMatch(name)",
                         "name_fuzzy": "fieldMatch(name_fuzzy)",
                         "name_bigram": "fieldMatch(name_bigram)",
@@ -99,13 +103,16 @@ class VespaLTR(LTR):
         if "keywords" not in options:
             raise Exception("keywords are required to log features")
         
+        id_clause = " ".join(f"{id_field}:{id}" for id in doc_ids)
         additional_queries = []
         if "products" in self.collection.name:
-            additional_queries = ["{defaultIndex:'name_fuzzy'}userInput(@input_query)",
-                                  "{defaultIndex:'name_bigram'}userInput(@input_query)",
-                                  "{defaultIndex:'short_description_bigram'}userInput(@input_query)"]
-        request = {"query": [options["keywords"]] + additional_queries,
-                   "filters": [(id_field, doc_ids)], "limit": 400,
+            additional_queries = [f'name_fuzzy:"{options["keywords"]}"',
+                                  f'name_bigram:"{options["keywords"]}"',
+                                  f'short_description_bigram:"{options["keywords"]}"',
+                                  "has_promotion:true"]
+        request = {"query": [id_clause, options["keywords"]] + additional_queries,
+                   "return_fields": "*",
+                   "limit": 400,
                    "ranking_profile": "with_features"} #400 is maximum returnable docs in Vespa}
         if log:
             request["log"] = True
@@ -123,8 +130,7 @@ class VespaLTR(LTR):
     def search_with_model(self, model_name, **search_args):
         id_field = "upc" if "products" in self.collection.name else "id"
         ltr_model_data = self.model_store.load_model(model_name)
-        limit = search_args.get("limit", 25)
-        search_args["limit"] =  limit * 10
+        search_args["limit"] = 400
         response = self.collection.search(**search_args)
         keyed_docs = {str(d[id_field]): d for d in response["docs"]}
         query_options = {"keywords": search_args.get("query", "*")}
@@ -136,6 +142,6 @@ class VespaLTR(LTR):
                 doc["ltr_score"] += ((doc["[features]"][name] - values["avg"])
                                       / values["std"]) * values["weight"]
         sorted_docs = sorted(logged_docs, key=lambda d: d["ltr_score"], reverse=True)
-        docs = [keyed_docs[d[id_field]] for d in sorted_docs][:limit]
+        docs = [keyed_docs[d[id_field]] for d in sorted_docs][:search_args.get("limit", 25)]
         response["docs"] = docs
         return response

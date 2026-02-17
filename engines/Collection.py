@@ -85,14 +85,14 @@ class Collection(ABC):
         :param boolean highlight: Returns results with highlight information (if supported)
         """
         request = self.transform_request(**search_args)
-        if "log" in search_args or env.get("PRINT_REQUESTS", False):
+        if search_args.get("log") or env.get("PRINT_REQUESTS", False):
             print(json.dumps(request, indent=2))
         try:
             search_response = self.native_search(request=request)
         except Exception as ex:
             print(f"Search failed: {str(ex)}")
             return []
-        if "log" in search_args:
+        if search_args.get("log"):
             print(json.dumps(search_response, indent=2))
         return self.transform_response(search_response)
 
