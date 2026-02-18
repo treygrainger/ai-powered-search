@@ -58,7 +58,7 @@
             <document type="outdoors_with_embeddings" mode="index"/>
             <document type="products" mode="index"/>
             <document type="products_with_promotions" mode="index"/>
-            <document type="products_with_signals_boosts" mode="index"/>
+            <document type="products_with_signals_boosts" mode="index"/>            
             <document type="reviews" mode="index"/>
             <document type="scifi" mode="index"/>
             <document type="signals" mode="index"/>
@@ -70,6 +70,8 @@
             <document type="signals_boosts_weighted_types" mode="index"/>
             <document type="signals_boosts_time_weighted" mode="index"/>            
             <document type="stackexchange" mode="index"/>
+            <document type="user_product_implicit_preferences" mode="index"/>  
+            <document type="user_item_recommendations" mode="index"/>            
             <document type="tmdb" mode="index"/>
             <document type="tmdb_with_embeddings" mode="index"/>
             <document type="tmdb_lexical_plus_embeddings" mode="index"/>

@@ -69,6 +69,7 @@ schema products_with_promotions {
             fieldMatch(long_description)
             fieldMatch(manufacturer)
             fieldMatch(has_promotion)
+            bm25(name)
             fieldMatch(name)
             fieldMatch(name_fuzzy)
             fieldMatch(name_bigram)

@@ -45,6 +45,7 @@ dataset_info = {
                  "loader_fn": products.load_dataframe},
     "products_with_promotions": {"url": "https://github.com/ai-powered-search/retrotech.git",
                                  "count": 48194,
+                                 "duplicates": 2038,
                                  "loader_fn": products.load_dataframe,
                                  "data_file_name": "products.csv",
                                  "tar_file": "products.tgz",

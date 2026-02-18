@@ -54,10 +54,6 @@ class OpenSearchLTR(LTR):
         query_clause = {"match": {f"{field_name}_ngram": {"query": "{{keywords}}",
                                                           "analyzer": "standard"}}}
         return self.generate_feature(feature_name, query_clause)
-        
-    def generate_field_length_feature(self, feature_name, field_name):
-        #Unused except in Ammendum
-        return None
     
     def delete_feature_store(self, name, log=False):
         if log: display(f"Deleting features {name}")     
@@ -79,6 +75,9 @@ class OpenSearchLTR(LTR):
         response = requests.delete(f"{OPENSEARCH_URL}/_ltr/_model/{model_name}").json()
         if log: display(json.dumps(response, indent=2))
         return response
+
+    def get_features(self, model_name):
+        return requests.get(f"{OPENSEARCH_URL}/_ltr/_model/{model_name}").json()        
     
     def upload_model(self, model, log=False):
         model_name = model["model"]["name"]

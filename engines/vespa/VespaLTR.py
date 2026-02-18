@@ -36,28 +36,25 @@ class VespaLTR(LTR):
         
     def generate_field_value_feature(self, feature_name, field_name):
         return self.generate_feature(feature_name, {"field_name": field_name}, "field_value")
-        
-    def generate_field_length_feature(self, feature_name, field_name):
-        pass
 
     def delete_feature_store(self, name, log=False):
         self.model_store.delete_feature_store(name, log)
     
+    def get_features(self, model_name, log=False):
+        return self.model_store.load_features_for_model(model_name, log)
+    
     def upload_features(self, features, model_name, log=False):
-        self.model_store.upload_features(features, model_name, log)
+        return self.model_store.upload_features(features, model_name, log)
     
     def delete_model(self, model_name, log=False):
-        self.model_store.delete_model(model_name, log)
+        return self.model_store.delete_model(model_name, log)
     
     def upload_model(self, model, log=False):
-        self.model_store.upload_model(model, log)
+        return self.model_store.upload_model(model, log)
     
     def upsert_model(self, model, log=False):
         self.delete_model(model["name"], log=log)
         self.upload_model(model, log=log)
-
-    def generate_bigram_query(self, query):
-        pass
     
     def get_explore_candidate(self, query, explore_vector, feature_config, log=False):
         query = ""
@@ -98,6 +95,8 @@ class VespaLTR(LTR):
                         "name_match": "fieldMatch(name)",
                         "name_fuzzy": "fieldMatch(name_fuzzy)",
                         "name_bigram": "fieldMatch(name_bigram)",
+                        "name_bm25": "bm25(name)",
+                        "name_constant": "fieldMatch(name)",
                         "short_description_bigram": "fieldMatch(short_description_bigram)"}
         model_features = self.model_store.load_features_for_model(model_name, log)
         if "keywords" not in options:

@@ -285,7 +285,7 @@ class VespaCollection(Collection):
                 request["input_query"] = query
                 clauses = ["userInput(@input_query)"]
                 if query_fields and len(query_fields) == 1:
-                    request["model.defaultIndex"] = query_fields[0]
+                    clauses[0] = "{defaultIndex:'" + query_fields[0] + "'}" + clauses[0]
                 if "query_boosts" in search_args:
                     boosts = {}
                     for boosted_string in search_args["query_boosts"][1].split(" "):

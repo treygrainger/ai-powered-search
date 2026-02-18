@@ -150,10 +150,12 @@ def render_search_results(query, results):
             rendered += separator_template
     return rendered
 
-def fetch_products(doc_ids):
+def fetch_products(doc_ids, log=False):
     request = {"query": " ".join([str(id) for id in doc_ids]),
                "query_fields": ["upc"],
-               "limit": len(doc_ids)}
+               "limit": len(doc_ids),
+               "log": log}
+
     response = get_engine().get_collection("products").search(**request)
     
     df = pandas.DataFrame(response["docs"])

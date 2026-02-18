@@ -33,11 +33,6 @@ class LTR(ABC):
     def generate_field_value_feature(self, feature_name, field_name):
         "Generates an LTR field value feature definition."
         pass
-    
-    @abstractmethod
-    def generate_field_length_feature(self, feature_name, field_name):
-        "Generates an LTR field length feature definition."
-        pass
    
     @abstractmethod 
     def generate_model(self, model_name, feature_names, means, std_devs, weights):
@@ -47,6 +42,11 @@ class LTR(ABC):
     @abstractmethod
     def delete_feature_store(self, name, log=False):
         "Deletes the feature store of the given name."
+        pass
+
+    @abstractmethod
+    def get_features(self, model_name, log=False):
+        "Retrieves the features for a given model"
         pass
     
     @abstractmethod
