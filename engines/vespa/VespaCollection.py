@@ -43,9 +43,7 @@ def format_document_for_writing(collection, doc):
                 value = value_as_datetime
             if isinstance(value, datetime.datetime):
                 doc[field] = int(value.timestamp())
-    if collection.name == "outdoors":
-        doc["accepted_answer_id_exists"] = ((doc.get("accepted_answer_id") or -1) > 0) or False
-    elif collection.name == "products_with_promotions":
+    if collection.name == "products_with_promotions":
         doc["short_description_bigram"] = doc.get("short_description") or ""
         doc["name_fuzzy"] = doc.get("name") or ""
         doc["name_bigram"] = doc.get("name") or ""
@@ -93,20 +91,25 @@ def write_batch_asyncio(collection, client, documents):
 def write_batch(collection, client, documents):    
     for i, doc in enumerate(documents):
         response = None
-        try:
-            doc = format_document_for_writing(collection, doc)
-            doc_id = get_document_id(doc)
-            json_document = {"fields": doc}
-            url = f"{collection.vespa_url}/document/v1/{collection.namespace}/{collection.name}/docid/{doc_id}"                    
-            response = client.post(url, json=json_document, headers={"Content-Type": "application/json"})
-            response.raise_for_status()
-        except Exception as ex:
-            print("Error writing document: " + str(ex))
-            if response:
-                print(response)
-                print(response.json())
-            print(doc)
-            raise  
+        retries = 3
+        while retries >= 1:
+            retries -= 1
+            try:
+                doc = format_document_for_writing(collection, doc)
+                doc_id = get_document_id(doc)
+                json_document = {"fields": doc}
+                url = f"{collection.vespa_url}/document/v1/{collection.namespace}/{collection.name}/docid/{doc_id}"                    
+                response = client.post(url, json=json_document, headers={"Content-Type": "application/json"})
+                response.raise_for_status()
+                break
+            except Exception as ex:
+                time.sleep(5)
+                if retries == 0:
+                    print("Error writing document: " + str(ex))
+                    if response:
+                        print(response)                
+                    print(doc)
+                    raise
 
 class VespaCollection(Collection):
     def __init__(self, name, vespa_url=config.VESPA_URL):
@@ -249,10 +252,13 @@ class VespaCollection(Collection):
         if isinstance(query, list):
             i = self.get_index_of_first_query(query)
             query = query[i] if isinstance(query[i], str) else query[i]["query"]
-        query = self.parse_query_functions(query)
-        if query == "*":
-            query = ""            
-        return self.parse_simple_query_weights(query)
+        elif isinstance(query, str):
+            query = self.parse_query_functions(query)
+            if query == "*":
+                query = ""            
+            return self.parse_simple_query_weights(query)
+        else:
+            return query
 
     def add_documents(self, docs, commit=True):
         spark = get_spark_session()
@@ -288,12 +294,16 @@ class VespaCollection(Collection):
                     clauses[0] = "{defaultIndex:'" + query_fields[0] + "'}" + clauses[0]
                 if "query_boosts" in search_args:
                     boosts = {}
-                    for boosted_string in search_args["query_boosts"][1].split(" "):
+                    if isinstance(search_args["query_boosts"], list):
+                        request["input.query(boost_field)"] = search_args["query_boosts"][0]
+                        boost_query = search_args["query_boosts"][1]
+                    else:
+                        boost_query = search_args["query_boosts"]
+                    for boosted_string in boost_query.split(" "):
                         print(boosted_string)
                         (value, boost) = boosted_string.split("^")
                         boosts[value[1:-1]] = int(boost)
                     request["input.query(query_boosts)"] = json.dumps(boosts)
-                    request["input.query(boost_field)"] = search_args["query_boosts"][0]
                     request["ranking"] = "query_time_boosting"
                 if isinstance(search_args["query"], list):
                     main_query_i = self.get_index_of_first_query(search_args["query"])

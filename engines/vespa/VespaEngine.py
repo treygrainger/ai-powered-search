@@ -91,7 +91,7 @@ class VespaEngine(Engine):
             print("Vespa Application Deployed")
             
     def create_collection(self, name, force_rebuild=False, log=False):
-        self.deploy_application(force_deploy=True, log=log)
+        self.deploy_application(force_deploy=force_rebuild, log=log)
         if force_rebuild:
             try:
                 requests.delete(f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}")

@@ -110,7 +110,7 @@ class VespaLTR(LTR):
                                   f'short_description_bigram:"{options["keywords"]}"',
                                   "has_promotion:true"]
         request = {"query": [id_clause, options["keywords"]] + additional_queries,
-                   "return_fields": "*",
+                   "return_fields": fields,
                    "limit": 400,
                    "ranking_profile": "with_features"} #400 is maximum returnable docs in Vespa}
         if log:

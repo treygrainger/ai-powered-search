@@ -2,6 +2,7 @@ schema signals_boosting {
     document signals_boosting {
         field query type string {
             indexing: summary | index 
+            match: exact
         }
 
         field doc type string {

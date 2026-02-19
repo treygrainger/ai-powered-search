@@ -8,7 +8,7 @@ schema user_item_recommendations  {
             indexing: summary | index 
         }
 
-        field rating type int {
+        field boost type float {
             indexing: summary | attribute
         }
     }
