@@ -249,16 +249,19 @@ class VespaCollection(Collection):
 
     def generate_bm25_query(self, search_args):
         query = search_args.get("query") or ""
+
+        if isinstance(query, int):
+            return query      
+
         if isinstance(query, list):
             i = self.get_index_of_first_query(query)
             query = query[i] if isinstance(query[i], str) else query[i]["query"]
-        elif isinstance(query, str):
-            query = self.parse_query_functions(query)
-            if query == "*":
-                query = ""            
-            return self.parse_simple_query_weights(query)
-        else:
-            return query
+
+        query = self.parse_query_functions(query)
+
+        if query == "*":
+            query = ""
+        return self.parse_simple_query_weights(query)
 
     def add_documents(self, docs, commit=True):
         spark = get_spark_session()
@@ -294,7 +297,7 @@ class VespaCollection(Collection):
                     clauses[0] = "{defaultIndex:'" + query_fields[0] + "'}" + clauses[0]
                 if "query_boosts" in search_args:
                     boosts = {}
-                    if isinstance(search_args["query_boosts"], list):
+                    if isinstance(search_args["query_boosts"], tuple):
                         request["input.query(boost_field)"] = search_args["query_boosts"][0]
                         boost_query = search_args["query_boosts"][1]
                     else:
@@ -302,7 +305,9 @@ class VespaCollection(Collection):
                     for boosted_string in boost_query.split(" "):
                         print(boosted_string)
                         (value, boost) = boosted_string.split("^")
-                        boosts[value[1:-1]] = int(boost)
+                        if value[0] == '"' and value[-1] == '"':
+                            value = value[1:-1]
+                        boosts[value] = int(float(boost))
                     request["input.query(query_boosts)"] = json.dumps(boosts)
                     request["ranking"] = "query_time_boosting"
                 if isinstance(search_args["query"], list):
