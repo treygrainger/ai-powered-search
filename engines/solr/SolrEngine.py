@@ -27,10 +27,10 @@ class SolrEngine(Engine):
                 if log: print(f"Solr {url} request failed")
                 pass
             if i != retries:
-                time.sleep(10)
+                time.sleep(5)
         return response
 
-    def health_check(self, log=True, retries=0):
+    def health_check(self, log=False, retries=0):
         response = self.execute_with_retries(f"{self.solr_url}/admin/zookeeper/status",
                                              log=log, retries=retries)
         if response:

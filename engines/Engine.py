@@ -16,7 +16,7 @@ class Engine(ABC):
         pass
 
     @abstractmethod
-    def health_check(self):
+    def health_check(self, retries=0):
         "Checks the state of the search engine returning a boolean"
         pass
     

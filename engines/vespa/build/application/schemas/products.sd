@@ -7,7 +7,6 @@ schema products {
 
         field name type string {
             indexing: summary | index
-            match: text
             index: enable-bm25
         }
         
@@ -18,19 +17,16 @@ schema products {
 
         field short_description type string {
             indexing: summary | index 
-            match: text
             index: enable-bm25
         }
 
         field long_description type string {
             indexing: summary | index 
-            match: text
             index: enable-bm25
         }
 
         field manufacturer type string {
             indexing: summary | index 
-            match: text
             index: enable-bm25
         }
     }
@@ -41,7 +37,7 @@ schema products {
 
     rank-profile default {
         first-phase {            
-            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer) / 2)
+            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer))
         }
         summary-features {
             bm25(name)
@@ -50,13 +46,19 @@ schema products {
         }
     }
 
-    rank-profile query_time_boosting {
+    rank-profile with_query_boosts {
         inputs {
-            query(query_boosts) tensor(upc{})
+            query(boosts) tensor(upc{})
         }
 
         first-phase {
-            expression: (max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer) / 2)) + sum(query(query_boosts) * tensorFromLabels(attribute(upc)))
+            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer)) + sum(query(boosts) * tensorFromLabels(attribute(upc)))
+        }
+
+        summary-features {
+            bm25(name)
+            bm25(long_description)
+            bm25(manufacturer)
         }
     }
 }

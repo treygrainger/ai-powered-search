@@ -65,6 +65,9 @@ schema tmdb {
     }
 
     rank-profile default {
+        first-phase {            
+            expression: bm25(title) + bm25(overview)
+        }        
     }
 
     rank-profile with_features inherits default {

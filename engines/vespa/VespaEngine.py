@@ -12,7 +12,7 @@ from engines.Engine import AdvancedFeatures, Engine
 import engines.vespa.config as config #import VESPA_URL, VESPA_CONFIG_URL
 from engines.vespa.VespaCollection import VespaCollection
 
-STATUS_URL = f"{config.VESPA_URL}/state/v1/health"
+STATUS_URL = f"{config.VESPA_CONFIG_URL}/status"
 APP_STATUS_URL = f"{config.VESPA_URL}/ApplicationStatus"
 APP_INFO_URL = f"{config.VESPA_CONFIG_URL}/application/v2/tenant/default/application/default"
 DEPLOY_URL = f"{config.VESPA_CONFIG_URL}/application/v2/tenant/default/prepareandactivate"
@@ -33,16 +33,24 @@ class VespaEngine(Engine):
     
     def get_supported_advanced_features(self):
         return [AdvancedFeatures.LTR]
-
-    def health_check(self):
-        try:
-            response = requests.get(STATUS_URL)
-            status = response.status_code == 200
-            print(f"Vespa engine is {'online' if status else 'offline'}")
-            return status
-        except Exception as ex:
-            print(f"Vespa failed the health check: {ex}")
-            return False
+    
+    def health_check(self, log=False, retries=0):
+        status = False
+        for i in range(retries + 1):
+            try:
+                response = requests.get(STATUS_URL)
+                status = response.status_code == 200
+                if log: print(f"Vespa engine is {'online' if status else 'offline'}")
+                if not status and not i == retries:
+                    time.sleep(5)
+                    continue
+            except:
+                if i == retries:
+                    if log: print("Vespa failed the health check.")
+                    status = False
+                else: 
+                    time.sleep(5)
+        return status
     
     def print_status(self, response):
         print(json.dumps(response, indent=2))

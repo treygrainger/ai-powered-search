@@ -37,6 +37,8 @@ def format_document_for_writing(collection, doc):
                 doc[field] = {"lat": float(lat), "lng": float(lon)}
         elif value is None:
             empty_fields.append(field)
+        elif field == "boost":
+            doc[field] = int(doc[field])
         else:
             value_as_datetime = parse_datetime_string(value)
             if value_as_datetime:
@@ -149,7 +151,7 @@ class VespaCollection(Collection):
         time.sleep(2)
         pass
 
-    def get_document_count(self):
+    def get_document_count(self, log=False):
         try:
             request = {"yql": f"select * from {self.name} where true limit 0", "hits": 0}
             response = requests.post(f"{self.vespa_url}/search/", json=request, 
@@ -159,7 +161,7 @@ class VespaCollection(Collection):
                 return 0
             return result.get("root", {}).get("fields", {}).get("totalCount", 0)
         except Exception as ex:
-            print(f"Error getting document count: {ex}")
+            if log: print(f"Error getting document count: {ex}")
             return 0
 
     def get_engine_name(self):
@@ -261,6 +263,10 @@ class VespaCollection(Collection):
 
         if query == "*":
             query = ""
+
+        if len(query) > 1 and query[0] == '"' and query[-1] == '"': #text queries within a userInput() already function as being quoted
+            query = query[1:-1]
+            
         return self.parse_simple_query_weights(query)
 
     def add_documents(self, docs, commit=True):
@@ -308,8 +314,11 @@ class VespaCollection(Collection):
                         if value[0] == '"' and value[-1] == '"':
                             value = value[1:-1]
                         boosts[value] = int(float(boost))
-                    request["input.query(query_boosts)"] = json.dumps(boosts)
-                    request["ranking"] = "query_time_boosting"
+                    request["input.query(boosts)"] = json.dumps(boosts)
+                    request["ranking"] = "with_query_boosts"
+                if "index_time_boost" in search_args:
+                    request["input.query(boosts)"] = json.dumps({search_args["index_time_boost"][1]: 1})
+                    request["ranking"] = "with_index_boosts"
                 if isinstance(search_args["query"], list):
                     main_query_i = self.get_index_of_first_query(search_args["query"])
                     for i, q in enumerate(search_args["query"]):
@@ -354,9 +363,11 @@ class VespaCollection(Collection):
                 elif "id" not in doc:
                     doc["id"] = vespa_id
                     
-                for field in doc.keys(): #flatten complex types
-                    if isinstance(doc[field], dict) and "tensor" in doc[field].get("type", ""):
+                for field in doc.keys(): 
+                    if isinstance(doc[field], dict) and "tensor" in doc[field].get("type", ""): #convert tensors
                         doc[field] = doc[field]["values"]
+                    elif "time" in field and isinstance(doc[field], int): # convert times
+                        doc[field] = datetime.datetime.fromtimestamp(doc[field])
                 
                 docs.append(doc)
         return {"docs": docs}
@@ -398,7 +409,7 @@ class VespaCollection(Collection):
             print(f"Warning: No documents found in collection {self.name}")
     
     def load_index_time_boosting_dataframe(self, boosts_collection_name, boosted_products_collection_name):
-        product_query = f"SELECT * FROM {boosted_products_collection_name}"
+        product_query = f"SELECT upc, name, manufacturer, short_description, long_description FROM {boosted_products_collection_name}"
         boosts_query = f"SELECT doc, boost, REPLACE(query, '.', '') AS query FROM {boosts_collection_name}"
 
         grouped_boosts = from_sql(boosts_query).groupBy("doc") \

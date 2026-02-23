@@ -26,17 +26,34 @@ schema products_with_signals_boosts {
         }
 
         field signals_boosts type weightedset<string> {
-            indexing: attribute | summary
+            indexing: attribute | index
+            match: exact
         }
     }
 
     fieldset default {
-        fields: name, short_description, long_description, manufacturer
+        fields: name, long_description, manufacturer
     }
 
     rank-profile default {
         first-phase {
-            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer) / 2)
+            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer))
+        }
+    }
+
+    rank-profile with_index_boosts {
+        inputs {
+            query(boosts) tensor(signals_boosts{})
+        }
+
+        first-phase {
+            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer)) + sum(query(boosts) * tensorFromWeightedSet(attribute(signals_boosts)))
+        }
+
+        summary-features {
+            bm25(name)
+            bm25(long_description)
+            bm25(manufacturer)
         }
     }
 }

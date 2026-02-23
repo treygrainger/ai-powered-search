@@ -33,8 +33,33 @@ sparse_semantic_search_engine_map = {"solr": SolrSparseSemanticSearch,
                                      "vespa": VespaSparseSemanticSearch,
                                      "weaviate": WeaviateSparseSemanticSearch}
 
-def get_engine(override=None, host_override=None):
-    engine_name = override if override else environment.get("AIPS_SEARCH_ENGINE", "solr")
+def scan_for_healthy_engine():
+    for engine_name in engine_name_type_map.keys():
+        engine = engine_name_type_map[engine_name.lower()]()
+        if engine.health_check(retries=1):
+            return engine_name
+    return None
+
+def scan_and_set_healthy_engine():
+    healthy_engine_name = scan_for_healthy_engine()
+    if not healthy_engine_name:
+        raise EnvironmentError("No healthy engines found")
+    environment.set("AIPS_SEARCH_ENGINE", healthy_engine_name)
+    return healthy_engine_name
+
+def get_engine(engine_override=None, host_override=None):
+    if engine_override:
+        engine_name = engine_override
+    elif environment.get("AIPS_SEARCH_ENGINE"):
+        engine_name = environment.get("AIPS_SEARCH_ENGINE")
+        engine = engine_name_type_map[engine_name.lower()]()
+        if not engine.health_check(retries=3):
+            print(f"{engine_name} engine not healthy, scanning for available engines")
+            engine_name = scan_and_set_healthy_engine()
+            print(f"Healthy {engine_name} engine found")
+    else:
+        engine_name = scan_and_set_healthy_engine()
+
     engine_type = engine_name_type_map[engine_name.lower()]
     return engine_type() if not host_override else engine_type(host_override)
 
@@ -74,7 +99,7 @@ def get_entity_extractor(collection):
 
 def healthcheck():
     try:
-        if get_engine().health_check():
+        if get_engine().health_check(log=True):
             print("All Systems are ready. Happy Searching!")
         else:
             print("The search engine is not in a ready state.")
