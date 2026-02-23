@@ -79,7 +79,11 @@ class SolrLTR(LTR):
         return response
     
     def get_features(self, model_name):
-        return requests.get(f"{self.collection.solr_url}/solr/{self.collection.name}/schema/feature-store/{model_name}")
+        response = requests.get(f"{self.collection.solr_url}/{self.collection.name}/schema/feature-store/{model_name}")
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return []
 
     def delete_model(self, model_name, log=False):
         if log: print(f"Delete model {model_name}")

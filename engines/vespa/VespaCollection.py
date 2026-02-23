@@ -37,8 +37,6 @@ def format_document_for_writing(collection, doc):
                 doc[field] = {"lat": float(lat), "lng": float(lon)}
         elif value is None:
             empty_fields.append(field)
-        elif field == "boost":
-            doc[field] = int(doc[field])
         else:
             value_as_datetime = parse_datetime_string(value)
             if value_as_datetime:
@@ -301,24 +299,6 @@ class VespaCollection(Collection):
                 clauses = ["userInput(@input_query)"]
                 if query_fields and len(query_fields) == 1:
                     clauses[0] = "{defaultIndex:'" + query_fields[0] + "'}" + clauses[0]
-                if "query_boosts" in search_args:
-                    boosts = {}
-                    if isinstance(search_args["query_boosts"], tuple):
-                        request["input.query(boost_field)"] = search_args["query_boosts"][0]
-                        boost_query = search_args["query_boosts"][1]
-                    else:
-                        boost_query = search_args["query_boosts"]
-                    for boosted_string in boost_query.split(" "):
-                        print(boosted_string)
-                        (value, boost) = boosted_string.split("^")
-                        if value[0] == '"' and value[-1] == '"':
-                            value = value[1:-1]
-                        boosts[value] = int(float(boost))
-                    request["input.query(boosts)"] = json.dumps(boosts)
-                    request["ranking"] = "with_query_boosts"
-                if "index_time_boost" in search_args:
-                    request["input.query(boosts)"] = json.dumps({search_args["index_time_boost"][1]: 1})
-                    request["ranking"] = "with_index_boosts"
                 if isinstance(search_args["query"], list):
                     main_query_i = self.get_index_of_first_query(search_args["query"])
                     for i, q in enumerate(search_args["query"]):
@@ -332,6 +312,24 @@ class VespaCollection(Collection):
                                 request[f"query_clause_{i}"] = q
                                 clauses.append(f"userInput(@query_clause_{i})")
                 where_conditions.append("rank(" + ", ".join(clauses) + ")")
+            if "query_boosts" in search_args:
+                boosts = {}
+                if isinstance(search_args["query_boosts"], tuple):
+                    request["input.query(boost_field)"] = search_args["query_boosts"][0]
+                    boost_query = search_args["query_boosts"][1]
+                else:
+                    boost_query = search_args["query_boosts"]
+                for boosted_string in boost_query.split(" "):
+                    print(boosted_string)
+                    (value, boost) = boosted_string.split("^")
+                    if value[0] == '"' and value[-1] == '"':
+                        value = value[1:-1]
+                    boosts[value] = int(float(boost))
+                request["input.query(boosts)"] = json.dumps(boosts)
+                request["ranking"] = "with_query_boosts"
+            elif "index_time_boost" in search_args:
+                request["input.query(boosts)"] = json.dumps({search_args["index_time_boost"][1]: 1})
+                request["ranking"] = "with_index_boosts"
         
         filter_clause = self.generate_filter_clause(search_args)
         if filter_clause:
