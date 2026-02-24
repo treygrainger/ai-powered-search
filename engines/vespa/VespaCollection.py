@@ -312,7 +312,7 @@ class VespaCollection(Collection):
                                 request[f"query_clause_{i}"] = q
                                 clauses.append(f"userInput(@query_clause_{i})")
                 where_conditions.append("rank(" + ", ".join(clauses) + ")")
-            if "query_boosts" in search_args:
+            if search_args.get("query_boosts"):
                 boosts = {}
                 if isinstance(search_args["query_boosts"], tuple):
                     request["input.query(boost_field)"] = search_args["query_boosts"][0]
@@ -320,14 +320,13 @@ class VespaCollection(Collection):
                 else:
                     boost_query = search_args["query_boosts"]
                 for boosted_string in boost_query.split(" "):
-                    print(boosted_string)
                     (value, boost) = boosted_string.split("^")
                     if value[0] == '"' and value[-1] == '"':
                         value = value[1:-1]
                     boosts[value] = int(float(boost))
                 request["input.query(boosts)"] = json.dumps(boosts)
                 request["ranking"] = "with_query_boosts"
-            elif "index_time_boost" in search_args:
+            elif search_args.get("index_time_boost"):
                 request["input.query(boosts)"] = json.dumps({search_args["index_time_boost"][1]: 1})
                 request["ranking"] = "with_index_boosts"
         
