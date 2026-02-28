@@ -1,5 +1,6 @@
-pandas
-ipykernel
+pandas==2.3.3
+ipykernel==7.2.0
+setuptools==80.9.0
 spacy==3.4.4
 numpy==1.26.4
 matplotlib==3.9.2 
