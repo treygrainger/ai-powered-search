@@ -112,9 +112,9 @@ class WeaviateCollection(Collection):
     def generate_return_fields(self, search_args):
         fields = []
         additional_fields = []
-        if search_args.get("explain", False):
-            additional_fields.append("explainScore")
-        if "return_fields" in search_args:
+        is_star_search = (search_args.get("return_fields") == "*" or "*" in search_args.get("return_fields", []))
+
+        if "return_fields" in search_args and not is_star_search:
             fields = search_args["return_fields"].copy()
             vector_field = get_vector_field_name(self.name)
             if vector_field and vector_field in fields:
@@ -134,11 +134,21 @@ class WeaviateCollection(Collection):
                     fields.append("__id")
                 else:
                     additional_fields.append("id")
-        else:
-            fields = self.get_collection_field_names()
-            additional_fields = ["id", "score"]
+        else:            
+            try:
+                fields = self.get_collection_field_names()
+                if "location_coordinates" in fields:
+                    fields.remove("location_coordinates")
+                    fields.append(Field(name="location_coordinates", fields=["latitude", "longitude"]))
+                additional_fields = ["id", "score"]
+            except Exception as ex:
+                print(ex)
+
+        if search_args.get("explain", False):
+            additional_fields.append("explainScore")
         if additional_fields:
             fields.append(Field(name="_additional", fields=additional_fields))
+
         return fields
         
     def generate_query_fields(self, search_args):
@@ -186,6 +196,49 @@ class WeaviateCollection(Collection):
 
         return '"' + query.replace('"', '\\"') + '"'
 
+    def transform_request(self, **search_args):
+        limit = Argument(name="limit", value=search_args.get("limit", DEFAULT_SEARCH_SIZE))
+        collection_query_args = [limit]
+        if "after" in search_args: #cursor for reading all documents
+            after_arg = Argument(name="after", value=f'"{search_args["after"]}"')
+            collection_query_args.append(after_arg)        
+        if is_vector_search(search_args):
+            query_vector = f"[{','.join(map(str, search_args['query']))}]"
+            query_arguments = [Argument(name="vector", value=query_vector)]
+            collection_query_args.append(Argument(name="nearVector", value=query_arguments))
+        elif self.is_compound_search(search_args):
+            text_query = " ".join([q for q in search_args["query"] if isinstance(q, str)])
+            text_query = " ".join([s.split("^")[0] for s in text_query.replace('"', "").split(" ")])
+            query_arguments = Argument(name="query", value='"' + text_query + '"')
+            collection_query_args.append(Argument(name="bm25", value=query_arguments))
+        elif self.is_bm25_search(search_args):
+            query = self.generate_bm25_query(search_args)
+            query_arguments = [Argument(name="query", value=query)]
+            if "query_fields" in search_args:
+                fields = self.generate_query_fields(search_args)
+                query_arguments.append(Argument(name="properties", value=fields))
+            collection_query_args.append(Argument(name="bm25", value=query_arguments))
+        else: #unbound search
+            pass #needs no additional collection query arguments
+
+        filter_clause = self.generate_filter_clause(search_args)
+        if filter_clause:
+            collection_query_args.append(filter_clause)
+
+        sort_clause = self.generate_sort_clause(search_args)
+        if sort_clause:
+            collection_query_args.append(sort_clause)
+
+        return_fields = self.generate_return_fields(search_args)
+        collection_query = Query(name=self.name, arguments=collection_query_args, fields=return_fields)
+        root_operation = Operation(type="Get", queries=[collection_query])
+
+        if "log" in search_args:
+            print("Search Request:")
+            print(root_operation.render())
+        request = {"query": "{" + root_operation.render() + "}"}
+        return request
+    
     def get_collection_field_names(self):
         response = requests.get(f"{WEAVIATE_URL}/v1/schema/{self.name}")
         if response.status_code == 200:
@@ -245,49 +298,6 @@ class WeaviateCollection(Collection):
     def add_documents(self, docs, commit=True):
         dataframe = get_spark_session().createDataFrame(Row(**d) for d in docs)
         self.write(dataframe, overwrite=False)
-
-    def transform_request(self, **search_args):
-        limit = Argument(name="limit", value=search_args.get("limit", DEFAULT_SEARCH_SIZE))
-        collection_query_args = [limit]
-        if "after" in search_args: #cursor for reading all documents
-            after_arg = Argument(name="after", value=f'"{search_args["after"]}"')
-            collection_query_args.append(after_arg)        
-        if is_vector_search(search_args):
-            query_vector = f"[{','.join(map(str, search_args['query']))}]"
-            query_arguments = [Argument(name="vector", value=query_vector)]
-            collection_query_args.append(Argument(name="nearVector", value=query_arguments))
-        elif self.is_compound_search(search_args):
-            text_query = " ".join([query for query in search_args["query"] if isinstance(query, str)])
-            text_query = " ".join([s.split("^")[0] for s in text_query.replace('"', "").split(" ")])
-            query_arguments = Argument(name="query", value='"' + text_query + '"')
-            collection_query_args.append(Argument(name="bm25", value=query_arguments))
-        elif self.is_bm25_search(search_args):
-            query = self.generate_bm25_query(search_args)
-            query_arguments = [Argument(name="query", value=query)]
-            if "query_fields" in search_args:
-                fields = self.generate_query_fields(search_args)
-                query_arguments.append(Argument(name="properties", value=fields))
-            collection_query_args.append(Argument(name="bm25", value=query_arguments))
-        else: #unbound search
-            pass #needs no additional collection query arguments
-
-        filter_clause = self.generate_filter_clause(search_args)
-        if filter_clause:
-            collection_query_args.append(filter_clause)
-
-        sort_clause = self.generate_sort_clause(search_args)
-        if sort_clause:
-            collection_query_args.append(sort_clause)
-
-        return_fields = self.generate_return_fields(search_args)
-        collection_query = Query(name=self.name, arguments=collection_query_args, fields=return_fields)
-        root_operation = Operation(type="Get", queries=[collection_query])
-
-        if "log" in search_args:
-            print("Search Request:")
-            print(root_operation.render())
-        request = {"query": "{" + root_operation.render() + "}"}
-        return request
     
     def transform_response(self, search_response):
         def format_doc(doc):
@@ -307,6 +317,8 @@ class WeaviateCollection(Collection):
                 # Scale the score to equal the cosine similarity 
                 if "distance" in additional and additional["distance"] is not None:
                     doc["score"] = 1 - additional["distance"]
+            if "location_coordinates" in doc:
+                doc["location_coordinates"] = f'{doc["location_coordinates"]["latitude"]},{doc["location_coordinates"]["longitude"]}'
             return doc
         
         response = {"docs": [format_doc(d)
