@@ -109,6 +109,8 @@ services:
       DEFAULT_VECTORIZER_MODULE: 'none'
       ENABLE_MODULES: ''
       CLUSTER_HOSTNAME: 'node1'
+    depends_on:
+      - notebooks
     profiles:
       - all
   

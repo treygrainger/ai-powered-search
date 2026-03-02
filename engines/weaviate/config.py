@@ -46,11 +46,13 @@ def generate_property_list(field_mappings):
     return [{"name": name} | value
             for name, value in field_mappings.items()]
 
-def basic_schema(collection_name, field_mappings, vector_field=None):
+def basic_schema(collection_name, field_mappings, vector_field=None, index_null_values=False):
     schema = {"schema": {"class": collection_name, 
                          "properties": generate_property_list(field_mappings)}}
     if vector_field:
         schema["vector_field"] = vector_field
+    if index_null_values:
+        schema["schema"]["invertedIndexConfig"] = {"indexNullState": True}
     return schema
 
 def body_title_schema(collection_name):
@@ -69,14 +71,15 @@ def body_title_schema(collection_name):
                          "last_editor_display_name": text_field(),
                          "last_edit_date": text_field(),
                          "last_activity_date": text_field(),
-                         "title": text_field(),
+                         "title": text_field(invertedIndexConfig={"indexNullState": True}),
                          "tags": text_field(),
                          "answer_count": text_field(),
                          "comment_count": text_field(),
                          "favorite_count": text_field(),
                          "closed_date": text_field(),
                          "community_owned_date": text_field(),
-                         "category": text_field()})
+                         "category": text_field()},
+                         index_null_values=True)
 
 def signals_boosting_schema(collection_name):
     return basic_schema(collection_name, {"query": text_field(),
@@ -151,8 +154,7 @@ SCHEMAS = {
                              "content": text_field(),
                              "categories": text_field(copy_to="doc_type"),
                              "stars_rating": integer_field(),
-                             "location_coordinates": base_field("geoCoordinates")},
-                             "popularity_vector"),
+                             "location_coordinates": base_field("geoCoordinates")}),
     "entities": basic_schema("entities", {"__id": text_field(),
                                           "surface_form": text_field(),
                                           "canonical_form": text_field(),
