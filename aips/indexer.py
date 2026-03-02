@@ -35,9 +35,6 @@ class Progress(RemoteProgress):
 #                  invoked (default). Data from every source dataset will be used to
 #                  populate the collection.
 
-def promo_products_fn(csv_file):
-    return products.load_dataframe(csv_file, with_promotion=True)
-
 dataset_info = {
     "products": {"url": "https://github.com/ai-powered-search/retrotech.git",
                  "count": 48194,

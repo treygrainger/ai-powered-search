@@ -53,15 +53,19 @@ class WeaviateCollection(Collection):
         def generate_filter_argument(name, operator, value):
             value_type = "valueText"
             if isinstance(value, bool):
-                value_type = "valueBoolean"
-                value = str(value).lower()
-            if isinstance(value, list):
+                value = '"' + str(value).lower() + '"'
+            elif isinstance(value, list):
                 operator = "ContainsAny"
                 value = "[" + ", ".join(['"' + v + '"' for v in value]) + "]"
             elif value == "*":
-                value = 0
-                operator = "NotEqual"
-                value_type = "valueInt"
+                if "id" in name:
+                    value = 0
+                    operator = "NotEqual"
+                    value_type = "valueInt"
+                else:
+                    value = "false"
+                    operator = "IsNull"
+                    value_type = "valueBoolean"                    
             elif isinstance(value, str):
                 if value.lower() == "true" or value.lower() == "false":
                     value_type == "valueBoolean"
@@ -80,8 +84,7 @@ class WeaviateCollection(Collection):
         if "filters" in search_args and len(search_args["filters"]) > 0:
             for filter in search_args["filters"]:
                 operator = "Equal" if filter[0][0] != "-" else "NotEqual"
-                filter_arg = generate_filter_argument(filter[0].strip("-"),
-                                                    operator, filter[1])
+                filter_arg = generate_filter_argument(filter[0].strip("-"), operator, filter[1])
                 filters.append(filter_arg)
         if "query" in search_args and isinstance(search_args["query"], list):
             for query_clause in search_args["query"]:
