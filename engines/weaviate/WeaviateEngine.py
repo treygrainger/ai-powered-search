@@ -27,11 +27,11 @@ class WeaviateEngine(Engine):
         status = False
         for i in range(retries + 1):
             try:
-                status = requests.get(STATUS_URL).json()["status"] == "green"
+                status = requests.get(STATUS_URL).status_code == 200
                 if log: print(f"Weaviate is {'online' if status else 'offline'}")
-                if not status:
-                    time.sleep(5)
-                    continue
+                if status:
+                    break
+                time.sleep(5)
             except:
                 if i == retries:
                     if log: print("Weaviate failed the health check.")

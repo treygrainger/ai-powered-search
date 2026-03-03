@@ -33,29 +33,29 @@ sparse_semantic_search_engine_map = {"solr": SolrSparseSemanticSearch,
                                      "vespa": VespaSparseSemanticSearch,
                                      "weaviate": WeaviateSparseSemanticSearch}
 
-def scan_for_healthy_engine():
+def scan_for_healthy_engine(log=False):
     for engine_name in engine_name_type_map.keys():
         engine = engine_name_type_map[engine_name.lower()]()
-        if engine.health_check(retries=1):
+        if engine.health_check(retries=1, log=log):
             return engine_name
     return None
 
-def scan_and_set_healthy_engine():
-    healthy_engine_name = scan_for_healthy_engine()
+def scan_and_set_healthy_engine(log=False):
+    healthy_engine_name = scan_for_healthy_engine(log=log)
     if not healthy_engine_name:
         raise EnvironmentError("No healthy engines found")
     environment.set("AIPS_SEARCH_ENGINE", healthy_engine_name)
     return healthy_engine_name
 
-def get_engine(engine_override=None, host_override=None):
+def get_engine(engine_override=None, host_override=None, log=False):
     if engine_override:
         engine_name = engine_override
     elif environment.get("AIPS_SEARCH_ENGINE"):
         engine_name = environment.get("AIPS_SEARCH_ENGINE")
         engine = engine_name_type_map[engine_name.lower()]()
-        if not engine.health_check(retries=3):
+        if not engine.health_check(retries=3, log=log):
             print(f"{engine_name} engine not healthy, scanning for available engines")
-            engine_name = scan_and_set_healthy_engine()
+            engine_name = scan_and_set_healthy_engine(log=log)
             print(f"Healthy {engine_name} engine found")
     else:
         engine_name = scan_and_set_healthy_engine()
