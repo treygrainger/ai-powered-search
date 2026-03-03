@@ -365,6 +365,8 @@ class VespaCollection(Collection):
                         doc[field] = doc[field]["values"]
                     elif "time" in field and isinstance(doc[field], int): # convert times
                         doc[field] = datetime.datetime.fromtimestamp(doc[field])
+                    elif field == "location_coordinates":
+                        doc[field] = f'{doc[field]["lat"]},{doc[field]["lng"]}'
                 
                 docs.append(doc)
         return {"docs": docs}

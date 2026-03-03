@@ -24,7 +24,7 @@ class VespaSparseSemanticSearch(SparseSemanticSearch):
             query["query_tree"][position] = {
                 "type": "transformed",
                 "syntax": "vespa",
-                "query": 'rank(if(isNan(attribute(stars_rating)) == 1, 0, attribute(stars_rating)) * 20)'}
+                "query": "if(isNan(attribute(stars_rating)) == 1, 0, attribute(stars_rating)) * 3"}
             return True
         return False
         
