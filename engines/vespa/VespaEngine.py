@@ -100,11 +100,7 @@ class VespaEngine(Engine):
             
     def create_collection(self, name, force_rebuild=False, log=False):
         self.deploy_application(force_deploy=force_rebuild, log=log)
-        if force_rebuild:
-            try:
-                requests.delete(f"{self.vespa_url}/document/v1/{self.namespace}/{self.name}/docid?selection=true&cluster={self.namespace}")
-            except:
-                pass
+        requests.delete(f"{config.VESPA_URL}/document/v1/{config.DEFAULT_NAMESPACE}/{name}/docid?selection=true&cluster={config.DEFAULT_NAMESPACE}")
         return self.get_collection(name)
 
     def get_collection(self, name):

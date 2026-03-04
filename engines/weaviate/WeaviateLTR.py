@@ -129,7 +129,7 @@ class WeaviateLTR(LTR):
     def search_with_model(self, model_name, **search_args):
         id_field = "upc" if "products" in self.collection.name.lower() else "id"
         ltr_model_data = self.model_store.load_model(model_name)
-        limit = search_args.get("limit", 25)
+        limit = search_args.get("limit", 5)
         search_args["limit"] =  limit * 10
         response = self.collection.search(**search_args)
         keyed_docs = {d[id_field]: d for d in response["docs"]}
@@ -139,8 +139,9 @@ class WeaviateLTR(LTR):
         for doc in logged_docs:
             doc["ltr_score"] = 0
             for name, values in ltr_model_data["features"].items():
-                doc["ltr_score"] += ((doc["[features]"][name] - values["avg"])
-                                      / values["std"]) * values["weight"]
+                if values["std"] > 0:
+                    doc["ltr_score"] += ((doc["[features]"][name] - values["avg"]) /
+                                          values["std"]) * values["weight"]
         sorted_docs = sorted(logged_docs, key=lambda d: d["ltr_score"], reverse=True)
         docs = [keyed_docs[d[id_field]] for d in sorted_docs][:limit]
         response["docs"] = docs

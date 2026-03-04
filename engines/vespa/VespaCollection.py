@@ -53,7 +53,11 @@ def format_document_for_writing(collection, doc):
     return doc
 
 def get_document_id(doc):
-    return doc.get("id", doc.get("upc", str(hash(json.dumps(doc, sort_keys=True)))))
+    for id_field in ["id", "upc"]:
+        id = doc.get(id_field)
+        if id:
+            return id
+    return str(hash(json.dumps(doc, sort_keys=True)))
 
 def format_query_value(value):
     if isinstance(value, str) and value.lower() not in ["true", "false"]:
