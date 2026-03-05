@@ -43,12 +43,6 @@ def format_document_for_writing(collection, doc):
                 value = value_as_datetime
             if isinstance(value, datetime.datetime):
                 doc[field] = int(value.timestamp())
-    if collection.name == "products_with_promotions":
-        doc["short_description_bigram"] = doc.get("short_description") or ""
-        doc["name_fuzzy"] = doc.get("name") or ""
-        doc["name_bigram"] = doc.get("name") or ""
-
-    #[doc.pop(f) for f in empty_fields]
 
     return doc
 
