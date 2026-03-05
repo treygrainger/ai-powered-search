@@ -104,10 +104,12 @@ def write_batch(collection, client, documents):
                 json_document = {"fields": doc}
                 url = f"{collection.vespa_url}/document/v1/{collection.namespace}/{collection.name}/docid/{doc_id}"                    
                 response = client.post(url, json=json_document, headers={"Content-Type": "application/json"})
+                if response.status_code == 429:
+                    retries += 1
                 response.raise_for_status()
                 break
             except Exception as ex:
-                time.sleep(5)
+                time.sleep(5 + (30 * (3 - retries)))
                 if retries == 0:
                     print("Error writing document: " + str(ex))
                     if response:
