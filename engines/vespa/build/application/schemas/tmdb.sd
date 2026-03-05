@@ -74,7 +74,7 @@ schema tmdb {
         summary-features {
             bm25(title)
             bm25(overview)
-            attributeMatch(release_year)
+            attribute(release_year)
         }
     }
 }

@@ -84,7 +84,7 @@ class VespaLTR(LTR):
                             id_field="id", fields="*", log=False):
         feature_keys = {"title_bm25": "bm25(title)",
                         "overview_bm25": "bm25(overview)",
-                        "release_year": "attributeMatch(release_year)",
+                        "release_year": "attribute(release_year)",
                         "short_description_bm25": "bm25(short_description)",
                         "short_description_constant": "fieldMatch(short_description)",
                         "short_description_match": "fieldMatch(short_description)",
