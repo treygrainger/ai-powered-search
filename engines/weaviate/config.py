@@ -48,11 +48,12 @@ def generate_property_list(field_mappings):
 
 def basic_schema(collection_name, field_mappings, vector_field=None, index_null_values=False):
     schema = {"schema": {"class": collection_name, 
-                         "properties": generate_property_list(field_mappings)}}
+                         "properties": generate_property_list(field_mappings),
+                         "invertedIndexConfig": {"stopwords": {"preset": "none"}}}}
     if vector_field:
         schema["vector_field"] = vector_field
     if index_null_values:
-        schema["schema"]["invertedIndexConfig"] = {"indexNullState": True}
+        schema["schema"]["invertedIndexConfig"]["indexNullState"] = True
     return schema
 
 def body_title_schema(collection_name):

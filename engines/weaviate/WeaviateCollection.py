@@ -277,7 +277,7 @@ class WeaviateCollection(Collection):
         #    dataframe = dataframe.withColumn("id", monotonically_increasing_id())
         return dataframe
 
-    def write(self, dataframe, overwrite=False): 
+    def write(self, dataframe, overwrite=False, log=True): 
         opts = {"batchSize": 1000,
                 "scheme": "http",
                 "host": f"{WEAVIATE_HOST}:{WEAVIATE_PORT}",
@@ -293,11 +293,13 @@ class WeaviateCollection(Collection):
         dataframe = self.rename_id_field(dataframe)
         dataframe.write.format("io.weaviate.spark.Weaviate").options(**opts).mode(mode).save(self.name)
         self.commit()
-        print(f"Successfully written {dataframe.count()} documents")
+        if log: print(f"Successfully written {dataframe.count()} documents")
     
     def add_documents(self, docs, commit=True):
+        print(f"Adding Documents to '{self.name}' collection")
         dataframe = get_spark_session().createDataFrame(Row(**d) for d in docs)
-        self.write(dataframe, overwrite=False)
+        self.write(dataframe, overwrite=False, log=False)
+        return True
     
     def transform_response(self, search_response):
         def format_doc(doc):

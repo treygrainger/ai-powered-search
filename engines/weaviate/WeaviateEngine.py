@@ -32,7 +32,11 @@ class WeaviateEngine(Engine):
             return False
     
     def print_status(self, response):
-        print(json.dumps(response, indent=2))
+        if isinstance(response, requests.Response):
+            status = response.status_code == 200
+        else:
+            status = response        
+        print(f"Status: {'Success' if status else 'Failure'}")
 
     def create_collection(self, name, log=False):
         print(f'Wiping "{name}" collection')
@@ -46,6 +50,7 @@ class WeaviateEngine(Engine):
             print("Status:", response)
             print("Response:", response.json())
         collection = self.get_collection(name)
+        self.print_status(response)
         return collection
 
     def get_collection(self, name):
