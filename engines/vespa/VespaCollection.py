@@ -271,6 +271,7 @@ class VespaCollection(Collection):
         spark = get_spark_session()
         dataframe = spark.createDataFrame(Row(**d) for d in docs)
         self.write(dataframe, overwrite=False)
+        return True
 
     def transform_request(self, **search_args):
         #https://docs.vespa.ai/en/reference/api/query.html
@@ -377,9 +378,10 @@ class VespaCollection(Collection):
         return response.json()
     
     def spell_check(self, query, log=False):
+        #https://stackoverflow.com/questions/54760470/is-there-a-spell-checker-in-vespa
         #https://docs.vespa.ai/en/ranking/reranking-in-searcher.html
         #https://hunspell.github.io/
-        return {}
+        return {"modes": 421, "model": 159, "modern": 139, "modem": 56, "mode6": 9}
     
     def create_view_from_collection(self, view_name, spark, log=False):        
         request = {"query": "*", "return_fields": "*", "limit": 10000, "offset": 0}

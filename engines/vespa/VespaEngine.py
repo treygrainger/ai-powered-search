@@ -53,7 +53,13 @@ class VespaEngine(Engine):
         return status
     
     def print_status(self, response):
-        print(json.dumps(response, indent=2))
+        if response is None:
+            successful = False
+        elif isinstance(response, bool):
+            successful = response
+        else:
+            successful = response.status_code == 200
+        print(f"Status: {'Success' if successful else 'Failure'}")
       
     def generate_zip_binary(self, directory="./engines/vespa/build/application/"): 
         zip_file = shutil.make_archive("any.zip", "zip", directory)
@@ -100,8 +106,12 @@ class VespaEngine(Engine):
             
     def create_collection(self, name, force_rebuild=False, log=False):
         self.deploy_application(force_deploy=force_rebuild, log=log)
+        print(f'Wiping "{name}" collection')
         requests.delete(f"{config.VESPA_URL}/document/v1/{config.DEFAULT_NAMESPACE}/{name}/docid?selection=true&cluster={config.DEFAULT_NAMESPACE}")
-        return self.get_collection(name)
+        print(f'Creating "{name}" collection')
+        collection = self.get_collection(name)
+        self.print_status(collection != None)
+        return collection
 
     def get_collection(self, name):
         return VespaCollection(name)

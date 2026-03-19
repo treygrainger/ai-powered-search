@@ -103,7 +103,7 @@ dataset_info = {
                 "feature_requirement": AdvancedFeatures.SKG},
     "entities": {"url": "https://github.com/ai-powered-search/reviews.git",
                  "source_datasets": ["entities", "cities"],
-                 "count": 21,
+                 "count": 137602,
                  "loader_fn": from_csv,
                  "feature_requirement": AdvancedFeatures.TEXT_TAGGING},
     "cities": {"url": "https://github.com/ai-powered-search/reviews.git",
