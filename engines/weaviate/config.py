@@ -25,9 +25,11 @@ def schema_contains_custom_vector_field(collection_name):
 def base_field(type, **kwargs):
     return {"dataType": [type]} | kwargs
 
-#"indexSearchable": True
 def text_field(**kwargs):
     return base_field("text", **kwargs)
+
+def keyword_field(**kwargs):
+    return base_field("text", **({"tokenization": "field"} | kwargs))
 
 def multivalue_text_field(**kwargs):
     return base_field("text[]", **kwargs)
@@ -36,7 +38,7 @@ def double_field():
     return base_field("number")
 
 def integer_field():
-    return base_field("int")
+    return base_field("int", )
 
 # {"multiValued": "true", "docValues": "true"}
 def date_field():
@@ -83,7 +85,7 @@ def body_title_schema(collection_name):
                          index_null_values=True)
 
 def signals_boosting_schema(collection_name):
-    return basic_schema(collection_name, {"query": text_field(),
+    return basic_schema(collection_name, {"query": keyword_field(),
                                           "doc": text_field(),
                                           "boost": integer_field()})
 

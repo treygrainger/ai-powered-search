@@ -1,3 +1,4 @@
+import re
 from xml.dom import NotFoundErr
 import requests
 from aips.data_loaders.reviews import transform_dataframe_for_weaviate
@@ -171,26 +172,39 @@ class WeaviateCollection(Collection):
             return fields
         return None
     
-    def parse_query_functions(self, query):
+    def remove_query_functions(self, query):
         #'{!func}query("one") {!func}query("two") {!func}query("three")
         if query.find("{!func}") != -1:
             query = query.replace('{!func}query("', "").replace(')"', "")
         return query
 
-    def generate_bm25_query(self, search_args):
-        query = self.parse_query_functions(search_args["query"])
+    def get_max_boost(self, query):
+        if "^" not in query:
+            return 1
+        max_boost = max(float(b.split("^")[1]) for b in re.split(r'\s+(?=")', query))
+        if max_boost <= 1.0:
+            max_boost *= 100
+        return int(max_boost)
 
+    def expand_boosted_query(self, query):
+        if "^" in query:
+            boosts = [(str(b.split("^")[0]), float(b.split("^")[1]))
+                      for b in re.split(r'\s+(?=")', query)]
+            query = ""
+            for boost in boosts:
+                quantity = int(boost[1] * 100 if boost[1] <= 1.0 else boost[1])
+                query = query + " " + ((boost[0] + " ") * quantity)            
+        return query
+    
+    def generate_bm25_query(self, search_args):
+        query = self.remove_query_functions(search_args["query"])
+        query = self.expand_boosted_query(query)
         if "query_boosts" in search_args:
             # Weaviate does not support query time boosting, to achieve this stuff the query with expanded boost terms
             # Parses a boost string into a data structure, supports ints and floats
             boost_string = search_args["query_boosts"][1] if isinstance(search_args["query_boosts"], tuple) else search_args["query_boosts"]
-            boosts = [(str(b.split("^")[0][1:-1]),
-                       int(float(b.split("^")[1]))) for b in boost_string.split(" ")]
-            max_boost = max(b[1] for b in boosts)
-            query = (query + " ") * max_boost
-            for boost in boosts:
-                quantity = int(boost[1] * 100 if isinstance(boost[1], float) else boost[1])
-                query = query + " " + ((boost[0] + " ") * quantity)
+            max_boost = self.get_max_boost(boost_string)
+            query = (query + " ") * max_boost + self.expand_boosted_query(boost_string)
         if "index_time_boost" in search_args:
             query += " " + search_args["index_time_boost"][1]
 
