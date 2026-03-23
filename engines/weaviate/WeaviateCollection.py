@@ -204,7 +204,7 @@ class WeaviateCollection(Collection):
             # Parses a boost string into a data structure, supports ints and floats
             boost_string = search_args["query_boosts"][1] if isinstance(search_args["query_boosts"], tuple) else search_args["query_boosts"]
             max_boost = self.get_max_boost(boost_string)
-            query = (query + " ") * max_boost + self.expand_boosted_query(boost_string)
+            query = (query + " ") + self.expand_boosted_query(boost_string)
         if "index_time_boost" in search_args:
             query += " " + search_args["index_time_boost"][1]
 
@@ -390,7 +390,7 @@ class WeaviateCollection(Collection):
         # Option 1: Keyword stuff a field 
         # Option 2: Rerank weaviate results (in code) based on indexed weights from the collection
         def generate_signals_field(signals):
-            return " ".join([(term + " ") * boost for term, boost in signals.items()])                
+            return " ".join([(term + " ") for term, boost in signals.items()])                
         generate_stuffed_column = udf(generate_signals_field, StringType())
 
         product_query = f"SELECT upc, name, short_description, long_description, manufacturer FROM {boosted_products_collection_name}"

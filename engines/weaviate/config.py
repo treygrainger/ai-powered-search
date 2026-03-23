@@ -37,8 +37,8 @@ def multivalue_text_field(**kwargs):
 def double_field():
     return base_field("number")
 
-def integer_field():
-    return base_field("int", )
+def integer_field(**kwargs):
+    return base_field("int", **kwargs)
 
 # {"multiValued": "true", "docValues": "true"}
 def date_field():
@@ -208,7 +208,7 @@ SCHEMAS = {
                                   "vote_count": integer_field(),
                                   "movie_image_ids": text_field()}),
     "outdoors": basic_schema("outdoors", {"__id": text_field(),
-                                          "accepted_answer_id": integer_field(),
+                                          "accepted_answer_id": integer_field(invertedIndexConfig={"indexNullState": True}), #
                                           "parent_id": text_field(), #integer fields 
                                           "creation_date": text_field(),
                                           "score": integer_field(),  # rename?
@@ -219,7 +219,8 @@ SCHEMAS = {
                                           "tags": multivalue_text_field(),
                                           "answer_count": integer_field(),                                          
                                           "post_type": text_field(),
-                                          "url": text_field()}),
+                                          "url": text_field()},
+                                          index_null_values=True),
     "tmdb_with_embeddings": basic_schema("tmdb_with_embeddings",
                                          {"title": text_field(), "movie_id": text_field(), "image_id": text_field()},
                                          "image_embedding"),
