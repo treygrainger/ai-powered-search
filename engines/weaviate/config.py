@@ -25,9 +25,11 @@ def schema_contains_custom_vector_field(collection_name):
 def base_field(type, **kwargs):
     return {"dataType": [type]} | kwargs
 
-#"indexSearchable": True
 def text_field(**kwargs):
     return base_field("text", **kwargs)
+
+def keyword_field(**kwargs):
+    return base_field("text", **({"tokenization": "field"} | kwargs))
 
 def multivalue_text_field(**kwargs):
     return base_field("text[]", **kwargs)
@@ -35,8 +37,8 @@ def multivalue_text_field(**kwargs):
 def double_field():
     return base_field("number")
 
-def integer_field():
-    return base_field("int")
+def integer_field(**kwargs):
+    return base_field("int", **kwargs)
 
 # {"multiValued": "true", "docValues": "true"}
 def date_field():
@@ -48,11 +50,12 @@ def generate_property_list(field_mappings):
 
 def basic_schema(collection_name, field_mappings, vector_field=None, index_null_values=False):
     schema = {"schema": {"class": collection_name, 
-                         "properties": generate_property_list(field_mappings)}}
+                         "properties": generate_property_list(field_mappings),
+                         "invertedIndexConfig": {"stopwords": {"preset": "none"}}}}
     if vector_field:
         schema["vector_field"] = vector_field
     if index_null_values:
-        schema["schema"]["invertedIndexConfig"] = {"indexNullState": True}
+        schema["schema"]["invertedIndexConfig"]["indexNullState"] = True
     return schema
 
 def body_title_schema(collection_name):
@@ -82,7 +85,7 @@ def body_title_schema(collection_name):
                          index_null_values=True)
 
 def signals_boosting_schema(collection_name):
-    return basic_schema(collection_name, {"query": text_field(),
+    return basic_schema(collection_name, {"query": keyword_field(),
                                           "doc": text_field(),
                                           "boost": integer_field()})
 
@@ -179,7 +182,7 @@ SCHEMAS = {
                                   "vote_count": integer_field(),
                                   "movie_image_ids": text_field()}),
     "outdoors": basic_schema("outdoors", {"__id": text_field(),
-                                          "accepted_answer_id": integer_field(),
+                                          "accepted_answer_id": integer_field(invertedIndexConfig={"indexNullState": True}), #
                                           "parent_id": text_field(), #integer fields 
                                           "creation_date": text_field(),
                                           "score": integer_field(),  # rename?
@@ -190,7 +193,8 @@ SCHEMAS = {
                                           "tags": multivalue_text_field(),
                                           "answer_count": integer_field(),                                          
                                           "post_type": text_field(),
-                                          "url": text_field()}),
+                                          "url": text_field()},
+                                          index_null_values=True),
     "tmdb_with_embeddings": basic_schema("tmdb_with_embeddings",
                                          {"title": text_field(), "movie_id": text_field(), "image_id": text_field()},
                                          "image_embedding"),

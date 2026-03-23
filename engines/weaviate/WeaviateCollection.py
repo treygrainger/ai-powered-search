@@ -1,3 +1,4 @@
+import re
 from xml.dom import NotFoundErr
 import requests
 from aips.data_loaders.reviews import transform_dataframe_for_weaviate
@@ -171,26 +172,39 @@ class WeaviateCollection(Collection):
             return fields
         return None
     
-    def parse_query_functions(self, query):
+    def remove_query_functions(self, query):
         #'{!func}query("one") {!func}query("two") {!func}query("three")
         if query.find("{!func}") != -1:
             query = query.replace('{!func}query("', "").replace(')"', "")
         return query
 
-    def generate_bm25_query(self, search_args):
-        query = self.parse_query_functions(search_args["query"])
+    def get_max_boost(self, query):
+        if "^" not in query:
+            return 1
+        max_boost = max(float(b.split("^")[1]) for b in re.split(r'\s+(?=")', query))
+        if max_boost <= 1.0:
+            max_boost *= 100
+        return int(max_boost)
 
+    def expand_boosted_query(self, query):
+        if "^" in query:
+            boosts = [(str(b.split("^")[0]), float(b.split("^")[1]))
+                      for b in re.split(r'\s+(?=")', query)]
+            query = ""
+            for boost in boosts:
+                quantity = int(boost[1] * 100 if boost[1] <= 1.0 else boost[1])
+                query = query + " " + ((boost[0] + " ") * quantity)            
+        return query
+    
+    def generate_bm25_query(self, search_args):
+        query = self.remove_query_functions(search_args["query"])
+        query = self.expand_boosted_query(query)
         if "query_boosts" in search_args:
             # Weaviate does not support query time boosting, to achieve this stuff the query with expanded boost terms
             # Parses a boost string into a data structure, supports ints and floats
             boost_string = search_args["query_boosts"][1] if isinstance(search_args["query_boosts"], tuple) else search_args["query_boosts"]
-            boosts = [(str(b.split("^")[0][1:-1]),
-                       int(float(b.split("^")[1]))) for b in boost_string.split(" ")]
-            max_boost = max(b[1] for b in boosts)
-            query = (query + " ") * max_boost
-            for boost in boosts:
-                quantity = int(boost[1] * 100 if isinstance(boost[1], float) else boost[1])
-                query = query + " " + ((boost[0] + " ") * quantity)
+            max_boost = self.get_max_boost(boost_string)
+            query = (query + " ") + self.expand_boosted_query(boost_string)
         if "index_time_boost" in search_args:
             query += " " + search_args["index_time_boost"][1]
 
@@ -277,7 +291,7 @@ class WeaviateCollection(Collection):
         #    dataframe = dataframe.withColumn("id", monotonically_increasing_id())
         return dataframe
 
-    def write(self, dataframe, overwrite=False): 
+    def write(self, dataframe, overwrite=False, log=True): 
         opts = {"batchSize": 1000,
                 "scheme": "http",
                 "host": f"{WEAVIATE_HOST}:{WEAVIATE_PORT}",
@@ -293,11 +307,13 @@ class WeaviateCollection(Collection):
         dataframe = self.rename_id_field(dataframe)
         dataframe.write.format("io.weaviate.spark.Weaviate").options(**opts).mode(mode).save(self.name)
         self.commit()
-        print(f"Successfully written {dataframe.count()} documents")
+        if log: print(f"Successfully written {dataframe.count()} documents")
     
     def add_documents(self, docs, commit=True):
+        print(f"Adding Documents to '{self.name}' collection")
         dataframe = get_spark_session().createDataFrame(Row(**d) for d in docs)
-        self.write(dataframe, overwrite=False)
+        self.write(dataframe, overwrite=False, log=False)
+        return True
     
     def transform_response(self, search_response):
         def format_doc(doc):
@@ -374,7 +390,7 @@ class WeaviateCollection(Collection):
         # Option 1: Keyword stuff a field 
         # Option 2: Rerank weaviate results (in code) based on indexed weights from the collection
         def generate_signals_field(signals):
-            return " ".join([(term + " ") * boost for term, boost in signals.items()])                
+            return " ".join([(term + " ") for term, boost in signals.items()])                
         generate_stuffed_column = udf(generate_signals_field, StringType())
 
         product_query = f"SELECT upc, name, short_description, long_description, manufacturer FROM {boosted_products_collection_name}"
