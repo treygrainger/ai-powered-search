@@ -155,17 +155,15 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
         if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, log=log):
             if log: print(f"Reindexing [{dataset}] collection")
             collection = engine.create_collection(dataset, log=log)
-            local_engine_collection = None
             overwrite = len(source_datasets) == 1
             for source_dataset in source_datasets:
                 csv_file_path = download_data_files(source_dataset, log=log)
                 loader_args = dataset_info[source_dataset].get("loader_args", {})
                 dataframe = dataset_info[source_dataset]["loader_fn"](csv_file_path, **loader_args)
+                if log: dataframe.show(3)
                 if dataset_info[source_dataset].get("enable_ltr", False):
                     get_ltr_engine(collection).enable_ltr()
                 collection.write(dataframe, overwrite=overwrite)
-                if local_engine_collection:
-                    local_engine_collection.write(dataframe, overwrite=overwrite)
         else:
             if log: print(f"Collection [{dataset}] is healthy")
             collection = engine.get_collection(dataset)
