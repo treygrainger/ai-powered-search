@@ -12,8 +12,8 @@ def load_dataframe(csv_file):
         .withColumn("surface_form", col("name")) \
         .withColumn("canonical_form", col("name"))
 
-    desired_columns = ["admin_area", "location_coordinates", "type", "surface_form", "canonical_form", 
-                       "popularity", "country"]
+    desired_columns = ["id", "admin_area", "location_coordinates", "type",
+                       "surface_form", "canonical_form", "popularity", "country"]
     return dataframe.select(desired_columns)
 
 def get_csv_schema():
