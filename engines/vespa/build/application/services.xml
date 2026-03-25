@@ -3,6 +3,11 @@
      <component id="linguistics" class="com.yahoo.language.lucene.LuceneLinguistics" bundle="lucene-linguistics">
       <config name="com.yahoo.language.lucene.lucene-analysis">
         <analysis>
+          <item key="language=en">
+            <tokenizer>
+              <name>standard</name>
+            </tokenizer>
+          </item>
           <item key="profile=luceneNgram;language=en">
             <tokenizer>
               <name>standard</name>

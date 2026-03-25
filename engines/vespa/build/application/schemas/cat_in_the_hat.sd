@@ -20,8 +20,11 @@ schema cat_in_the_hat {
     }
 
     rank-profile default {
+        weakand {
+            stopword-limit: 1.00
+        }
         first-phase {
-            expression: max(bm25(title), bm25(description))
+            expression: bm25(description) / 2
         }
     }
 }

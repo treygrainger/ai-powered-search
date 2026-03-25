@@ -300,6 +300,9 @@ class VespaCollection(Collection):
                 clauses = ["userInput(@input_query)"]
                 if query_fields and len(query_fields) == 1:
                     clauses[0] = "{defaultIndex:'" + query_fields[0] + "'}" + clauses[0]
+                elif query_fields and len(query_fields) == 2 and query_fields[0] == "id":
+                    clauses.append("{defaultIndex:'" + query_fields[1] + "'}" + clauses[0])
+                    clauses[0] = "{defaultIndex:'" + query_fields[0] + "'}" + clauses[0]
                 if isinstance(search_args["query"], list):
                     main_query_i = self.get_index_of_first_query(search_args["query"])
                     for i, q in enumerate(search_args["query"]):

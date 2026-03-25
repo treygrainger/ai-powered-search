@@ -62,7 +62,7 @@ schema outdoors {
 
     rank-profile default {
         first-phase {
-            expression: bm25(title) + bm25(body) + bm25(tags)
+            expression: max(bm25(title), bm25(body))
         }
     }
 }
