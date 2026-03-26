@@ -138,6 +138,8 @@ services:
       - "19071:19071"
     depends_on:
       - notebooks
+    profiles:
+      - all
 
   zookeeper:
     image: zookeeper:3.5.8
