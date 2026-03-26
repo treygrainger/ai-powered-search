@@ -387,22 +387,27 @@ class VespaCollection(Collection):
         return {"modes": 421, "model": 159, "modern": 139, "modem": 56, "mode6": 9}
     
     def create_view_from_collection(self, view_name, spark, log=False):        
-        request = {"query": "*", "return_fields": "*", "limit": 10000, "offset": 0}
-        #if log:
-        #    request["log"] = True
+        url = f"{config.VESPA_URL}/document/v1/{config.DEFAULT_NAMESPACE}/{self.name}/docid"
+        continuation = None
         all_documents = []
         try:
             while True:
                 if log:
-                    print(f'Fetching from offset {request["offset"]}...')                
-                docs = self.search(**request)["docs"]
-                all_documents.extend(docs)                
-                if len(docs) < request["limit"]:
+                    print(f'Fetching from offset {continuation}...')
+
+                clause = f"&continuation={continuation}" if continuation else ""
+                response = requests.get(f"{url}?wantedDocumentCount=5000{clause}")
+                response.raise_for_status()
+                docs = response.json()["documents"]
+                if log: print(len(docs))
+
+                all_documents.extend([d["fields"] for d in docs])
+                continuation = response.json().get("continuation")
+                if len(docs) == 0 or not continuation:
                     break
-                request["offset"] += request["limit"]                    
         except Exception as ex:
             print(f"Create view exception: {ex}")
-        
+
         if log:
             print(f"Loaded {len(all_documents)} docs from Vespa")
         
