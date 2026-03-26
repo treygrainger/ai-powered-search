@@ -54,10 +54,6 @@ class OpenSearchLTR(LTR):
         query_clause = {"match": {f"{field_name}_ngram": {"query": "{{keywords}}",
                                                           "analyzer": "standard"}}}
         return self.generate_feature(feature_name, query_clause)
-        
-    def generate_field_length_feature(self, feature_name, field_name):
-        #Unused except in Ammendum
-        return None
     
     def delete_feature_store(self, name, log=False):
         if log: display(f"Deleting features {name}")     

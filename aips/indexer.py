@@ -1,5 +1,5 @@
 import tarfile
-from aips import get_engine, get_ltr_engine
+from aips import get_local_engine, get_engine, get_ltr_engine
 from git import Repo
 import os
 import shutil
@@ -34,9 +34,6 @@ class Progress(RemoteProgress):
 #                  source dataset for a collection is typically just the dataset being
 #                  invoked (default). Data from every source dataset will be used to
 #                  populate the collection.
-
-def promo_products_fn(csv_file):
-    return products.load_dataframe(csv_file, with_promotion=True)
 
 dataset_info = {
     "products": {"url": "https://github.com/ai-powered-search/retrotech.git",
@@ -99,7 +96,8 @@ dataset_info = {
                       "feature_requirement": AdvancedFeatures.SKG},
     "reviews": {"url": "https://github.com/ai-powered-search/reviews.git",
                 "count": 192138,
-                "loader_fn": reviews.load_dataframe},
+                "loader_fn": reviews.load_dataframe,
+                "feature_requirement": AdvancedFeatures.SKG},
     "entities": {"url": "https://github.com/ai-powered-search/reviews.git",
                  "source_datasets": ["entities", "cities"],
                  "count": 21,
@@ -150,25 +148,25 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
     """
     source_datasets = dataset_info[dataset].get("source_datasets", [dataset])
     expected_count = sum([dataset_info[r]["count"] for r in source_datasets])
-    if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, log=log):
-        if log: print(f"Reindexing [{dataset}] collection")
-        collection = engine.create_collection(dataset, log=log)
-        alternate_feature_collection = None
-        if not is_feature_supported(engine, dataset):
-            alternate_feature_collection = get_engine("solr").create_collection(dataset, log=log)
-        overwrite = len(source_datasets) == 1
-        for dataset in source_datasets:
-            csv_file_path = download_data_files(dataset, log=log)
-            loader_args = dataset_info[dataset].get("loader_args", {})
-            dataframe = dataset_info[dataset]["loader_fn"](csv_file_path, **loader_args)
-            if dataset_info[dataset].get("enable_ltr", False):
-                get_ltr_engine(collection).enable_ltr()
-            collection.write(dataframe, overwrite=overwrite)
-            if alternate_feature_collection:
-                alternate_feature_collection.write(dataframe, overwrite=overwrite)
-    else:
-        if log: print(f"Collection [{dataset}] is healthy")
-        collection = engine.get_collection(dataset)
+    engines = [engine]
+    if not is_feature_supported(engine, dataset):
+        engines.append(get_local_engine(log=log))
+    for engine in engines:
+        if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, log=log):
+            if log: print(f"Reindexing [{dataset}] collection")
+            collection = engine.create_collection(dataset, log=log)
+            overwrite = len(source_datasets) == 1
+            for source_dataset in source_datasets:
+                csv_file_path = download_data_files(source_dataset, log=log)
+                loader_args = dataset_info[source_dataset].get("loader_args", {})
+                dataframe = dataset_info[source_dataset]["loader_fn"](csv_file_path, **loader_args)
+                if log: dataframe.show(3)
+                if dataset_info[source_dataset].get("enable_ltr", False):
+                    get_ltr_engine(collection).enable_ltr()
+                collection.write(dataframe, overwrite=overwrite)
+        else:
+            if log: print(f"Collection [{dataset}] is healthy")
+            collection = engine.get_collection(dataset)
     return collection
 
 def copy_repository(dataset, log=False):
@@ -197,9 +195,8 @@ def join_split_tar_file(tar_file_path):
                 char_i += 1
 
 def untar_file(dataset, log=False):
-    repo_path = get_repo_path(dataset)
     tar_file_name = dataset_info[dataset].get("tar_file", f"{dataset}.tgz")
-    tar_file = f"{repo_path}/{tar_file_name}"
+    tar_file = f"{get_repo_path(dataset)}/{tar_file_name}"
     join_split_tar_file(tar_file)
     with tarfile.open(tar_file, 'r:gz') as tar:
         directory = dataset_info[dataset].get("destination", get_repository_name(dataset))

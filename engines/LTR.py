@@ -33,11 +33,6 @@ class LTR(ABC):
     def generate_field_value_feature(self, feature_name, field_name):
         "Generates an LTR field value feature definition."
         pass
-    
-    @abstractmethod
-    def generate_field_length_feature(self, feature_name, field_name):
-        "Generates an LTR field length feature definition."
-        pass
    
     @abstractmethod 
     def generate_model(self, model_name, feature_names, means, std_devs, weights):

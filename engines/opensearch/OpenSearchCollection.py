@@ -2,12 +2,15 @@ import random
 from re import search
 import requests
 from aips.spark import get_spark_session
+from aips.spark.dataframe import from_sql
 from engines.Collection import Collection
-from engines.opensearch.config import OPENSEARCH_URL
+from engines.opensearch.config import OPENSEARCH_URL, SCHEMAS
 import time
 import json
 from pyspark.sql import Row
 import numbers
+from pyspark.sql.types import StringType, StructType, ArrayType, StructField
+from pyspark.sql.functions import col, udf, collect_list, create_map
 
 def generate_vector_search_request(search_args):
     vector = search_args.pop("query")
@@ -204,5 +207,52 @@ class OpenSearchCollection(Collection):
         suggestions = {}
         if len(response["suggest"]["spell-check"]):
             suggestions = {term["text"]: term["freq"] for term
-                            in response["suggest"]["spell-check"][0]["options"]}
+                           in response["suggest"]["spell-check"][0]["options"]}
         return suggestions
+    
+    def create_view_from_collection(self, view_name, spark, log=False):
+        if self.name == "tmdb_with_embeddings":
+            search_after = None
+            documents = []
+            while True:
+                request = {"query": "*",
+                           "return_fields": ["image_id", "movie_id", "title", "image_embedding"],
+                           "limit": 500,
+                           "sort": [("_id", "asc")]}
+                if search_after:
+                    request["search_after"] = search_after
+                response = self.search(**request)
+                documents.extend(response["docs"])
+                if len(response["docs"]) != 500:
+                    break
+                search_after = response["docs"][-1]["sort"]
+            for d in documents:
+                d["image_embedding"] = [f'{str(float(s))}' for s in d["image_embedding"]]
+                
+            schema = StructType([StructField("image_id", StringType()),
+                                 StructField("movie_id", StringType()),
+                                 StructField("title", StringType()),
+                                 StructField("image_embedding", ArrayType(StringType()))])
+            dataframe = spark.createDataFrame(documents, schema=schema)
+            dataframe.createOrReplaceTempView(view_name)
+        else:
+            parse_id_udf = udf(lambda s: s["_id"], StringType())
+            opts = {"opensearch.nodes": OPENSEARCH_URL,
+                    "opensearch.net.ssl": "false"}
+            if SCHEMAS.get(self.name.lower(), {}).get("id_field", "") == "_id":
+                opts["opensearch.read.metadata"] = "true"
+            dataframe = spark.read.format("opensearch").options(**opts).load(self.name)
+            if "_metadata" in dataframe.columns and \
+                SCHEMAS.get(self.name.lower(), {}).get("id_field", "") == "_id":
+                dataframe = dataframe.withColumn("id", parse_id_udf(col("_metadata")))
+                dataframe = dataframe.drop("_metadata")
+            dataframe.createOrReplaceTempView(view_name)
+
+    def load_index_time_boosting_dataframe(self, boosts_collection_name, boosted_products_collection_name):
+        product_query = f"SELECT * FROM {boosted_products_collection_name}"
+        boosts_query = f"SELECT doc, boost, REPLACE(query, '.', '') AS query FROM {boosts_collection_name}"
+
+        grouped_boosts = from_sql(boosts_query).groupBy("doc") \
+            .agg(collect_list(create_map("query", "boost"))[0].alias("signals_boosts")) \
+            .withColumnRenamed("doc", "upc")
+        return from_sql(product_query).join(grouped_boosts, "upc")
