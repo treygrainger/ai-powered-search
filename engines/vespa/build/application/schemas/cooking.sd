@@ -1,0 +1,4 @@
+schema cooking inherits stackexchange {
+    document cooking inherits stackexchange {
+    }
+}

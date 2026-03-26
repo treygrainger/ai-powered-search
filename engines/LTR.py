@@ -43,6 +43,11 @@ class LTR(ABC):
     def delete_feature_store(self, name, log=False):
         "Deletes the feature store of the given name."
         pass
+
+    @abstractmethod
+    def get_features(self, model_name, log=False):
+        "Retrieves the features for a given model"
+        pass
     
     @abstractmethod
     def upload_features(self, features, model_name, log=False):

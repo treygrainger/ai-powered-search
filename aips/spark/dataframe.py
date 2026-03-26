@@ -1,7 +1,8 @@
 from aips.spark import get_spark_session
 from pyspark.sql.functions import lit
 
-def from_csv(file, additional_columns=False, drop_id=False, multiline_csv=False, log=True):    
+def from_csv(file, additional_columns=False, drop_id=False, multiline_csv=False, 
+             desired_columns=None, log=True):    
     if log:
         print(f"Loading {file}")
     spark = get_spark_session()
@@ -17,6 +18,8 @@ def from_csv(file, additional_columns=False, drop_id=False, multiline_csv=False,
         dataframe = dataframe.withColumn("category", lit(additional_columns.get("category")))
     if drop_id:
         dataframe = dataframe.drop("id")    
+    if desired_columns:
+        dataframe = dataframe.select(desired_columns)
     if log:
         print("Schema: ")
         dataframe.printSchema()

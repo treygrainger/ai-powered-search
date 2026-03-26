@@ -1,5 +1,6 @@
 import os
 import numpy
+from aips import get_ltr_engine
 from aips.indexer import download_data_files, build_collection
 from ltr.log import FeatureLogger
 from ltr.judgments import Judgment, judgments_open, judgments_to_file
@@ -29,7 +30,7 @@ def normalize_features(logged_judgments):
     for judgment in logged_judgments:
         normed_features = [0.0] * len(judgment.features)
         for idx, f in enumerate(judgment.features):
-            normed = (f - means[idx]) / std_devs[idx]
+            normed = (f - means[idx]) / std_devs[idx] if std_devs[idx] > 0 else 0.0
             normed_features[idx] = normed
         normed_judgment = Judgment(qid=judgment.qid,
                                    keywords=judgment.keywords,
@@ -64,7 +65,14 @@ def generate(engine, force_rebuild=False):
     
     download_data_files("judgments")
     tmdb_collection = build_collection(engine, "tmdb")
-    ftr_logger=FeatureLogger(index=tmdb_collection, feature_set="movie_model")
+    ltr = get_ltr_engine(tmdb_collection)
+    
+    ltr.delete_feature_store("movie_model")
+    feature_set = [ltr.generate_query_feature(feature_name="title_bm25", field_name="title"),
+                   ltr.generate_query_feature(feature_name="overview_bm25", field_name="overview"),
+                   ltr.generate_field_value_feature(feature_name="release_year", field_name="release_year")]
+    ltr.upload_features(features=feature_set, model_name="movie_model")
+    ftr_logger = FeatureLogger(index=tmdb_collection, feature_set="movie_model")
 
     with judgments_open("data/ai_pow_search_judgments.txt") as judgment_list:
         for qid, query_judgments in groupby(judgment_list, key=lambda j: j.qid):

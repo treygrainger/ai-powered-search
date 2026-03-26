@@ -1,4 +1,5 @@
 import json
+import time
 
 import requests
 
@@ -22,14 +23,22 @@ class WeaviateEngine(Engine):
     def get_supported_advanced_features(self):
         return [AdvancedFeatures.LTR]
 
-    def health_check(self):
-        try:
-            status = requests.get(STATUS_URL).json()["status"] == "green"
-            print(f"Weaviate engine is {'online' if status else 'offline'}")
-            return status
-        except:
-            print("Weaviate failed the health check.")
-            return False
+    def health_check(self, log=False, retries=0):
+        status = False
+        for i in range(retries + 1):
+            try:
+                status = requests.get(STATUS_URL).status_code == 200
+                if log: print(f"Weaviate is {'online' if status else 'offline'}")
+                if status:
+                    break
+                time.sleep(5)
+            except:
+                if i == retries:
+                    if log: print("Weaviate failed the health check.")
+                    status = False
+                else: 
+                    time.sleep(5)
+        return status
     
     def print_status(self, response):
         if isinstance(response, requests.Response):

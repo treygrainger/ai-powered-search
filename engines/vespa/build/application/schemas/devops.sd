@@ -1,0 +1,4 @@
+schema devops inherits stackexchange {
+    document devops inherits stackexchange {
+    }
+}

@@ -1,0 +1,15 @@
+schema user_item_recommendations  {
+    document user_item_recommendations {
+        field user type string {
+            indexing: summary | index 
+        }
+
+        field product type string {
+            indexing: summary | index 
+        }
+
+        field boost type float {
+            indexing: summary | attribute
+        }
+    }
+}

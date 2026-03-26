@@ -1,0 +1,50 @@
+schema outdoors_with_embeddings {
+    document outdoors_with_embeddings {
+        field id type int {
+            indexing: summary | attribute
+        }
+
+        field title type string {
+            indexing: summary | index | attribute
+            match: text
+        }
+
+        field title_embedding type tensor<float>(x[768]) {
+            indexing: summary | attribute | index
+            attribute {
+                distance-metric: innerproduct
+            }
+            index {
+                hnsw {
+                    max-links-per-node: 24
+                    neighbors-to-explore-at-insert: 128
+                }
+            }
+        }
+    }
+
+    fieldset default {
+        fields: title
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: bm25(title)
+        }
+    }
+
+    rank-profile outdoors_with_embeddings_vector_similarity {
+        inputs {
+            query(query_vector) tensor<float>(x[768])
+        }
+        first-phase {
+            expression: closeness(field, title_embedding)
+        }
+    }
+
+    rank-profile hybrid inherits outdoors_with_embeddings_vector_similarity {
+        first-phase {
+            expression: bm25(title) + closeness(field, title_embedding)
+        }
+    }
+}

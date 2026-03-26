@@ -1,0 +1,4 @@
+schema scifi inherits stackexchange {
+    document scifi inherits stackexchange {
+    }
+}

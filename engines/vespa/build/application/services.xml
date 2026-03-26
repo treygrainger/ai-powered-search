@@ -1,0 +1,100 @@
+<services version="1.0">
+    <container version="1.0" id="queryfeedendpoint">
+     <component id="linguistics" class="com.yahoo.language.lucene.LuceneLinguistics" bundle="lucene-linguistics">
+      <config name="com.yahoo.language.lucene.lucene-analysis">
+        <analysis>
+          <item key="language=en">
+            <tokenizer>
+              <name>standard</name>
+            </tokenizer>
+          </item>
+          <item key="profile=luceneNgram;language=en">
+            <tokenizer>
+              <name>standard</name>
+            </tokenizer>
+            <tokenFilters>
+              <item>
+                <name>lowercase</name>
+              </item>
+              <item>
+                <name>ngram</name>
+                <conf>
+                  <item key="minGramSize">3</item>
+                  <item key="maxGramSize">6</item>
+                </conf>
+              </item>
+            </tokenFilters>
+          </item>
+          
+          <item key="profile=luceneShingle;language=en">
+            <tokenizer>
+              <name>standard</name>
+            </tokenizer>
+            <tokenFilters>
+              <item>
+                <name>lowercase</name>
+              </item>
+              <item>
+                <name>shingle</name>
+                <conf>
+                  <item key="minShingleSize">2</item>
+                  <item key="maxShingleSize">2</item>
+                </conf>
+              </item>
+            </tokenFilters>
+          </item>
+        </analysis>
+      </config>
+    </component>
+    <search>
+    </search>
+    <document-api/>
+    </container>
+    <content id="aips" version="1.0">
+        <min-redundancy>1</min-redundancy>
+        <documents>
+            <document type="cat_in_the_hat" mode="index"/>
+            <document type="cooking" mode="index"/>
+            <document type="devops" mode="index"/>
+            <document type="entities" mode="index"/>
+            <document type="health" mode="index"/>
+            <document type="jobs" mode="index"/>
+            <document type="outdoors" mode="index"/>
+            <document type="outdoors_with_embeddings" mode="index"/>
+            <document type="products" mode="index"/>
+            <document type="products_with_promotions" mode="index"/>
+            <document type="products_with_signals_boosts" mode="index"/>            
+            <document type="reviews" mode="index"/>
+            <document type="scifi" mode="index"/>
+            <document type="signals" mode="index"/>
+            <document type="signals_boosting" mode="index"/>
+            <document type="basic_signals_boosts" mode="index"/>
+            <document type="normalized_signals_boosts" mode="index"/>
+            <document type="signals_boosts_with_spam" mode="index"/>
+            <document type="signals_boosts_anti_spam" mode="index"/>
+            <document type="signals_boosts_weighted_types" mode="index"/>
+            <document type="signals_boosts_time_weighted" mode="index"/>            
+            <document type="stackexchange" mode="index"/>
+            <document type="user_product_implicit_preferences" mode="index"/>  
+            <document type="user_item_recommendations" mode="index"/>            
+            <document type="tmdb" mode="index"/>
+            <document type="tmdb_with_embeddings" mode="index"/>
+            <document type="tmdb_lexical_plus_embeddings" mode="index"/>
+            <document type="travel" mode="index"/>
+        </documents>
+        <nodes>
+            <node hostalias="node1" distribution-key="0" />
+        </nodes>
+        <engine>
+            <proton>
+                <tuning>
+                    <searchnode>
+                        <feeding>
+                            <concurrency>0.95</concurrency>
+                        </feeding>
+                    </searchnode>
+                </tuning>
+            </proton>
+        </engine>
+    </content>
+</services>

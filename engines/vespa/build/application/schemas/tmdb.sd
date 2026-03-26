@@ -1,0 +1,80 @@
+schema tmdb {
+    document tmdb {
+        field id type long {
+            indexing: summary | attribute
+        }
+
+        field title type string {
+            indexing: summary | index
+            match: text
+        }
+
+        field overview type string {
+            indexing: summary | index 
+            index: enable-bm25
+            match: text
+        }
+
+        field tagline type string {
+            indexing: summary | index 
+        }
+
+        field directors type array<string> {
+            indexing: summary | index 
+        }
+
+        field cast type string {
+            indexing: summary | index 
+        }
+
+        field genres type array<string> {
+            indexing: summary | index 
+        }
+
+        field release_date type string {
+            indexing: summary | index 
+        }
+
+        field release_year type int {
+            indexing: summary | attribute
+        }
+
+        field poster_file type string {
+            indexing: summary | index 
+        }
+
+        field poster_path type string {
+            indexing: summary | index 
+        }
+
+        field vote_average type float {
+            indexing: summary | attribute
+        }
+
+        field vote_count type int {
+            indexing: summary |  attribute
+        }
+
+        field movie_image_ids type string {
+            indexing: summary | index 
+        }
+    }
+
+    fieldset default {
+        fields: title, overview
+    }
+
+    rank-profile default {
+        first-phase {            
+            expression: bm25(title) + bm25(overview)
+        }        
+    }
+
+    rank-profile with_features inherits default {
+        summary-features {
+            bm25(title)
+            bm25(overview)
+            attribute(release_year)
+        }
+    }
+}

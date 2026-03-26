@@ -1,0 +1,37 @@
+schema signals {
+    document signals {
+        field query_id type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field user type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field type type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field target type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field signal_time type long {
+            indexing: summary | attribute
+        }
+    }
+
+    fieldset default {
+        fields: query_id, user, type, target, signal_time
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: bm25(user) + bm25(type) + bm25(target)
+        }
+    }
+}

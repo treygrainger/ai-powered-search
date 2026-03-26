@@ -1,0 +1,54 @@
+schema entities {
+    document entities {
+        
+        field id type string {
+            indexing: summary | index
+        }
+
+        field type type string {
+            indexing: summary | index 
+        }
+
+        field name type string {
+            indexing: summary | index 
+        }
+        
+        field surface_form type string {
+            indexing: summary | index 
+        }
+
+        field canonical_form type string {
+            indexing: summary | index 
+        }
+
+        field popularity type int {
+            indexing: summary | attribute
+        }
+
+        field semantic_function type string {
+            indexing: summary |  attribute
+        }
+
+        field admin_area type string {
+            indexing: summary | index 
+        }
+
+        field country type string {
+            indexing: summary | index 
+        }
+
+        field location_coordinates type position {
+            indexing: summary |  attribute
+        }
+    }
+
+    fieldset default {
+        fields: name, surface_form, canonical_form, admin_area, country, popularity
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: bm25(name)
+        }
+    }
+}

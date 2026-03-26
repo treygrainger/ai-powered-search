@@ -1,0 +1,4 @@
+schema signals_boosts_weighted_types inherits signals_boosting {
+    document signals_boosts_weighted_types inherits signals_boosting {
+    }
+}

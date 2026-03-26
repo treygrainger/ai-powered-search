@@ -1,0 +1,79 @@
+schema products_with_promotions {
+    document products_with_promotions {
+        field upc type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field name type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field short_description type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field long_description type string {
+            indexing: summary | index
+            match: text
+        }
+
+        field has_promotion type string {
+            indexing: summary | index
+        }
+
+        field manufacturer type string {
+            indexing: summary | index
+            match: text
+        }
+    }
+
+    field name_fuzzy type string {
+        indexing: input name | summary | index
+        linguistics {
+            profile: luceneNgram
+        }
+    }
+        
+    field name_bigram type string {
+        indexing: input name | summary | index
+        linguistics {
+            profile: luceneShingle
+        }
+    }
+        
+    field short_description_bigram type string {
+        indexing: input short_description | summary | index
+        linguistics {
+            profile: luceneShingle
+        }
+    }
+
+    fieldset default {
+        fields: name, short_description, long_description, manufacturer
+    }
+
+    rank-profile default {
+        first-phase {            
+            expression: max(max(max(bm25(name) / 2, bm25(short_description) / 2), bm25(manufacturer) / 2), bm25(long_description) / 2)
+        }        
+    }
+
+    rank-profile with_features inherits default {
+        summary-features {
+            bm25(short_description)
+            fieldMatch(short_description)
+            bm25(long_description)
+            fieldMatch(long_description)
+            fieldMatch(manufacturer)
+            fieldMatch(has_promotion)
+            bm25(name)
+            fieldMatch(name)
+            fieldMatch(name_fuzzy)
+            fieldMatch(name_bigram)
+            fieldMatch(short_description_bigram)
+        }
+    }
+}

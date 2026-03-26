@@ -1,0 +1,58 @@
+schema tmdb_with_embeddings {
+    document tmdb_with_embeddings {
+        field id type long {
+            indexing: summary | attribute
+        }
+        
+        field title type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field movie_id type string {
+            indexing: summary | attribute
+        }
+
+        field image_id type string {
+            indexing: summary | attribute
+        }
+
+        field image_embedding type tensor<float>(x[512]) {
+            indexing: summary | attribute | index
+            attribute {
+                distance-metric: innerproduct
+            }
+            index {
+                hnsw {
+                    max-links-per-node: 24
+                    neighbors-to-explore-at-insert: 128
+                }
+            }
+        }
+    }
+
+    fieldset default {
+        fields: title
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: bm25(title)
+        }
+    }
+
+    rank-profile tmdb_with_embeddings_vector_similarity {
+        inputs {
+            query(query_vector) tensor<float>(x[512])
+        }
+        first-phase {
+            expression: closeness(field, image_embedding)
+        }
+    }
+
+    rank-profile hybrid inherits tmdb_with_embeddings_vector_similarity {
+        first-phase {
+            expression: bm25(title) + closeness(field, image_embedding)
+        }
+    }
+}

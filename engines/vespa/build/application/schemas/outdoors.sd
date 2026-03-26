@@ -1,0 +1,68 @@
+schema outdoors {
+    document outdoors {
+        field id type int {
+            indexing: summary | attribute
+        }
+
+        field post_type type string {
+            indexing: summary | index
+            match: text
+        }
+
+        field accepted_answer_id type int {
+            indexing: summary | attribute
+        }
+
+        field parent_id type int {
+            indexing: summary | attribute
+        }
+
+        field creation_date type string {
+            indexing: summary | attribute
+        }
+
+        field score type int {
+            indexing: summary | attribute
+        }
+
+        field view_count type int {
+            indexing: summary | attribute
+        }
+
+        field body type string {
+            indexing: summary | index
+            match: text
+        }
+
+        field owner_user_id type string {
+            indexing: summary | attribute
+        }
+
+        field title type string {
+            indexing: summary | index
+            match: text
+        }
+
+        field tags type array<string> {
+            indexing: summary | index
+        }
+
+        field url type string {
+            indexing: summary | attribute
+        }
+
+        field answer_count type int {
+            indexing: summary | attribute
+        }
+    }
+
+    fieldset default {
+        fields: title, body
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: max(bm25(title), bm25(body))
+        }
+    }
+}

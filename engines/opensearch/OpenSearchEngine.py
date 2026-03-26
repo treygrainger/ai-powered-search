@@ -1,4 +1,5 @@
 import json
+import time
 
 import requests
 
@@ -15,14 +16,22 @@ class OpenSearchEngine(Engine):
     def get_supported_advanced_features(self):
         return [AdvancedFeatures.LTR]
 
-    def health_check(self):
-        try:
-            status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
-            print(f"OpenSearch engine is {'online' if status else 'offline'}")
-            return status
-        except:
-            print("Weaviate failed the health check.")
-            return False
+    def health_check(self, log=False, retries=0):
+        status = False
+        for i in range(retries + 1):
+            try:
+                status = requests.get(STATUS_URL).json()["status"] in ["green", "yellow"]
+                if log: print(f"OpenSearch is {'online' if status else 'offline'}")
+                if not status and not i == retries:
+                    time.sleep(5)
+                    continue
+            except:
+                if i == retries:
+                    if log: print("OpenSearch failed the health check.")
+                    status = False
+                else: 
+                    time.sleep(5)
+        return status
     
     def does_collection_exist(self, name):
         response = requests.get(f"{STATUS_URL}/{name}")

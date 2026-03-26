@@ -1,0 +1,4 @@
+schema health inherits stackexchange {
+    document health inherits stackexchange {
+    }
+}

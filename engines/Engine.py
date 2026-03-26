@@ -16,7 +16,7 @@ class Engine(ABC):
         pass
 
     @abstractmethod
-    def health_check(self):
+    def health_check(self, retries=0):
         "Checks the state of the search engine returning a boolean"
         pass
     
@@ -30,14 +30,16 @@ class Engine(ABC):
         "Checks for the existance of the collection"
         pass
     
-    def is_collection_healthy(self, name, expected_count, log=False):
+    def is_collection_healthy(self, name, expected_count, duplicate_count=0, log=False):
         collection_exists = self.does_collection_exist(name)
         if log: print(f"Collection [{name}] exists? {collection_exists}")
 
         document_count = self.get_collection(name).get_document_count()
         if log: print(f"Documents [{document_count} / {expected_count}]")
         
-        return collection_exists and document_count == expected_count    
+        #expected_count = [expected_count] if isinstance(expected_count, int) else expected_count
+        return collection_exists and (document_count == expected_count or
+                                      document_count == (expected_count - duplicate_count))
 
     @abstractmethod
     def create_collection(self, name, force_rebuild=True):

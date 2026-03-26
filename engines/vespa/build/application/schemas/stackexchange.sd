@@ -1,0 +1,103 @@
+schema stackexchange {
+    document stackexchange {
+        field post_type_id type string {
+            indexing: summary | index
+        }
+
+        field accepted_answer_id type string {
+            indexing: summary | index
+        }
+
+        field parent_id type string {
+            indexing: summary | index 
+        }
+
+        field creation_date type string {
+            indexing: summary | index 
+        }
+
+        field deletion_date type string {
+            indexing: summary | index 
+        }
+
+        field score type string {
+            indexing: summary | index 
+        }
+
+        field view_count type string {
+            indexing: summary | index 
+        }
+
+        field owner_user_id type string {
+            indexing: summary | index 
+        }
+
+        field owner_display_name type string {
+            indexing: summary | index 
+        }
+
+        field last_editor_user_id type string {
+            indexing: summary | index 
+        }
+
+        field last_editor_display_name type string {
+            indexing: summary | index 
+        }
+
+        field last_edit_date type string {
+            indexing: summary | index 
+        }
+
+        field last_activity_date type string {
+            indexing: summary | index 
+        }
+
+        field tags type string {
+            indexing: summary | index 
+        }
+
+        field answer_count type string {
+            indexing: summary | index 
+        }
+
+        field comment_count type string {
+            indexing: summary | index 
+        }
+
+        field favorite_count type string {
+            indexing: summary | index 
+        }
+
+        field closed_date type string {
+            indexing: summary | index 
+        }
+
+        field community_owned_date type string {
+            indexing: summary | index 
+        }
+
+        field category type string {
+            indexing: summary | index 
+        }
+
+        field title type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field body type string {
+            indexing: summary | index 
+            match: text
+        }
+    }
+
+    fieldset default {
+        fields: title, body
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: bm25(title) + bm25(body)
+        }
+    }
+}

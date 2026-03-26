@@ -1,0 +1,60 @@
+schema reviews {
+    document reviews {
+        field id type string {
+            indexing: summary | attribute
+        }
+
+        field content type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field categories type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field doc_type type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field stars_rating type int {
+            indexing: summary | attribute
+        }
+
+        field city type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field state type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field business_name type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field name type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field location_coordinates type position {
+            indexing: summary | attribute
+        }
+    }
+
+    fieldset default {
+        fields: content, categories, business_name, name
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: bm25(content) + bm25(categories) + bm25(business_name) + bm25(name)
+        }
+    }
+}

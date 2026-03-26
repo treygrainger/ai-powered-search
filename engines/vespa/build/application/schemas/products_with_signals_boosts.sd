@@ -1,0 +1,59 @@
+schema products_with_signals_boosts {
+    document products_with_signals_boosts {
+        field upc type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field name type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field short_description type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field long_description type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field manufacturer type string {
+            indexing: summary | index 
+            match: text
+        }
+
+        field signals_boosts type weightedset<string> {
+            indexing: attribute | index
+            match: exact
+        }
+    }
+
+    fieldset default {
+        fields: name, long_description, manufacturer
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer))
+        }
+    }
+
+    rank-profile with_index_boosts {
+        inputs {
+            query(boosts) tensor(signals_boosts{})
+        }
+
+        first-phase {
+            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer)) + sum(query(boosts) * tensorFromWeightedSet(attribute(signals_boosts)))
+        }
+
+        summary-features {
+            bm25(name)
+            bm25(long_description)
+            bm25(manufacturer)
+        }
+    }
+}

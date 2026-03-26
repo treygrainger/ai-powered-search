@@ -1,0 +1,26 @@
+schema signals_boosting {
+    document signals_boosting {
+        field query type string {
+            indexing: summary | index 
+            match: exact
+        }
+
+        field doc type string {
+            indexing: summary | index 
+        }
+
+        field boost type int {
+            indexing: summary | attribute
+        }
+    }
+
+    fieldset default {
+        fields: query, doc, boost
+    }
+
+    rank-profile default {
+        first-phase {
+            expression: bm25(query)
+        }
+    }
+}

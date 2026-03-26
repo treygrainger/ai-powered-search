@@ -38,9 +38,11 @@ class Progress(RemoteProgress):
 dataset_info = {
     "products": {"url": "https://github.com/ai-powered-search/retrotech.git",
                  "count": 48194,
+                 "duplicates": 2038,
                  "loader_fn": products.load_dataframe},
     "products_with_promotions": {"url": "https://github.com/ai-powered-search/retrotech.git",
                                  "count": 48194,
+                                 "duplicates": 2038,
                                  "loader_fn": products.load_dataframe,
                                  "data_file_name": "products.csv",
                                  "tar_file": "products.tgz",
@@ -55,7 +57,8 @@ dataset_info = {
              "loader_fn": from_csv,
              "loader_args": {"additional_columns": {"category": "jobs"},
                              "drop_id": True,
-                             "multiline_csv": True},
+                             "multiline_csv": True,
+                             "desired_columns": ["company_country", "job_description", "company_description"]},
              "feature_requirement": AdvancedFeatures.SKG},
     "health": {"url": "https://github.com/ai-powered-search/health.git",
                "count": 12892,
@@ -100,7 +103,7 @@ dataset_info = {
                 "feature_requirement": AdvancedFeatures.SKG},
     "entities": {"url": "https://github.com/ai-powered-search/reviews.git",
                  "source_datasets": ["entities", "cities"],
-                 "count": 21,
+                 "count": 137602,
                  "loader_fn": from_csv,
                  "feature_requirement": AdvancedFeatures.TEXT_TAGGING},
     "cities": {"url": "https://github.com/ai-powered-search/reviews.git",
@@ -148,12 +151,13 @@ def build_collection(engine, dataset, force_rebuild=False, log=False):
     """
     source_datasets = dataset_info[dataset].get("source_datasets", [dataset])
     expected_count = sum([dataset_info[r]["count"] for r in source_datasets])
+    duplicate_count = sum([dataset_info[r].get("duplicates", 0) for r in source_datasets]) 
     engines = [engine]
     if not is_feature_supported(engine, dataset):
         engines.append(get_local_engine(log=log))
     for engine in engines:
-        if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, log=log):
-            if log: print(f"Reindexing [{dataset}] collection")
+        if force_rebuild or not engine.is_collection_healthy(dataset, expected_count, duplicate_count, log=log):
+            if log: print(f"Reindexing [{dataset}] collection into {engine.name}")
             collection = engine.create_collection(dataset, log=log)
             overwrite = len(source_datasets) == 1
             for source_dataset in source_datasets:

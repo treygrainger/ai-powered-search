@@ -5,10 +5,13 @@ from engines.solr.SolrEngine import SolrEngine
 from engines.opensearch.OpenSearchEngine import OpenSearchEngine
 from engines.opensearch.OpenSearchLTR import OpenSearchLTR
 from engines.opensearch.OpenSearchSparseSemanticSearch import OpenSearchSparseSemanticSearch
+from engines.vespa.VespaEngine import VespaEngine
+from engines.vespa.VespaLTR import VespaLTR 
+from engines.vespa.VespaSparseSemanticSearch import VespaSparseSemanticSearch 
 
 from engines.weaviate.WeaviateEngine import WeaviateEngine
 from engines.weaviate.WeaviateLTR import WeaviateLTR
-from engines.weaviate.WeaviateSearchSparseSemanticSearch import WeaviateSearchSparseSemanticSearch
+from engines.weaviate.WeaviateSparseSemanticSearch import WeaviateSparseSemanticSearch
 
 import os
 from IPython.display import display, HTML
@@ -17,22 +20,52 @@ import re
 
 engine_name_type_map = {"solr": SolrEngine,
                         "opensearch": OpenSearchEngine,
+                        "vespa": VespaEngine,
                         "weaviate": WeaviateEngine}
+
 ltr_engine_map = {"solr": SolrLTR,
                   "opensearch": OpenSearchLTR,
+                  "vespa": VespaLTR,
                   "weaviate": WeaviateLTR}
+
 sparse_semantic_search_engine_map = {"solr": SolrSparseSemanticSearch,
                                      "opensearch": OpenSearchSparseSemanticSearch,
-                                     "weaviate": WeaviateSearchSparseSemanticSearch}
+                                     "vespa": VespaSparseSemanticSearch,
+                                     "weaviate": WeaviateSparseSemanticSearch}
 
-def get_engine(override=None, host_override=None):
-    engine_name = override if override else environment.get("AIPS_SEARCH_ENGINE", "solr")
+def scan_for_healthy_engine(log=False):
+    for engine_name in engine_name_type_map.keys():
+        engine = engine_name_type_map[engine_name.lower()]()
+        if engine.health_check(retries=1, log=log):
+            return engine_name
+    return None
+
+def scan_and_set_healthy_engine(log=False):
+    healthy_engine_name = scan_for_healthy_engine(log=log)
+    if not healthy_engine_name:
+        raise EnvironmentError("No healthy engines found")
+    environment.set("AIPS_SEARCH_ENGINE", healthy_engine_name)
+    return healthy_engine_name
+
+def get_engine(engine_override=None, host_override=None, log=False):
+    if engine_override:
+        engine_name = engine_override
+    elif environment.get("AIPS_SEARCH_ENGINE"):
+        engine_name = environment.get("AIPS_SEARCH_ENGINE")
+        engine = engine_name_type_map[engine_name.lower()]()
+        if not engine.health_check(retries=3, log=log):
+            print(f"{engine_name} engine not healthy, scanning for available engines")
+            engine_name = scan_and_set_healthy_engine(log=log)
+            print(f"Healthy {engine_name} engine found")
+    else:
+        engine_name = scan_and_set_healthy_engine()
+
     engine_type = engine_name_type_map[engine_name.lower()]
     return engine_type() if not host_override else engine_type(host_override)
 
 def set_engine(engine_name):
     engine_name = engine_name.lower()
-    if engine_name not in ltr_engine_map:
+    if engine_name not in engine_name_type_map:
         raise ValueError(f"No search engine implementation found for {engine_name}")
     else:
         environment.set("AIPS_SEARCH_ENGINE", engine_name)
@@ -42,9 +75,9 @@ def get_ltr_engine(collection):
 
 def get_local_engine(log=False):
     engine = get_engine("solr", "localhost")
-    if not engine.health_check(log):
+    if not engine.health_check(log=log):
         if log: print("Initializing server")
-        environment.shutdown_semantic_engine(log)
+        environment.shutdown_semantic_engine(log=log)
         environment.initialize_local_semantic_engine(log=log)
         healthy = engine.health_check(retries=2, log=log)
         if log: print("Localized engine initialized" if healthy else "Localized engine failed to initialized")
@@ -53,7 +86,7 @@ def get_local_engine(log=False):
 def get_semantic_engine(feature, log=False):
     if feature in get_engine().get_supported_advanced_features():
         return get_engine()
-    return get_local_engine(log)
+    return get_local_engine(log=log)
 
 def get_sparse_semantic_search():
     return sparse_semantic_search_engine_map[get_engine().name.lower()]()
@@ -66,7 +99,7 @@ def get_entity_extractor(collection):
 
 def healthcheck():
     try:
-        if get_engine().health_check():
+        if get_engine().health_check(log=True):
             print("All Systems are ready. Happy Searching!")
         else:
             print("The search engine is not in a ready state.")
@@ -142,10 +175,12 @@ def render_search_results(query, results):
             rendered += separator_template
     return rendered
 
-def fetch_products(doc_ids):
+def fetch_products(doc_ids, log=False):
     request = {"query": " ".join([str(id) for id in doc_ids]),
                "query_fields": ["upc"],
-               "limit": len(doc_ids)}
+               "limit": len(doc_ids),
+               "log": log}
+
     response = get_engine().get_collection("products").search(**request)
     
     df = pandas.DataFrame(response["docs"])

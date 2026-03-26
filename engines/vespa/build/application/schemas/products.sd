@@ -1,0 +1,64 @@
+schema products {
+    document products {
+        field upc type string {
+            indexing: summary | attribute
+            match: text
+        }
+
+        field name type string {
+            indexing: summary | index
+            index: enable-bm25
+        }
+        
+        field name_fuzzy type string {
+            indexing: summary | index
+            match: text
+        }
+
+        field short_description type string {
+            indexing: summary | index 
+            index: enable-bm25
+        }
+
+        field long_description type string {
+            indexing: summary | index 
+            index: enable-bm25
+        }
+
+        field manufacturer type string {
+            indexing: summary | index 
+            index: enable-bm25
+        }
+    }
+
+    fieldset default {
+        fields: name, manufacturer, long_description
+    }
+
+    rank-profile default {
+        first-phase {            
+            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer))
+        }
+        summary-features {
+            bm25(name)
+            bm25(long_description)
+            bm25(manufacturer)
+        }
+    }
+
+    rank-profile with_query_boosts {
+        inputs {
+            query(boosts) tensor(upc{})
+        }
+
+        first-phase {
+            expression: max(max(bm25(name) / 2, bm25(long_description) / 2), bm25(manufacturer)) + sum(query(boosts) * tensorFromLabels(attribute(upc)))
+        }
+
+        summary-features {
+            bm25(name)
+            bm25(long_description)
+            bm25(manufacturer)
+        }
+    }
+}

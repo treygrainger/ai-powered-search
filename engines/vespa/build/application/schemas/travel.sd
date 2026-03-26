@@ -1,0 +1,4 @@
+schema travel inherits stackexchange {
+    document travel inherits stackexchange {
+    }
+}
