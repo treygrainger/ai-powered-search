@@ -10,7 +10,7 @@ thinc==8.1.12
 numba==0.60.0
 wrapit==0.3.0
 h5py==3.12.1
-gitpython==3.1.43
+gitpython==3.1.47
 graphql_query==1.1.1
 
 #Forced versions to prevent implicit dep version errors 
