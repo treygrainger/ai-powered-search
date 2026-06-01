@@ -2,29 +2,27 @@
 
 All the algorithms in the code base are designed to work with a wide variety of search engines and vector databases. To that end, other than cases where engine-specific syntax is required to demonstrate a point, we have implemented search functionality using a generic `engine` interface throughout the codebase that allows you to easily swap in your favorite alternative search engine or vector database.
 
-## Supported engines (tentative)
+## Supported engines
 
 The list of supported engines will continue to grow over time, with the following engines currently being investigated for support:
 
 **Currently Supported:**
-* `solr` - Apache Solr
-* `opensearch` - OpenSearch
+* `solr` - Apache Solr (default)
+* `opensearch` - OpenSearch (also works for Bonsai)
+* `vespa` - Vespa
+* `weaviate` - Weaviate
 
 **Pending Support:**
 * `elasticsearch` - Elasticsearch (pending vendor support)
-* `weaviate` - Weaviate (pending vendor support)
-* `mongo` - MongoDB / Atlas Search (pending vendor support)
-* `pinecone` - Pinecone (pending vendor support)
 * `qdrant` - QDrant (pending vendor support)
-* `astradb` - Datastax Astra DB offering (pending vendor support)
+* `mongo` - MongoDB / Atlas Search (pending vendor support)
+* `turbopuffer` - Turbopuffer (pending vendor support)
+* `milvus` - Milvus (pending vendor support)
+* `pinecone` - Pinecone (pending vendor support)
 * `lucidworks-fusion` - Lucidworks Fusion (pending vendor support)
-* `bonsai-opensearch` - Bonsai's managed OpenSearch platform (pending vendor support)
-* `bonsai-elasticseach` - Bonsai's managed Elasticsearch platform (pending vendor support)
-* `websolr` - Websolr's managed Apache Solr platform (pending vendor support)
 * `searchstax` - Searchstax's managed Apache Solr platform (pending vendor support)
 * `redis` - Redis (pending vendor support)
-* `algolia` - Algolia Search (pending vendor support)
-* `vespa` - Vespa (pending vendor support)
+* `chroma` - Chroma (pending vendor support)
 
 **Note**: If you represent another search engine, vector database, or associated hosting provider and would like to be added to this list, please reach out to trey@searchkernel.com to discuss.
 
@@ -32,24 +30,33 @@ The list of supported engines will continue to grow over time, with the followin
 
 Normally, you'll only be working with one search engine or vector database at a time when running the book's code examples. To use any particular `engine`, you just need to specify the engine's name (as `enumerated` above) when starting up Docker:
 
-To launch `elasticsearch`, for example:
-```
-docker compose up elasticsearch
-```
-
-This will both start any necessary Docker containers needed to run `elasticsearch` (or the engine you specify), as well as set this engine as active in the book's Jupyter notebooks for use in all the code examples. Note that some engines, such as managed search and API-based services, do not require any additional local Docker containers since their services are hosted elsewhere. 
-
-If you want to use a different engine at any time, you can just restart the Docker container and specify the new engine you want to use.
+To launch `opensearch`, for example:
 ```
 docker compose up opensearch
 ```
 
-If you want to launch more than one `engine` at a time to experiment, you can provide a list at the end of the `docker compose up` command of all the engines you wish to start:
+This will both start any necessary Docker containers needed to run `opensearch` (or the engine you specify), as well as set this engine as active in the book's Jupyter notebooks for use in all the code examples. Note that some engines, such as managed search and API-based services, do not require any additional local Docker containers since their services are hosted elsewhere. 
+
+If you want to use a different engine at any time, you can just restart the Docker container and specify the new engine you want to use.
 ```
-docker compose up elasticsearch solr opensearch
+docker compose up vespa
 ```
 
-The first `engine` you reference in your `docker compose up` command will be set as your active engine in the Jupyter notebooks, with the others available on standby.
+Note: If you don't specify an engine, Apache Solr is used by default, making to following commands identical:
+```
+docker compose up
+```
+or
+```
+docker compose up solr
+```
+
+If you want to launch more than one `engine` at a time to experiment, you can provide a list at the end of the `docker compose up` command of all the engines you wish to start:
+```
+docker compose up solr opensearch vespa
+```
+
+Your "active" engine (among those you launch) will be set to the hightest listed one in the [Supported Engines](#supported-engines) list, with the others available on standby.
 
 If you would like to switch to one of the standby engines within your live Jupyter notebooks (for example, to `opensearch`), you can do this at any time by simply running the following command in any notebook:
 ```
