@@ -9,5 +9,5 @@ pandas==2.2.3
 ipywidgets==8.0.3
 numpy==1.26.4
 openai==1.97.1
-python-dotenv==1.1.1
+python-dotenv==1.2.2
 scikit-learn==1.2.1
