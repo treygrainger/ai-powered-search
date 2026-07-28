@@ -134,3 +134,5 @@ dmypy.json
 
 #no-commit folders
 *no-commit/
+# hypencoder lab checkpoint (written when the notebook runs)
+toy_models.pt
