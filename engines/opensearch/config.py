@@ -48,10 +48,10 @@ def dense_vector_schema(
                         "type": "knn_vector",
                         "dimension": dimensions,
                         #"data_type": data_type_map.get(quantization_size, "float"),
+                        "space_type": similarity_score or "l2",
                         "method": {
                             "name": "hnsw",
-                            "engine": "nmslib",
-                            "space_type": similarity_score or "l2",                            
+                            "engine": "faiss", # nmslib was deprecated/removed in OpenSearch 3.x
                             "parameters": {"ef_construction": ef_construction, "m": m},
                         }
                     }

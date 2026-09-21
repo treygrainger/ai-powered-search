@@ -23,12 +23,12 @@ COPY build/install-text-tagger-deps.sh /home/$NB_USER/install-text-tagger-deps.s
 RUN --mount=type=cache,target=/opt/cache chmod a+rwx /home/$NB_USER/install-text-tagger-deps.sh && ./install-text-tagger-deps.sh
 
 # Install Spark-OpenSearch
-ENV SPARK_OS_VERSION=1.2.0
+ENV SPARK_OS_VERSION=2.0.0
 ENV SPARK_OS_JAR=opensearch-spark-30_2.12-${SPARK_OS_VERSION}.jar
 ENV SPARK_OS_PATH=/usr/local/spark/lib/${SPARK_OS_JAR}
 RUN cd /usr/local/spark/lib/ && \
     wget -q https://repo1.maven.org/maven2/org/opensearch/client/opensearch-spark-30_2.12/${SPARK_OS_VERSION}/${SPARK_OS_JAR} -O $SPARK_OS_PATH && \
-    echo "5b9ae056b6ac21ae009f79a3a761774c7178b995fbe035572a4f35d5738e055d02828d2ec0ff98dd063ffffe37f4c48dc9a418d71269fc560f65b33c94493f2d *${SPARK_OS_JAR}" \
+    echo "95328127f2a7914fdbe059957db9628962f549e748ea0ec389d2612b089b1431cb7e94feb2144509755d3844f7e34aa77cc17d84a6d31961099e0773f1051fcb *${SPARK_OS_JAR}" \
     | sha512sum -c - && chmod 0777 $SPARK_OS_PATH
 
 ENV SPARK_WV8_VERSION=1.3.4a
