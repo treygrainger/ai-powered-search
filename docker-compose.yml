@@ -58,8 +58,8 @@ services:
       - discovery.type=single-node
       - network.host=0.0.0.0
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
-      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=''"
       - "DISABLE_SECURITY_PLUGIN=true"
+      - "DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI=true" # the standalone PA agent was removed in OpenSearch 3.x
       - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
     ulimits:
       memlock:
@@ -72,7 +72,6 @@ services:
       - opensearch-data:/usr/share/opensearch/data
     ports:
       - "9200:9200"
-      - "9600:9600" # required for Performance Analyzer
     expose:
       - "9200"
     networks:
@@ -115,7 +114,7 @@ services:
       - all
   
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.18.0
+    image: opensearchproject/opensearch-dashboards:3.8.0
     container_name: opensearch-dashboards
     ports:
       - "5601:5601"
