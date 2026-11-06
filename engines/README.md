@@ -11,10 +11,10 @@ The list of supported engines will continue to grow over time, with the followin
 * `opensearch` - OpenSearch (also works for Bonsai)
 * `vespa` - Vespa
 * `weaviate` - Weaviate
+* `qdrant` - Qdrant
 
 **Pending Support:**
 * `elasticsearch` - Elasticsearch (pending vendor support)
-* `qdrant` - QDrant (pending vendor support)
 * `mongo` - MongoDB / Atlas Search (pending vendor support)
 * `turbopuffer` - Turbopuffer (pending vendor support)
 * `milvus` - Milvus (pending vendor support)
@@ -76,7 +76,7 @@ aips.get_engine().name
 
 The search engine industry is full of different terminology and concepts, and we have tried to abstract away as much of that as possible in the codebase. Most search engines started with keyword search and have since added support for vector search, and many vector databases started with vector search and have since added keyword search. For our purposes, we just think of all of these systems as matching and ranking engines, and we use the term `engine` to refer to all of them.
 
-Likewise, each engine has a concept of one or more logical partitions or containers for adding data. In Solr and Weaviate these containers are called `collections`, whereas in OpenSearch, Elasticsearch, and Redis these are called `indexes`, and in Vespa they are called `applications`. In MongoDB, the original data is stored in a `collection`, but it is then copied into an `index` for search purposes in Atlas Search. Naming also varies further among other engines.
+Likewise, each engine has a concept of one or more logical partitions or containers for adding data. In Solr, Weaviate, and Qdrant these containers are called `collections`, whereas in OpenSearch, Elasticsearch, and Redis these are called `indexes`, and in Vespa they are called `applications`. In MongoDB, the original data is stored in a `collection`, but it is then copied into an `index` for search purposes in Atlas Search. Naming also varies further among other engines.
 
 For proper abstraction, we always use the term `collection` in the code base, so every `engine` has a `collection` interface through which you can query or add documents.
 

@@ -17,6 +17,8 @@ services:
     environment:
       AIPS_SOLR_HOST: 'aips-solr'
       AIPS_ZK_HOST: 'aips-zk:2181'
+      AIPS_QDRANT_HOST: 'aips-qdrant'
+      AIPS_QDRANT_PORT: '6333'
     volumes:
       - type: bind
         source: "."
@@ -112,6 +114,27 @@ services:
       - notebooks
     profiles:
       - all
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.6
+    container_name: aips-qdrant
+    hostname: aips-qdrant
+    ports:
+      # Host 16333 avoids clashes with other local Qdrant instances on 6333.
+      - "16333:6333"
+      - "16334:6334"
+    networks:
+      - aips-network
+    volumes:
+      - qdrant-data:/qdrant/storage
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    depends_on:
+      - notebooks
+    profiles:
+      - all
   
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:3.8.0
@@ -156,6 +179,7 @@ services:
 volumes:
   opensearch-data:
   weaviate-data:
+  qdrant-data:
   
 networks:
   aips-network:
