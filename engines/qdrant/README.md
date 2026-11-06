@@ -38,3 +38,9 @@ docker exec -e PYTHONPATH=/tmp/notebooks \
 ```
 
 Chapters 1–2 have no notebooks. Chapter 3 lab 1 is pure vector math; lab 2 uses `cat_in_the_hat` create/index/search.
+
+## Qdrant skills check
+
+Official agent skills from [qdrant/skills](https://github.com/qdrant/skills) are mirrored under `skills-reference/` with an `AUDIT.md` comparing guidance to this adapter.
+
+High level: deployment/SDK/named-vectors/payload-indexes match; lexical ranking is intentionally client-side for lab simplicity (skills prefer server BM25 / sparse BM25). Native Query-API hybrid prefetch is a planned upgrade.

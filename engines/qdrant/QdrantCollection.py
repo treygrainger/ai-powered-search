@@ -168,7 +168,17 @@ class QdrantCollection(Collection):
         for i in range(0, len(rows), batch_size):
             points = [self._row_to_point(r) for r in rows[i:i + batch_size]]
             if points:
-                self.client.upsert(collection_name=self.name, points=points, wait=True)
+                # Prefer upload_points (skills/SDK guidance) when available; fall back to upsert.
+                try:
+                    self.client.upload_points(
+                        collection_name=self.name,
+                        points=points,
+                        parallel=2,
+                        max_retries=3,
+                        wait=True,
+                    )
+                except TypeError:
+                    self.client.upsert(collection_name=self.name, points=points, wait=True)
                 total += len(points)
         self.commit()
         if log:
