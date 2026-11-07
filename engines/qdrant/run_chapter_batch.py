@@ -42,13 +42,11 @@ def run_notebook(path: Path, g: dict) -> dict:
         src = cell.source if isinstance(cell.source, str) else "".join(cell.source)
         if not src.strip():
             continue
-        # Soft-skip interactive / long-training cells that are not needed for smoke
-        skip_markers = [
-            "input(",
-            # fine-tune / multi-hour jobs
-            "epochs=",
-        ]
-        # Don't skip epochs in ch03-5 generally; only skip pure input()
+        # Skip IPython magics / shell cells (e.g. `! head file.csv`) and interactive prompts
+        first = src.lstrip().splitlines()[0] if src.lstrip() else ""
+        if first.startswith(("!", "%", "%%")) or src.lstrip().startswith(("!", "%")):
+            print(f"  skip cell {i}: ipython magic/shell")
+            continue
         if "input(" in src:
             print(f"  skip cell {i}: interactive input()")
             continue

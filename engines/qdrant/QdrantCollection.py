@@ -157,29 +157,43 @@ class QdrantCollection(Collection):
         return dataframe
 
     def write(self, dataframe, overwrite=False, log=True):
-        if overwrite:
-            from engines.qdrant.QdrantEngine import QdrantEngine
-            QdrantEngine().create_collection(self.name, force_rebuild=True, log=False)
+        from engines.qdrant.QdrantEngine import QdrantEngine
+        engine = QdrantEngine()
+        # Keep collection client on the same live engine connection.
+        self.client = engine.client
+        if overwrite or not engine.does_collection_exist(self.name):
+            engine.create_collection(self.name, force_rebuild=overwrite, log=False)
 
         dataframe = self.apply_qdrant_specific_transformations(dataframe)
-        rows = [row.asDict(recursive=True) for row in dataframe.collect()]
-        batch_size = 256
+        # Larger batches + async waits: full wait only on final flush/commit.
+        batch_size = 1000
         total = 0
-        for i in range(0, len(rows), batch_size):
-            points = [self._row_to_point(r) for r in rows[i:i + batch_size]]
-            if points:
-                # Prefer upload_points (skills/SDK guidance) when available; fall back to upsert.
-                try:
-                    self.client.upload_points(
-                        collection_name=self.name,
-                        points=points,
-                        parallel=2,
-                        max_retries=3,
-                        wait=True,
-                    )
-                except TypeError:
-                    self.client.upsert(collection_name=self.name, points=points, wait=True)
-                total += len(points)
+        batch = []
+
+        def flush(points, wait=False):
+            nonlocal total
+            if not points:
+                return
+            try:
+                self.client.upsert(
+                    collection_name=self.name,
+                    points=points,
+                    wait=wait,
+                )
+            except Exception:
+                # Retry once with wait for durability if async path fails
+                self.client.upsert(collection_name=self.name, points=points, wait=True)
+            total += len(points)
+
+        # Stream rows to avoid collecting multi-hundred-MB CSVs on the driver.
+        for row in dataframe.toLocalIterator():
+            batch.append(self._row_to_point(row.asDict(recursive=True)))
+            if len(batch) >= batch_size:
+                flush(batch, wait=False)
+                batch = []
+                if log and total and total % 20000 == 0:
+                    print(f"  ... written {total} documents", flush=True)
+        flush(batch, wait=True)
         self.commit()
         if log:
             print(f"Successfully written {total} documents")
