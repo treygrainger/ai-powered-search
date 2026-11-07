@@ -19,6 +19,8 @@ services:
       AIPS_ZK_HOST: 'aips-zk:2181'
       AIPS_QDRANT_HOST: 'aips-qdrant'
       AIPS_QDRANT_PORT: '6333'
+      # Expand py4j path (Dockerfile left a literal py4j-*-src.zip which breaks imports)
+      PYTHONPATH: '/usr/local/spark/python:/usr/local/spark/python/lib/py4j-0.10.9.5-src.zip:/tmp/notebooks:/home/jovyan'
     volumes:
       - type: bind
         source: "."
