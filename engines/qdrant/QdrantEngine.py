@@ -76,6 +76,32 @@ class QdrantEngine(Engine):
         }
         return mapping.get(kind, models.PayloadSchemaType.KEYWORD)
 
+    def _text_index_schema(self, bm25=True):
+        """Full-text payload index; enable BM25 scoring when supported (Qdrant 1.20+)."""
+        scoring = None
+        if bm25:
+            try:
+                scoring = models.TextScoringParams(type=models.TextScoringType.BM25)
+            except Exception:
+                scoring = True
+        try:
+            return models.TextIndexParams(
+                type=models.TextIndexType.TEXT,
+                tokenizer=models.TokenizerType.WORD,
+                lowercase=True,
+                scoring=scoring,
+            )
+        except TypeError:
+            try:
+                return models.TextIndexParams(
+                    type="text",
+                    tokenizer=models.TokenizerType.WORD,
+                    lowercase=True,
+                    scoring=True if bm25 else None,
+                )
+            except Exception:
+                return models.PayloadSchemaType.TEXT
+
     def _build_vectors_config(self, schema):
         vector_fields = schema.get("vector_fields") or {}
         if not vector_fields:
@@ -107,15 +133,23 @@ class QdrantEngine(Engine):
                 collection_name=collection_name,
                 vectors_config=vectors_config,
             )
+            searchable = set(schema.get("searchable_fields") or [])
             for field_name, meta in schema.get("fields", {}).items():
                 kind = meta.get("kind")
                 if kind == "vector":
                     continue
                 try:
+                    # Qdrant >=1.20: BM25-capable full-text indexes for searchable text fields.
+                    if kind == "text" and (
+                        field_name in searchable or field_name == "_text_" or meta.get("searchable", True)
+                    ):
+                        field_schema = self._text_index_schema(bm25=True)
+                    else:
+                        field_schema = self._payload_schema_type(kind)
                     self.client.create_payload_index(
                         collection_name=collection_name,
                         field_name=field_name,
-                        field_schema=self._payload_schema_type(kind),
+                        field_schema=field_schema,
                     )
                 except Exception as ex:
                     if log:

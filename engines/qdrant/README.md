@@ -43,4 +43,4 @@ Chapters 1–2 have no notebooks. Chapter 3 lab 1 is pure vector math; lab 2 use
 
 Official agent skills from [qdrant/skills](https://github.com/qdrant/skills) are mirrored under `skills-reference/` with an `AUDIT.md` comparing guidance to this adapter.
 
-High level: deployment/SDK/named-vectors/payload-indexes match; lexical ranking is intentionally client-side for lab simplicity (skills prefer server BM25 / sparse BM25). Native Query-API hybrid prefetch is a planned upgrade.
+High level: on **Qdrant 1.20** we use skills-aligned **BM25 full-text indexes** + `TextQuery`, named vectors, payload indexes, and `/readyz`. Multi-field lexical can fuse with server RRF; cross dense/lexical hybrid still largely follows the AIPS app-side `hybrid_search` pattern. See `FULL_BOOK_LAB_REPORT.md` for latest lab batch results.

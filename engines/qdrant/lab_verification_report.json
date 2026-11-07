@@ -1,0 +1,208 @@
+{
+  "total": 7,
+  "passed": 2,
+  "failed": 5,
+  "results": [
+    {
+      "path": "chapters/ch14/1.question-answering-visualizer.ipynb",
+      "ok": true,
+      "cells_ok": 10,
+      "cells_skipped": 0,
+      "errors": [],
+      "seconds": 15.7
+    },
+    {
+      "path": "chapters/ch14/2.question-answering-data-preparation.ipynb",
+      "ok": true,
+      "cells_ok": 11,
+      "cells_skipped": 0,
+      "errors": [],
+      "seconds": 166.8
+    },
+    {
+      "path": "chapters/ch14/3.question-answering-fine-tuning.ipynb",
+      "ok": false,
+      "cells_ok": 8,
+      "cells_skipped": 2,
+      "errors": [
+        {
+          "cell": 15,
+          "error": "NameError: name 'trainer' is not defined"
+        },
+        {
+          "cell": 16,
+          "error": "NameError: name 'trainer' is not defined"
+        },
+        {
+          "cell": 18,
+          "error": "NameError: name 'trainer' is not defined"
+        },
+        {
+          "cell": 20,
+          "error": "HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name': 'data/question-answering/roberta-base-squad2-fine-tuned'. Use `repo_type` argument if needed."
+        },
+        {
+          "cell": 23,
+          "error": "NameError: name 'nlp2' is not defined"
+        }
+      ],
+      "seconds": 1.1
+    },
+    {
+      "path": "chapters/ch14/4.question-answering-demo-application.ipynb",
+      "ok": false,
+      "cells_ok": 6,
+      "cells_skipped": 0,
+      "errors": [
+        {
+          "cell": 1,
+          "error": "ModuleNotFoundError: No module named 'pkg_resources'"
+        },
+        {
+          "cell": 2,
+          "error": "NameError: name 'spacy' is not defined"
+        },
+        {
+          "cell": 6,
+          "error": "NameError: name 'get_query_from_question' is not defined"
+        },
+        {
+          "cell": 9,
+          "error": "HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name': 'data/question-answering/roberta-base-squad2-fine-tuned'. Use `repo_type` argument if needed."
+        },
+        {
+          "cell": 15,
+          "error": "NameError: name 'get_query_from_question' is not defined"
+        },
+        {
+          "cell": 16,
+          "error": "NameError: name 'get_query_from_question' is not defined"
+        },
+        {
+          "cell": 17,
+          "error": "NameError: name 'get_query_from_question' is not defined"
+        }
+      ],
+      "seconds": 0.4
+    },
+    {
+      "path": "chapters/ch15/1.llm-exploration.ipynb",
+      "ok": false,
+      "cells_ok": 7,
+      "cells_skipped": 0,
+      "errors": [
+        {
+          "cell": 1,
+          "error": "ModuleNotFoundError: No module named 'pkg_resources'"
+        },
+        {
+          "cell": 5,
+          "error": "NameError: name 'spacy' is not defined"
+        },
+        {
+          "cell": 8,
+          "error": "NameError: name 'html' is not defined"
+        },
+        {
+          "cell": 10,
+          "error": "NameError: name 'html' is not defined"
+        },
+        {
+          "cell": 12,
+          "error": "NameError: name 'html' is not defined"
+        },
+        {
+          "cell": 14,
+          "error": "NameError: name 'html' is not defined"
+        },
+        {
+          "cell": 18,
+          "error": "NameError: name 'get_query_from_question' is not defined"
+        },
+        {
+          "cell": 20,
+          "error": "NameError: name 'resultset' is not defined"
+        },
+        {
+          "cell": 24,
+          "error": "NameError: name 'example_contexts' is not defined"
+        },
+        {
+          "cell": 31,
+          "error": "NameError: name 'html' is not defined"
+        }
+      ],
+      "seconds": 0.0
+    },
+    {
+      "path": "chapters/ch15/2.multimodal-and-hybrid-search.ipynb",
+      "ok": false,
+      "cells_ok": 8,
+      "cells_skipped": 0,
+      "errors": [
+        {
+          "cell": 0,
+          "error": "ModuleNotFoundError: No module named 'pkg_resources'"
+        },
+        {
+          "cell": 2,
+          "error": "FileNotFoundError: [Errno 2] No such file or directory: 'data/tmdb/movies_with_image_embeddings.pickle'"
+        },
+        {
+          "cell": 4,
+          "error": "UnexpectedResponse: Unexpected Response: 404 (Not Found)\nRaw response content:\nb'{\"status\":{\"error\":\"Not found: Collection `tmdb_with_embeddings` doesn\\'t exist!\"},\"time\":0.000438084}'"
+        },
+        {
+          "cell": 11,
+          "error": "NameError: name 'clip' is not defined"
+        },
+        {
+          "cell": 12,
+          "error": "NameError: name 'clip' is not defined"
+        },
+        {
+          "cell": 14,
+          "error": "NameError: name 'clip' is not defined"
+        },
+        {
+          "cell": 16,
+          "error": "NameError: name 'preprocess' is not defined"
+        },
+        {
+          "cell": 18,
+          "error": "NameError: name 'clip' is not defined"
+        },
+        {
+          "cell": 24,
+          "error": "UnexpectedResponse: Unexpected Response: 404 (Not Found)\nRaw response content:\nb'{\"status\":{\"error\":\"Not found: Collection `tmdb_lexical_plus_embeddings` doesn\\'t exist!\"},\"time\":2.5e-7}'"
+        },
+        {
+          "cell": 28,
+          "error": "UnexpectedResponse: Unexpected Response: 404 (Not Found)\nRaw response content:\nb'{\"status\":{\"error\":\"Not found: Collection `tmdb_lexical_plus_embeddings` doesn\\'t exist!\"},\"time\":3.34e-7}'"
+        },
+        {
+          "cell": 29,
+          "error": "NameError: name 'clip' is not defined"
+        },
+        {
+          "cell": 32,
+          "error": "NameError: name 'clip' is not defined"
+        }
+      ],
+      "seconds": 4.9
+    },
+    {
+      "path": "chapters/ch15/a.generate-movie-embeddings.ipynb",
+      "ok": false,
+      "cells_ok": 4,
+      "cells_skipped": 0,
+      "errors": [
+        {
+          "cell": 0,
+          "error": "ModuleNotFoundError: No module named 'pkg_resources'"
+        }
+      ],
+      "seconds": 0.0
+    }
+  ]
+}

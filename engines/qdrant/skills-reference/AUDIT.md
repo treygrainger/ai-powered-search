@@ -19,17 +19,17 @@ Source: [qdrant/skills](https://github.com/qdrant/skills) (fetched raw SKILL.md 
 
 | Skill guidance | Gap | Why / follow-up |
 | --- | --- | --- |
-| Lexical: BM25 full-text index w/ `scoring` (Qdrant ≥1.20) or sparse BM25 (≤1.19) | Client-side TF–IDF over scrolled candidates + `MatchText` filter | Keeps labs working without FastEmbed/Cloud Inference; ch03 ranking verified. Upgrade path: sparse `qdrant/bm25` or text BM25 when image ≥1.20 |
-| Hybrid via Query API `prefetch` + server RRF | Fusion is client-side after separate searches | Matches AIPS `Collection.hybrid_search` abstraction used by all engines |
-| Prefer `upload_points(parallel=…)` for bulk | `write()` uses `upload_points(parallel=2, max_retries=3)` with upsert fallback | Aligned |
-| Image pin vs latest skills (1.18–1.20 features) | Compose pins `qdrant/qdrant:v1.13.6` | Compatible with client 1.13.x; bump together when enabling server BM25 |
-| Dummy dense vector on text-only collections | `aips_dummy` size-1 vector | Qdrant requires a vectors config; points always carry `[1.0]` |
+| Lexical BM25 full-text indexes (Qdrant ≥1.20) | **Implemented**: `TextIndexParams` + `TextScoringType.BM25`; search via `TextQuery` | Skills-aligned on 1.20; TF–IDF scroll kept as fallback |
+| Hybrid via Query API `prefetch` + server RRF | Multi-field lexical uses prefetch+RRF; cross dense/lexical hybrid still mostly app-side `Collection.hybrid_search` | Partial skills alignment |
+| Bulk writes | Streaming Spark iterator + batched upsert with reconnect retries | Aligned for lab scale |
+| Image/client pin | **`qdrant/qdrant:v1.20.0`** + **`qdrant-client==1.20.0`** | Skills-aligned version floor |
+| Dummy dense vector on text-only collections | `aips_dummy` size-1 vector | Still required by Qdrant vectors config |
 
 ## Recommended next upgrades (optional)
 
-1. Bump image + client together and switch lexical path to sparse BM25 or text BM25 scoring.
-2. Implement native hybrid: dense prefetch + lexical prefetch + `Fusion.RRF` inside `native_search` when both signals exist.
-3. ~~Use `upload_points` for Spark `write`~~ (done).
+1. ~~Bump to 1.20 + BM25 text scoring~~ (done).
+2. Full dense+lexical hybrid as single Query API call for all hybrid_search algorithms.
+3. Raise Docker VM RAM for ch9–15 heavy Spark/transformers labs.
 
 ## How to re-fetch skills
 

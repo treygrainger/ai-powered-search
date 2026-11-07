@@ -362,9 +362,24 @@ class QdrantCollection(Collection):
             )
             return {"points": points, "search_args": search_args, "unscored": True}
 
-        # Lexical ranking: pull a candidate set (prefer text match filter, fall back to full scroll),
-        # then score client-side. This keeps ch03-style keyword ranking working without FastEmbed.
         fields = self._searchable_fields(search_args)
+        # Prefer native BM25 text queries (Qdrant 1.20+ full-text scoring indexes).
+        bm25_points = self._bm25_search(
+            text=text,
+            fields=fields,
+            query_filter=query_filter,
+            limit=limit,
+            with_payload=with_payload,
+            with_vectors=with_vectors,
+        )
+        if bm25_points is not None:
+            scored = [(float(getattr(p, "score", 0.0) or 0.0), p) for p in bm25_points]
+            scored = self._apply_query_boosts(scored, search_args)
+            scored.sort(key=lambda p: p[0], reverse=True)
+            top = [p for _, p in scored[:limit]]
+            return {"points": top, "search_args": search_args, "scores": [s for s, _ in scored[:limit]]}
+
+        # Fallback: scroll candidates + client-side TF-IDF (pre-1.20 / index missing).
         fetch_limit = max(limit * 50, 500)
         points = self._scroll_lexical_candidates(
             text=text,
@@ -378,6 +393,85 @@ class QdrantCollection(Collection):
         scored.sort(key=lambda p: p[0], reverse=True)
         top = [p for _, p in scored[:limit]]
         return {"points": top, "search_args": search_args, "scores": [s for s, _ in scored[:limit]]}
+
+    def _bm25_search(self, text, fields, query_filter, limit, with_payload, with_vectors):
+        """Native BM25 via Query API text queries on scored full-text indexes."""
+        if not fields:
+            return None
+        # Single-field BM25
+        if len(fields) == 1:
+            try:
+                query = self._make_text_query(text)
+                if query is None:
+                    return None
+                return self.client.query_points(
+                    collection_name=self.name,
+                    query=query,
+                    using=fields[0],
+                    query_filter=query_filter,
+                    limit=limit,
+                    with_payload=with_payload,
+                    with_vectors=with_vectors,
+                ).points
+            except Exception:
+                return None
+
+        # Multi-field: prefetch BM25 per field + server RRF fusion when available.
+        try:
+            prefetches = []
+            for field in fields[:6]:
+                tq = self._make_text_query(text)
+                if tq is None:
+                    continue
+                prefetches.append(
+                    models.Prefetch(
+                        query=tq,
+                        using=field,
+                        filter=query_filter,
+                        limit=max(limit * 5, 20),
+                    )
+                )
+            if not prefetches:
+                return None
+            fusion = self._make_rrf_query()
+            return self.client.query_points(
+                collection_name=self.name,
+                prefetch=prefetches,
+                query=fusion,
+                limit=limit,
+                with_payload=with_payload,
+                with_vectors=with_vectors,
+            ).points
+        except Exception:
+            return None
+
+    def _make_text_query(self, text):
+        # qdrant-client 1.20 TextQuery / Document-style text query variants
+        for factory in (
+            lambda t: models.TextQuery(text=t),
+            lambda t: getattr(models, "Document", None) and models.Document(text=t) or (_ for _ in ()).throw(TypeError()),
+        ):
+            try:
+                return factory(text)
+            except Exception:
+                continue
+        # Older fallback: plain string may work as query in some versions
+        try:
+            return models.Query(text=text)  # type: ignore[attr-defined]
+        except Exception:
+            return None
+
+    def _make_rrf_query(self):
+        for factory in (
+            lambda: models.FusionQuery(fusion=models.Fusion.RRF),
+            lambda: models.RrfQuery(rrf=models.Rrf()) if hasattr(models, "RrfQuery") else (_ for _ in ()).throw(TypeError()),
+            lambda: {"fusion": "rrf"},
+        ):
+            try:
+                return factory()
+            except Exception:
+                continue
+        return models.FusionQuery(fusion=models.Fusion.RRF)
 
     def _scroll_lexical_candidates(self, text, fields, query_filter, fetch_limit, with_vectors):
         tokens = [t for t in re.split(r"\W+", text.lower()) if len(t) > 1]
