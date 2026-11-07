@@ -21,7 +21,19 @@ import nbformat
 ROOT = Path("/tmp/notebooks") if Path("/tmp/notebooks/chapters").exists() else Path(__file__).resolve().parents[2]
 
 
-def setup_qdrant():
+def reset_spark():
+    """Drop any stale Spark session so heavy notebooks start clean."""
+    try:
+        from pyspark.sql import SparkSession
+        existing = SparkSession.getActiveSession()
+        if existing is not None:
+            existing.stop()
+            print("Stopped existing SparkSession")
+    except Exception as ex:
+        print(f"Spark reset note: {ex}")
+
+
+def setup_engines():
     import aips
     aips.set_engine("qdrant")
     eng = aips.get_engine()
@@ -29,6 +41,13 @@ def setup_qdrant():
     if not ok:
         raise RuntimeError("Qdrant healthcheck failed")
     print("engine:", eng.name, "url:", getattr(eng, "base_url", "?"))
+    # SKG / entity extraction still require Solr; probe but don't hard-fail yet.
+    try:
+        from engines.solr.SolrEngine import SolrEngine
+        solr_ok = SolrEngine().health_check(log=True, retries=2)
+        print("solr_available:", solr_ok)
+    except Exception as ex:
+        print("solr_available: False", ex)
     return aips
 
 
@@ -86,11 +105,23 @@ def notebooks_for_chapters(chapters):
     return paths
 
 
+def ensure_retrotech_collections(aips):
+    """Make sure products/signals exist before ch4.2 if a prior run populated them."""
+    eng = aips.get_engine()
+    for name in ("products", "signals"):
+        try:
+            count = eng.get_collection(name).get_document_count()
+            print(f"collection {name}: {count} docs")
+        except Exception as ex:
+            print(f"collection {name}: unavailable ({ex})")
+
+
 def main(argv):
     chapters = [int(x) for x in argv] if argv else [3, 4, 5]
     print("Batch chapters:", chapters)
     print("ROOT", ROOT)
-    aips = setup_qdrant()
+    aips = setup_engines()
+    ensure_retrotech_collections(aips)
 
     # Shared globals for sequential chapter notebooks (state can carry datasets)
     g = {
@@ -102,7 +133,20 @@ def main(argv):
 
     results = []
     for path in notebooks_for_chapters(chapters):
-        # Fresh-ish but keep engine selection
+        # ch5.1 requires the dedicated spaCy experimental env
+        if path.name.startswith("1.open-information-extraction"):
+            print(f"\nNOTE: {path.name} should use ch5-spacy kernel; running with import hook")
+            try:
+                import runpy
+                # Ensure spacy_experimental importable from ch5 env site-packages
+                import site
+                spacy_site = "/opt/conda/envs/ch5-spacy/lib/python3.10/site-packages"
+                if spacy_site not in sys.path:
+                    sys.path.insert(0, spacy_site)
+            except Exception as ex:
+                print("ch5-spacy path hook failed:", ex)
+
+        reset_spark()
         g["get_engine"] = aips.get_engine
         g["set_engine"] = aips.set_engine
         try:

@@ -21,6 +21,11 @@ services:
       AIPS_QDRANT_PORT: '6333'
       # Expand py4j path (Dockerfile left a literal py4j-*-src.zip which breaks imports)
       PYTHONPATH: '/usr/local/spark/python:/usr/local/spark/python/lib/py4j-0.10.9.5-src.zip:/tmp/notebooks:/home/jovyan'
+      # Keep Spark modest so Qdrant (~2M signal points) is not OOM-killed on 8GB Docker VMs.
+      SPARK_DRIVER_MEMORY: '3g'
+      SPARK_EXECUTOR_MEMORY: '2g'
+      SPARK_DRIVER_MAXRESULTSIZE: '2g'
+      PYSPARK_SUBMIT_ARGS: '--driver-memory 3g --executor-memory 2g --conf spark.driver.maxResultSize=2g --conf spark.sql.shuffle.partitions=8 pyspark-shell'
     volumes:
       - type: bind
         source: "."
@@ -169,8 +174,11 @@ services:
     image: zookeeper:3.5.8
     container_name: aips-zk
     hostname: aips-zk
+    environment:
+      # Allow Solr healthchecks (ruok) and basic four-letter commands.
+      ZOO_4LW_COMMANDS_WHITELIST: ruok,stat,srvr,mntr,conf,cons
     ports: 
-      - "2181:2128"
+      - "2181:2181"
     networks:
       - aips-network
     restart: unless-stopped

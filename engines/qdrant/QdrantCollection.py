@@ -174,15 +174,28 @@ class QdrantCollection(Collection):
             nonlocal total
             if not points:
                 return
-            try:
-                self.client.upsert(
-                    collection_name=self.name,
-                    points=points,
-                    wait=wait,
-                )
-            except Exception:
-                # Retry once with wait for durability if async path fails
-                self.client.upsert(collection_name=self.name, points=points, wait=True)
+            import time
+            last_err = None
+            for attempt in range(5):
+                try:
+                    # Reconnect client if Qdrant was restarted under memory pressure.
+                    if attempt:
+                        from engines.qdrant.QdrantEngine import QdrantEngine
+                        self.client = QdrantEngine().client
+                        time.sleep(min(2 ** attempt, 10))
+                    self.client.upsert(
+                        collection_name=self.name,
+                        points=points,
+                        wait=wait or attempt > 0,
+                    )
+                    last_err = None
+                    break
+                except Exception as ex:
+                    last_err = ex
+                    if log:
+                        print(f"  upsert retry {attempt + 1}/5: {ex}", flush=True)
+            if last_err is not None:
+                raise last_err
             total += len(points)
 
         # Stream rows to avoid collecting multi-hundred-MB CSVs on the driver.
@@ -522,36 +535,48 @@ class QdrantCollection(Collection):
         return {"modes": 421, "model": 159, "modern": 139, "modem": 56, "mode6": 9}
 
     def create_view_from_collection(self, view_name, spark, log=False):
-        all_documents = []
+        import json
+        import os
+        import tempfile
+
+        # Stream large collections (e.g. 2M+ signals) to disk instead of materializing in RAM.
+        tmp_dir = tempfile.mkdtemp(prefix=f"qdrant_{self.name}_")
+        jsonl_path = os.path.join(tmp_dir, "docs.jsonl")
+        total = 0
         next_offset = None
-        while True:
-            points, next_offset = self.client.scroll(
-                collection_name=self.name,
-                offset=next_offset,
-                limit=500,
-                with_payload=True,
-                with_vectors=True if self.vector_fields else False,
-            )
-            for point in points:
-                doc = dict(point.payload or {})
-                if "id" not in doc:
-                    doc["id"] = doc.get(self.id_field, point.id)
-                vectors = point.vector
-                if isinstance(vectors, dict):
-                    for name, value in vectors.items():
-                        if name != DUMMY_VECTOR_NAME:
-                            doc[name] = value
-                elif vectors is not None and self.vector_fields:
-                    doc[self.vector_fields[0]] = vectors
-                all_documents.append(doc)
-            if next_offset is None or not points:
-                break
+        with open(jsonl_path, "w", encoding="utf-8") as out:
+            while True:
+                points, next_offset = self.client.scroll(
+                    collection_name=self.name,
+                    offset=next_offset,
+                    limit=1000,
+                    with_payload=True,
+                    with_vectors=bool(self.vector_fields),
+                )
+                for point in points:
+                    doc = dict(point.payload or {})
+                    if "id" not in doc:
+                        doc["id"] = doc.get(self.id_field, point.id)
+                    vectors = point.vector
+                    if isinstance(vectors, dict):
+                        for name, value in vectors.items():
+                            if name != DUMMY_VECTOR_NAME:
+                                doc[name] = value
+                    elif vectors is not None and self.vector_fields:
+                        doc[self.vector_fields[0]] = vectors
+                    out.write(json.dumps(doc, default=str))
+                    out.write("\n")
+                    total += 1
+                if next_offset is None or not points:
+                    break
+                if log and total and total % 100000 == 0:
+                    print(f"  ... exported {total} docs from {self.name}", flush=True)
         if log:
-            print(f"Loaded {len(all_documents)} docs from db")
-        if not all_documents:
+            print(f"Loaded {total} docs from db into {jsonl_path}")
+        if total == 0:
             dataframe = spark.createDataFrame([], schema="id STRING")
         else:
-            dataframe = spark.createDataFrame(all_documents)
+            dataframe = spark.read.json(jsonl_path)
         dataframe.createOrReplaceTempView(view_name)
 
     def load_index_time_boosting_dataframe(self, boosts_collection_name,
