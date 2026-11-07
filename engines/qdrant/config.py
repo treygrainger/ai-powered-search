@@ -107,11 +107,12 @@ def body_title_schema():
 
 
 def signals_boosting_schema():
+    # Aggregate boost tables are small; BM25 on query matches notebook searches.
     return basic_schema({
-        "query": keyword_field(),
-        "doc": text_field(),
+        "query": text_field(),
+        "doc": keyword_field(),
         "boost": integer_field(),
-    }, searchable_fields=["query", "doc"])
+    }, searchable_fields=["query"])
 
 
 PRODUCTS_FIELDS = {
@@ -166,15 +167,21 @@ SCHEMAS = {
         "_text_": text_field(),
     }, searchable_fields=["job_description", "company_description",
                           "company_country", "_text_"]),
+    # Large collections: prefer keyword fields; avoid BM25 on every column.
     "signals": basic_schema({
-        "query_id": text_field(),
-        "user": text_field(),
-        "type": text_field(),
-        "target": text_field(),
-        "signal_time": text_field(),
+        "query_id": keyword_field(),
+        "user": keyword_field(),
+        "type": keyword_field(),
+        "target": keyword_field(),
+        "signal_time": keyword_field(),
+        "query": keyword_field(),
+    }, searchable_fields=[]),
+    "signals_boosting": basic_schema({
+        # query stays text+BM25 so notebook searches like query="ipad" still rank.
         "query": text_field(),
-    }, searchable_fields=["query", "target", "type", "user"]),
-    "signals_boosting": signals_boosting_schema(),
+        "doc": keyword_field(),
+        "boost": integer_field(),
+    }, searchable_fields=["query"]),
     "basic_signals_boosts": signals_boosting_schema(),
     "normalized_signals_boosts": signals_boosting_schema(),
     "signals_boosts_with_spam": signals_boosting_schema(),

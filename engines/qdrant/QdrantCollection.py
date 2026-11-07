@@ -165,8 +165,8 @@ class QdrantCollection(Collection):
             engine.create_collection(self.name, force_rebuild=overwrite, log=False)
 
         dataframe = self.apply_qdrant_specific_transformations(dataframe)
-        # Larger batches + async waits: full wait only on final flush/commit.
-        batch_size = 1000
+        # Smaller batches on multi-million signal tables reduce peak RSS during upsert.
+        batch_size = 400 if self.name in {"signals", "signals_boosting"} else 1000
         total = 0
         batch = []
 

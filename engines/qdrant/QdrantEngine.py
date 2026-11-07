@@ -76,8 +76,8 @@ class QdrantEngine(Engine):
         }
         return mapping.get(kind, models.PayloadSchemaType.KEYWORD)
 
-    def _text_index_schema(self, bm25=True):
-        """Full-text payload index; enable BM25 scoring when supported (Qdrant 1.20+)."""
+    def _text_index_schema(self, bm25=True, on_disk=True):
+        """Full-text payload index; BM25 on 1.20+ with on-disk index to save RAM."""
         scoring = None
         if bm25:
             try:
@@ -90,6 +90,7 @@ class QdrantEngine(Engine):
                 tokenizer=models.TokenizerType.WORD,
                 lowercase=True,
                 scoring=scoring,
+                on_disk=on_disk,
             )
         except TypeError:
             try:
@@ -98,24 +99,54 @@ class QdrantEngine(Engine):
                     tokenizer=models.TokenizerType.WORD,
                     lowercase=True,
                     scoring=True if bm25 else None,
+                    on_disk=on_disk,
                 )
             except Exception:
                 return models.PayloadSchemaType.TEXT
 
     def _build_vectors_config(self, schema):
+        # on_disk=True keeps dense/dummy vectors mmap'd instead of fully resident in RAM.
         vector_fields = schema.get("vector_fields") or {}
         if not vector_fields:
             return {
                 DUMMY_VECTOR_NAME: models.VectorParams(
                     size=DUMMY_VECTOR_SIZE,
                     distance=models.Distance.COSINE,
+                    on_disk=True,
                 )
             }
         config = {}
         for name, meta in vector_fields.items():
             distance = DISTANCE_MAP.get(meta.get("distance", "Cosine"), models.Distance.COSINE)
-            config[name] = models.VectorParams(size=meta["size"], distance=distance)
+            kwargs = {"size": meta["size"], "distance": distance, "on_disk": True}
+            config[name] = models.VectorParams(**kwargs)
         return config
+
+    def _is_payload_only(self, schema):
+        """True when schema has no real dense vectors (dummy vector only)."""
+        return not (schema.get("vector_fields") or {})
+
+    def _hnsw_config(self, payload_only=False):
+        # Payload-only labs: disable HNSW entirely (m=0) — dummy vectors are never searched.
+        # Real vector collections: smaller on-disk graph for lab machines.
+        try:
+            if payload_only:
+                return models.HnswConfigDiff(m=0, ef_construct=8, on_disk=True)
+            return models.HnswConfigDiff(m=16, ef_construct=64, on_disk=True)
+        except TypeError:
+            if payload_only:
+                return models.HnswConfigDiff(m=0)
+            return models.HnswConfigDiff(m=16, ef_construct=64)
+
+    def _optimizers_config(self, payload_only=False):
+        try:
+            # Huge indexing_threshold on payload-only avoids building vector indexes for 2M+ dummies.
+            return models.OptimizersConfigDiff(
+                memmap_threshold=10000,
+                indexing_threshold=10**9 if payload_only else 20000,
+            )
+        except TypeError:
+            return None
 
     def create_collection(self, name, force_rebuild=True, log=False):
         collection_name = name.lower()
@@ -128,22 +159,38 @@ class QdrantEngine(Engine):
 
         if not exists:
             print(f'Creating "{collection_name}" collection')
+            payload_only = self._is_payload_only(schema)
             vectors_config = self._build_vectors_config(schema)
-            self.client.create_collection(
-                collection_name=collection_name,
-                vectors_config=vectors_config,
-            )
+            create_kwargs = {
+                "collection_name": collection_name,
+                "vectors_config": vectors_config,
+                "hnsw_config": self._hnsw_config(payload_only=payload_only),
+            }
+            opt = self._optimizers_config(payload_only=payload_only)
+            if opt is not None:
+                create_kwargs["optimizers_config"] = opt
+            # Prefer mmap'd payload for large signal tables.
+            try:
+                create_kwargs["on_disk_payload"] = True
+            except Exception:
+                pass
+            self.client.create_collection(**create_kwargs)
+
             searchable = set(schema.get("searchable_fields") or [])
+            # Optional explicit filter indexes; default = searchable only.
+            # Empty searchable_fields (e.g. signals) => no payload indexes (saves multi-GB RAM).
+            indexed = set(schema.get("indexed_fields") or searchable)
             for field_name, meta in schema.get("fields", {}).items():
                 kind = meta.get("kind")
                 if kind == "vector":
                     continue
+                if field_name not in searchable and field_name not in indexed:
+                    continue
                 try:
-                    # Qdrant >=1.20: BM25-capable full-text indexes for searchable text fields.
-                    if kind == "text" and (
-                        field_name in searchable or field_name == "_text_" or meta.get("searchable", True)
-                    ):
-                        field_schema = self._text_index_schema(bm25=True)
+                    if kind == "text" and field_name in searchable:
+                        field_schema = self._text_index_schema(bm25=True, on_disk=True)
+                    elif kind == "text":
+                        field_schema = models.PayloadSchemaType.KEYWORD
                     else:
                         field_schema = self._payload_schema_type(kind)
                     self.client.create_payload_index(
@@ -155,7 +202,11 @@ class QdrantEngine(Engine):
                     if log:
                         print(f"Index create skipped/failed for {field_name}: {ex}")
             if log:
-                print(f"Created Qdrant collection {collection_name} with vectors={list(vectors_config)}")
+                print(
+                    f"Created Qdrant collection {collection_name} "
+                    f"vectors={list(vectors_config)} payload_only={payload_only} "
+                    f"indexed={sorted(indexed)}"
+                )
         else:
             print(f'Using existing "{collection_name}" collection')
 

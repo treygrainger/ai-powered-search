@@ -135,10 +135,22 @@ services:
       - aips-network
     volumes:
       - qdrant-data:/qdrant/storage
+      - type: bind
+        source: ./engines/qdrant/qdrant_config.yaml
+        target: /qdrant/config/production.yaml
+    # Cap Qdrant so Spark/Solr still have room on ~8Gi Docker Desktop VMs.
+    # 3g leaves headroom for ~2M signals upsert spikes; steady-state is much lower.
+    mem_limit: 3g
+    memswap_limit: 3g
+    cpus: 2.0
     restart: unless-stopped
     environment:
       QDRANT__SERVICE__HTTP_PORT: 6333
       QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__LOG_LEVEL: WARN
+      QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS: 2
+      QDRANT__STORAGE__OPTIMIZERS__MEMMAP_THRESHOLD_KB: 10240
+      QDRANT__STORAGE__OPTIMIZERS__MAX_OPTIMIZATION_THREADS: 1
     depends_on:
       - notebooks
     profiles:
