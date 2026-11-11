@@ -192,11 +192,6 @@ class OpenSearchCollection(Collection):
     def native_search(self, request=None, data=None):
         return requests.post(f"{OPENSEARCH_URL}/{self.name}/_search", json=request, data=data).json()
 
-    def search(self, **search_args):
-        request = self.transform_request(**search_args)
-        search_response = self.native_search(request=request)
-        return self.transform_response(search_response)
-    
     def spell_check(self, query, log=False):
         request = {"suggest": {"spell-check" : {"text" : query,
                                                 "term" : {"field" : "_text_",
