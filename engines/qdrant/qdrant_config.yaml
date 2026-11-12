@@ -1,0 +1,21 @@
+# Low-memory defaults for AI-Powered Search local labs (~8Gi Docker VM).
+log_level: WARN
+
+storage:
+  storage_path: ./storage
+  performance:
+    max_search_threads: 2
+  optimizers:
+    # Prefer mmap sooner so large collections do not pin RAM.
+    memmap_threshold_kb: 10240
+    indexing_threshold_kb: 20000
+    flush_interval_sec: 5
+    max_optimization_threads: 1
+
+service:
+  http_port: 6333
+  grpc_port: 6334
+  enable_cors: true
+  max_request_size_mb: 32
+
+telemetry_disabled: true
