@@ -33,3 +33,7 @@ tqdm==4.68.4
 requests==2.34.2
 pymupdf==1.28.0
 mistral-common>=1.11.5,<2
+
+#Decision models as rerankers
+hev-rerank @ git+https://github.com/hev/reranker@v0.3.0
+rank_bm25
