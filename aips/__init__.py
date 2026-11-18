@@ -12,6 +12,9 @@ from engines.vespa.VespaSparseSemanticSearch import VespaSparseSemanticSearch
 from engines.weaviate.WeaviateEngine import WeaviateEngine
 from engines.weaviate.WeaviateLTR import WeaviateLTR
 from engines.weaviate.WeaviateSparseSemanticSearch import WeaviateSparseSemanticSearch
+from engines.qdrant.QdrantEngine import QdrantEngine
+from engines.qdrant.QdrantLTR import QdrantLTR
+from engines.qdrant.QdrantSparseSemanticSearch import QdrantSparseSemanticSearch
 
 import os
 from IPython.display import display, HTML
@@ -21,17 +24,20 @@ import re
 engine_name_type_map = {"solr": SolrEngine,
                         "opensearch": OpenSearchEngine,
                         "vespa": VespaEngine,
-                        "weaviate": WeaviateEngine}
+                        "weaviate": WeaviateEngine,
+                        "qdrant": QdrantEngine}
 
 ltr_engine_map = {"solr": SolrLTR,
                   "opensearch": OpenSearchLTR,
                   "vespa": VespaLTR,
-                  "weaviate": WeaviateLTR}
+                  "weaviate": WeaviateLTR,
+                  "qdrant": QdrantLTR}
 
 sparse_semantic_search_engine_map = {"solr": SolrSparseSemanticSearch,
                                      "opensearch": OpenSearchSparseSemanticSearch,
                                      "vespa": VespaSparseSemanticSearch,
-                                     "weaviate": WeaviateSparseSemanticSearch}
+                                     "weaviate": WeaviateSparseSemanticSearch,
+                                     "qdrant": QdrantSparseSemanticSearch}
 
 def scan_for_healthy_engine(log=False):
     for engine_name in engine_name_type_map.keys():

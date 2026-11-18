@@ -17,6 +17,15 @@ services:
     environment:
       AIPS_SOLR_HOST: 'aips-solr'
       AIPS_ZK_HOST: 'aips-zk:2181'
+      AIPS_QDRANT_HOST: 'aips-qdrant'
+      AIPS_QDRANT_PORT: '6333'
+      # Expand py4j path (Dockerfile left a literal py4j-*-src.zip which breaks imports)
+      PYTHONPATH: '/usr/local/spark/python:/usr/local/spark/python/lib/py4j-0.10.9.5-src.zip:/tmp/notebooks:/home/jovyan'
+      # Keep Spark modest so Qdrant (~2M signal points) is not OOM-killed on 8GB Docker VMs.
+      SPARK_DRIVER_MEMORY: '3g'
+      SPARK_EXECUTOR_MEMORY: '2g'
+      SPARK_DRIVER_MAXRESULTSIZE: '2g'
+      PYSPARK_SUBMIT_ARGS: '--driver-memory 3g --executor-memory 2g --conf spark.driver.maxResultSize=2g --conf spark.sql.shuffle.partitions=8 pyspark-shell'
     volumes:
       - type: bind
         source: "."
@@ -112,6 +121,40 @@ services:
       - notebooks
     profiles:
       - all
+
+  qdrant:
+    # 1.20 enables BM25 scoring on full-text payload indexes (skills-recommended lexical path).
+    image: qdrant/qdrant:v1.20.0
+    container_name: aips-qdrant
+    hostname: aips-qdrant
+    ports:
+      # Host 16333 avoids clashes with other local Qdrant instances on 6333.
+      - "16333:6333"
+      - "16334:6334"
+    networks:
+      - aips-network
+    volumes:
+      - qdrant-data:/qdrant/storage
+      - type: bind
+        source: ./engines/qdrant/qdrant_config.yaml
+        target: /qdrant/config/production.yaml
+    # Cap Qdrant so Spark/Solr still have room on ~8Gi Docker Desktop VMs.
+    # 3g leaves headroom for ~2M signals upsert spikes; steady-state is much lower.
+    mem_limit: 3g
+    memswap_limit: 3g
+    cpus: 2.0
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__LOG_LEVEL: WARN
+      QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS: 2
+      QDRANT__STORAGE__OPTIMIZERS__MEMMAP_THRESHOLD_KB: 10240
+      QDRANT__STORAGE__OPTIMIZERS__MAX_OPTIMIZATION_THREADS: 1
+    depends_on:
+      - notebooks
+    profiles:
+      - all
   
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:3.8.0
@@ -144,8 +187,11 @@ services:
     image: zookeeper:3.5.8
     container_name: aips-zk
     hostname: aips-zk
+    environment:
+      # Allow Solr healthchecks (ruok) and basic four-letter commands.
+      ZOO_4LW_COMMANDS_WHITELIST: ruok,stat,srvr,mntr,conf,cons
     ports: 
-      - "2181:2128"
+      - "2181:2181"
     networks:
       - aips-network
     restart: unless-stopped
@@ -156,6 +202,7 @@ services:
 volumes:
   opensearch-data:
   weaviate-data:
+  qdrant-data:
   
 networks:
   aips-network:
