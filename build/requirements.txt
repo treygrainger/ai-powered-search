@@ -23,7 +23,7 @@ networkx==3.3
 
 #Normal deps
 beautifulsoup4==4.12.3
-lxml==5.3.0
+lxml==6.1.0
 datasets==3.0.1
 jupyter-console==6.6.3
 matplotlib==3.9.2 
